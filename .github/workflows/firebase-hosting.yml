@@ -55,7 +55,7 @@ jobs:
         # Set up authentication
         export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/service-account.json"
         
-        # Deploy Firestore rules and Functions
+        # Deploy Firestore rules, indexes, and Functions
         npx firebase-tools deploy --only firestore:rules,firestore:indexes,functions --project kyuyoprint --non-interactive
         
         # Clean up
