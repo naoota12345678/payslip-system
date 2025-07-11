@@ -1,0 +1,253 @@
+[debug] [2025-04-21T10:45:59.791Z] ----------------------------------------------------------------------
+[debug] [2025-04-21T10:45:59.802Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\naoot\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:shell
+[debug] [2025-04-21T10:45:59.803Z] CLI Version:   14.1.0
+[debug] [2025-04-21T10:45:59.804Z] Platform:      win32
+[debug] [2025-04-21T10:45:59.804Z] Node Version:  v20.18.0
+[debug] [2025-04-21T10:45:59.805Z] Time:          Mon Apr 21 2025 19:45:59 GMT+0900 (GMT+09:00)
+[debug] [2025-04-21T10:45:59.805Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-04-21T10:46:00.430Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-04-21T10:46:00.431Z] > authorizing via signed-in user (naoota12345678@gmail.com)
+[debug] [2025-04-21T10:46:00.431Z] [iam] checking project kyuyoprint for permissions ["firebase.projects.get"]
+[debug] [2025-04-21T10:46:00.434Z] Checked if tokens are valid: true, expires at: 1745235064385
+[debug] [2025-04-21T10:46:00.434Z] Checked if tokens are valid: true, expires at: 1745235064385
+[debug] [2025-04-21T10:46:00.437Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/kyuyoprint:testIamPermissions [none]
+[debug] [2025-04-21T10:46:00.438Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/kyuyoprint:testIamPermissions x-goog-quota-user=projects/kyuyoprint
+[debug] [2025-04-21T10:46:00.438Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/kyuyoprint:testIamPermissions {"permissions":["firebase.projects.get"]}
+[debug] [2025-04-21T10:46:01.373Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/kyuyoprint:testIamPermissions 200
+[debug] [2025-04-21T10:46:01.374Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/kyuyoprint:testIamPermissions {"permissions":["firebase.projects.get"]}
+[debug] [2025-04-21T10:46:01.386Z] [functions] Functions Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-04-21T10:46:01.440Z] defaultcredentials: writing to file C:\Users\naoot\AppData\Roaming\firebase\naoota12345678_gmail_com_application_default_credentials.json
+[debug] [2025-04-21T10:46:01.444Z] DEBUG: Setting GAC to C:\Users\naoot\AppData\Roaming\firebase\naoota12345678_gmail_com_application_default_credentials.json
+[debug] [2025-04-21T10:46:01.445Z] Checked if tokens are valid: true, expires at: 1745235064385
+[debug] [2025-04-21T10:46:01.445Z] Checked if tokens are valid: true, expires at: 1745235064385
+[debug] [2025-04-21T10:46:01.446Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/kyuyoprint/adminSdkConfig [none]
+[debug] [2025-04-21T10:46:02.120Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/kyuyoprint/adminSdkConfig 200
+[debug] [2025-04-21T10:46:02.120Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/kyuyoprint/adminSdkConfig {"projectId":"kyuyoprint","storageBucket":"kyuyoprint.firebasestorage.app"}
+[debug] [2025-04-21T10:46:02.159Z] [functions] Watching "C:\Users\naoot\payslip-system\functions" for Cloud Functions...
+[debug] [2025-04-21T10:46:02.167Z] Validating nodejs source
+[debug] [2025-04-21T10:46:03.579Z] > [functions] package.json contents: {
+  "name": "functions",
+  "description": "Cloud Functions for Firebase",
+  "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "22"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "csv-parser": "^3.2.0",
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^6.3.2",
+    "node-fetch": "^2.7.0"
+  },
+  "devDependencies": {
+    "firebase-functions-test": "^3.1.0"
+  },
+  "private": true
+}
+[debug] [2025-04-21T10:46:03.580Z] Building nodejs source
+[debug] [2025-04-21T10:46:03.580Z] Failed to find version of module node: reached end of search path C:\Users\naoot\payslip-system\functions\node_modules
+[warn] !  functions: Your requested "node" version "22" doesn't match your global version "20". Using node@20 from host. 
+[debug] [2025-04-21T10:46:03.585Z] Could not find functions.yaml. Must use http discovery
+[debug] [2025-04-21T10:46:03.602Z] Found firebase-functions binary at 'C:\Users\naoot\payslip-system\functions\node_modules\.bin\firebase-functions'
+[info] Serving at port 8754
+
+[debug] [2025-04-21T10:46:04.388Z] Got response from /__/functions.yaml {"endpoints":{"processCSV":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"processCSV"},"checkEmailNotificationsManual":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"checkEmailNotificationsManual"},"logPayslipView":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"logPayslipView"},"testDebugLogging":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"testDebugLogging"}},"specVersion":"v1alpha1","requiredAPIs":[],"extensions":{}}
+[debug] [2025-04-21T10:46:08.442Z] [functions] Loaded functions definitions from source: processCSV, checkEmailNotificationsManual, logPayslipView, testDebugLogging.
+[debug] [2025-04-21T10:46:08.444Z] [functions[us-central1-processCSV]] http function initialized (http://127.0.0.1:5000/kyuyoprint/us-central1/processCSV).
+[debug] [2025-04-21T10:46:08.444Z] [functions[us-central1-checkEmailNotificationsManual]] http function initialized (http://127.0.0.1:5000/kyuyoprint/us-central1/checkEmailNotificationsManual).
+[debug] [2025-04-21T10:46:08.444Z] [functions[us-central1-logPayslipView]] http function initialized (http://127.0.0.1:5000/kyuyoprint/us-central1/logPayslipView).
+[debug] [2025-04-21T10:46:08.444Z] [functions[us-central1-testDebugLogging]] http function initialized (http://127.0.0.1:5000/kyuyoprint/us-central1/testDebugLogging).
+[info] i  functions: Loaded functions: processCSV, checkEmailNotificationsManual, logPayslipView, testDebugLogging 
+[warn] !  functions: The following emulators are not running, calls to these services will affect production: firestore, database, pubsub, storage, eventarc, tasks 
+[debug] [2025-04-21T10:46:10.226Z] >>> [apiv2][query] POST http://127.0.0.1:5000/kyuyoprint/us-central1/testDebugLogging/ [none]
+[debug] [2025-04-21T10:46:10.238Z] [work-queue] {"queuedWork":["/kyuyoprint/us-central1/testDebugLogging/-2025-04-21T10:46:10.238Z"],"queueLength":1,"runningWork":[],"workRunningCount":0}
+[debug] [2025-04-21T10:46:10.239Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":["/kyuyoprint/us-central1/testDebugLogging/-2025-04-21T10:46:10.238Z"],"workRunningCount":1}
+[debug] [2025-04-21T10:46:10.240Z] Accepted request POST /kyuyoprint/us-central1/testDebugLogging/ --> us-central1-testDebugLogging
+[debug] [2025-04-21T10:46:10.241Z] DEBUG: [functions] Runtime ready! Sending request!
+[debug] [2025-04-21T10:46:10.242Z] DEBUG: [functions] Got req.url=/kyuyoprint/us-central1/testDebugLogging/, mapping to path=/
+[debug] [2025-04-21T10:46:10.269Z] DEBUG: [worker-pool] addWorker(us-central1-testDebugLogging)
+[debug] [2025-04-21T10:46:10.271Z] DEBUG: [worker-pool] Adding worker with key us-central1-testDebugLogging, total=1
+[debug] [2025-04-21T10:46:11.921Z] DEBUG: [runtime-status] [124200] Resolved module firebase-admin {"declared":true,"installed":true,"version":"12.7.0","resolution":"C:\\Users\\naoot\\payslip-system\\functions\\node_modules\\firebase-admin\\lib\\index.js"}
+[debug] [2025-04-21T10:46:11.924Z] DEBUG: [runtime-status] [124200] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.3.2","resolution":"C:\\Users\\naoot\\payslip-system\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"}
+[debug] [2025-04-21T10:46:11.924Z] DEBUG: [runtime-status] [124200] Outgoing network have been stubbed. [{"name":"http","status":"mocked"},{"name":"http","status":"mocked"},{"name":"https","status":"mocked"},{"name":"https","status":"mocked"},{"name":"net","status":"mocked"}]
+[debug] [2025-04-21T10:46:11.925Z] DEBUG: [runtime-status] [124200] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.3.2","resolution":"C:\\Users\\naoot\\payslip-system\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"}
+[debug] [2025-04-21T10:46:12.324Z] DEBUG: [runtime-status] [124200] Checked functions.config() {"config":{}}
+[debug] [2025-04-21T10:46:12.324Z] DEBUG: [runtime-status] [124200] firebase-functions has been stubbed. {"functionsResolution":{"declared":true,"installed":true,"version":"6.3.2","resolution":"C:\\Users\\naoot\\payslip-system\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"}}
+[debug] [2025-04-21T10:46:12.325Z] DEBUG: [runtime-status] [124200] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.3.2","resolution":"C:\\Users\\naoot\\payslip-system\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"}
+[debug] [2025-04-21T10:46:12.333Z] DEBUG: [runtime-status] [124200] Resolved module firebase-admin {"declared":true,"installed":true,"version":"12.7.0","resolution":"C:\\Users\\naoot\\payslip-system\\functions\\node_modules\\firebase-admin\\lib\\index.js"}
+[debug] [2025-04-21T10:46:12.336Z] DEBUG: [runtime-status] [124200] Resolved module firebase-functions {"declared":true,"installed":true,"version":"6.3.2","resolution":"C:\\Users\\naoot\\payslip-system\\functions\\node_modules\\firebase-functions\\lib\\v2\\index.js"}
+[debug] [2025-04-21T10:46:12.337Z] DEBUG: [runtime-status] [124200] firebase-admin has been stubbed. {"adminResolution":{"declared":true,"installed":true,"version":"12.7.0","resolution":"C:\\Users\\naoot\\payslip-system\\functions\\node_modules\\firebase-admin\\lib\\index.js"}}
+[debug] [2025-04-21T10:46:12.357Z] DEBUG: [runtime-status] [124200] initializeApp(DEFAULT) {"storageBucket":"kyuyoprint.firebasestorage.app","projectId":"kyuyoprint"}
+[warn] !  functions: The Cloud Firestore emulator is not running, so calls to Firestore will affect production. {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-testDebugLogging"},"extension":{},"message":"The Cloud Firestore emulator is not running, so calls to Firestore will affect production."}}
+[debug] [2025-04-21T10:46:12.368Z] DEBUG: [runtime-status] [124200] Functions runtime initialized. {"cwd":"C:\\Users\\naoot\\payslip-system\\functions","node_version":"20.18.0"}
+[debug] [2025-04-21T10:46:12.368Z] DEBUG: [runtime-status] [124200] Listening to port: \\?\pipe\fire_emu_c7a818a2d90540ee
+[debug] [2025-04-21T10:46:12.454Z] DEBUG: [worker-us-central1-testDebugLogging-a2ffaf55-10aa-4fc0-9a1c-22b0228eb949]: IDLE
+[debug] [2025-04-21T10:46:12.455Z] DEBUG: [worker-pool] submitRequest(triggerId=us-central1-testDebugLogging)
+[debug] [2025-04-21T10:46:12.456Z] [functions] Beginning execution of "us-central1-testDebugLogging"
+[debug] [2025-04-21T10:46:12.456Z] DEBUG: [worker-us-central1-testDebugLogging-a2ffaf55-10aa-4fc0-9a1c-22b0228eb949]: BUSY
+[info] >  {"severity":"WARNING","message":"Request body is missing data."} {"user":{"severity":"WARNING","message":"Request body is missing data."},"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-testDebugLogging"},"extension":{},"message":"\u001b[90m> \u001b[39m {\"severity\":\"WARNING\",\"message\":\"Request body is missing data.\"}"}}
+[info] >  {"severity":"ERROR","message":"Error: Invalid request, unable to process.\n    at entryFromArgs (C:\\Users\\naoot\\payslip-system\\functions\\node_modules\\firebase-functions\\lib\\logger\\index.js:133:19)\n    at Object.error (C:\\Users\\naoot\\payslip-system\\functions\\node_modules\\firebase-functions\\lib\\logger\\index.js:120:11)\n    at C:\\Users\\naoot\\payslip-system\\functions\\node_modules\\firebase-functions\\lib\\common\\providers\\https.js:431:24\n    at C:\\Users\\naoot\\payslip-system\\functions\\node_modules\\firebase-functions\\lib\\common\\providers\\https.js:392:25\n    at cors (C:\\Users\\naoot\\payslip-system\\functions\\node_modules\\cors\\lib\\index.js:188:7)\n    at C:\\Users\\naoot\\payslip-system\\functions\\node_modules\\cors\\lib\\index.js:224:17\n    at originCallback (C:\\Users\\naoot\\payslip-system\\functions\\node_modules\\cors\\lib\\index.js:214:15)\n    at C:\\Users\\naoot\\payslip-system\\functions\\node_modules\\cors\\lib\\index.js:219:13\n    at optionsCallback (C:\\Users\\naoot\\payslip-system\\functions\\node_modules\\cors\\lib\\index.js:199:9)\n    at corsMiddleware (C:\\Users\\naoot\\payslip-system\\functions\\node_modules\\cors\\lib\\index.js:204:7)"} {"user":{"severity":"ERROR","message":"Error: Invalid request, unable to process.\n    at entryFromArgs (C:\\Users\\naoot\\payslip-system\\functions\\node_modules\\firebase-functions\\lib\\logger\\index.js:133:19)\n    at Object.error (C:\\Users\\naoot\\payslip-system\\functions\\node_modules\\firebase-functions\\lib\\logger\\index.js:120:11)\n    at C:\\Users\\naoot\\payslip-system\\functions\\node_modules\\firebase-functions\\lib\\common\\providers\\https.js:431:24\n    at C:\\Users\\naoot\\payslip-system\\functions\\node_modules\\firebase-functions\\lib\\common\\providers\\https.js:392:25\n    at cors (C:\\Users\\naoot\\payslip-system\\functions\\node_modules\\cors\\lib\\index.js:188:7)\n    at C:\\Users\\naoot\\payslip-system\\functions\\node_modules\\cors\\lib\\index.js:224:17\n    at originCallback (C:\\Users\\naoot\\payslip-system\\functions\\node_modules\\cors\\lib\\index.js:214:15)\n    at C:\\Users\\naoot\\payslip-system\\functions\\node_modules\\cors\\lib\\index.js:219:13\n    at optionsCallback (C:\\Users\\naoot\\payslip-system\\functions\\node_modules\\cors\\lib\\index.js:199:9)\n    at corsMiddleware (C:\\Users\\naoot\\payslip-system\\functions\\node_modules\\cors\\lib\\index.js:204:7)"},"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-testDebugLogging"},"extension":{},"message":"\u001b[90m> \u001b[39m {\"severity\":\"ERROR\",\"message\":\"Error: Invalid request, unable to process.\\n    at entryFromArgs (C:\\\\Users\\\\naoot\\\\payslip-system\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\logger\\\\index.js:133:19)\\n    at Object.error (C:\\\\Users\\\\naoot\\\\payslip-system\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\logger\\\\index.js:120:11)\\n    at C:\\\\Users\\\\naoot\\\\payslip-system\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\common\\\\providers\\\\https.js:431:24\\n    at C:\\\\Users\\\\naoot\\\\payslip-system\\\\functions\\\\node_modules\\\\firebase-functions\\\\lib\\\\common\\\\providers\\\\https.js:392:25\\n    at cors (C:\\\\Users\\\\naoot\\\\payslip-system\\\\functions\\\\node_modules\\\\cors\\\\lib\\\\index.js:188:7)\\n    at C:\\\\Users\\\\naoot\\\\payslip-system\\\\functions\\\\node_modules\\\\cors\\\\lib\\\\index.js:224:17\\n    at originCallback (C:\\\\Users\\\\naoot\\\\payslip-system\\\\functions\\\\node_modules\\\\cors\\\\lib\\\\index.js:214:15)\\n    at C:\\\\Users\\\\naoot\\\\payslip-system\\\\functions\\\\node_modules\\\\cors\\\\lib\\\\index.js:219:13\\n    at optionsCallback (C:\\\\Users\\\\naoot\\\\payslip-system\\\\functions\\\\node_modules\\\\cors\\\\lib\\\\index.js:199:9)\\n    at corsMiddleware (C:\\\\Users\\\\naoot\\\\payslip-system\\\\functions\\\\node_modules\\\\cors\\\\lib\\\\index.js:204:7)\"}"}}
+[debug] [2025-04-21T10:46:12.516Z] DEBUG: Finishing up request with event=pause
+[debug] [2025-04-21T10:46:12.516Z] [functions] Finished "us-central1-testDebugLogging" in 60.2288ms
+[debug] [2025-04-21T10:46:12.516Z] DEBUG: [worker-us-central1-testDebugLogging-a2ffaf55-10aa-4fc0-9a1c-22b0228eb949]: IDLE
+[debug] [2025-04-21T10:46:12.516Z] DEBUG: Finishing up request with event=finish
+[debug] [2025-04-21T10:46:12.517Z] DEBUG: Finishing up request with event=close
+[debug] [2025-04-21T10:46:12.517Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
+[debug] [2025-04-21T10:46:12.518Z] <<< [apiv2][status] POST http://127.0.0.1:5000/kyuyoprint/us-central1/testDebugLogging/ 400
+[debug] [2025-04-21T10:46:12.518Z] <<< [apiv2][body] POST http://127.0.0.1:5000/kyuyoprint/us-central1/testDebugLogging/ {"error":{"message":"Bad Request","status":"INVALID_ARGUMENT"}}
+[debug] [2025-04-21T10:48:13.667Z] DEBUG: File C:\Users\naoot\payslip-system\functions\index.js changed, reloading triggers
+[debug] [2025-04-21T10:48:14.683Z] Validating nodejs source
+[debug] [2025-04-21T10:48:16.326Z] > [functions] package.json contents: {
+  "name": "functions",
+  "description": "Cloud Functions for Firebase",
+  "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "22"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "csv-parser": "^3.2.0",
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^6.3.2",
+    "node-fetch": "^2.7.0"
+  },
+  "devDependencies": {
+    "firebase-functions-test": "^3.1.0"
+  },
+  "private": true
+}
+[debug] [2025-04-21T10:48:16.326Z] Building nodejs source
+[debug] [2025-04-21T10:48:16.327Z] Failed to find version of module node: reached end of search path C:\Users\naoot\payslip-system\functions\node_modules
+[warn] !  functions: Your requested "node" version "22" doesn't match your global version "20". Using node@20 from host. 
+[debug] [2025-04-21T10:48:16.328Z] Could not find functions.yaml. Must use http discovery
+[debug] [2025-04-21T10:48:16.337Z] Found firebase-functions binary at 'C:\Users\naoot\payslip-system\functions\node_modules\.bin\firebase-functions'
+[info] Serving at port 8327
+
+[debug] [2025-04-21T10:48:17.165Z] Got response from /__/functions.yaml {"endpoints":{"processCSV":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"processCSV"},"checkEmailNotificationsManual":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"checkEmailNotificationsManual"},"logPayslipView":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"logPayslipView"},"testDebugLogging":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"testDebugLogging"},"testDebug":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"httpsTrigger":{},"entryPoint":"testDebug"}},"specVersion":"v1alpha1","requiredAPIs":[],"extensions":{}}
+[debug] [2025-04-21T10:48:21.211Z] [functions] Loaded functions definitions from source: processCSV, checkEmailNotificationsManual, logPayslipView, testDebugLogging, testDebug.
+[debug] [2025-04-21T10:48:21.212Z] DEBUG: [worker-pool] Shutting down IDLE worker (us-central1-testDebugLogging)
+[debug] [2025-04-21T10:48:21.212Z] DEBUG: [worker-us-central1-testDebugLogging-a2ffaf55-10aa-4fc0-9a1c-22b0228eb949]: FINISHING
+[debug] [2025-04-21T10:48:21.213Z] [functions[us-central1-testDebug]] http function initialized (http://127.0.0.1:5000/kyuyoprint/us-central1/testDebug).
+[debug] [2025-04-21T10:48:21.235Z] DEBUG: [worker-us-central1-testDebugLogging-a2ffaf55-10aa-4fc0-9a1c-22b0228eb949]: exited
+[debug] [2025-04-21T10:48:21.235Z] DEBUG: [worker-us-central1-testDebugLogging-a2ffaf55-10aa-4fc0-9a1c-22b0228eb949]: FINISHED
+[debug] [2025-04-21T10:48:28.130Z] DEBUG: File C:\Users\naoot\payslip-system\functions\index.js changed, reloading triggers
+[debug] [2025-04-21T10:48:29.133Z] Validating nodejs source
+[debug] [2025-04-21T10:48:30.863Z] > [functions] package.json contents: {
+  "name": "functions",
+  "description": "Cloud Functions for Firebase",
+  "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "22"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "csv-parser": "^3.2.0",
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^6.3.2",
+    "node-fetch": "^2.7.0"
+  },
+  "devDependencies": {
+    "firebase-functions-test": "^3.1.0"
+  },
+  "private": true
+}
+[debug] [2025-04-21T10:48:30.863Z] Building nodejs source
+[debug] [2025-04-21T10:48:30.863Z] Failed to find version of module node: reached end of search path C:\Users\naoot\payslip-system\functions\node_modules
+[warn] !  functions: Your requested "node" version "22" doesn't match your global version "20". Using node@20 from host. 
+[debug] [2025-04-21T10:48:30.866Z] Could not find functions.yaml. Must use http discovery
+[debug] [2025-04-21T10:48:30.875Z] Found firebase-functions binary at 'C:\Users\naoot\payslip-system\functions\node_modules\.bin\firebase-functions'
+[info] Serving at port 8292
+
+[debug] [2025-04-21T10:48:31.728Z] Got response from /__/functions.yaml {"endpoints":{"processCSV":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"processCSV"},"checkEmailNotificationsManual":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"checkEmailNotificationsManual"},"logPayslipView":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"logPayslipView"},"testDebugLogging":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"testDebugLogging"},"testDebug":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"httpsTrigger":{},"entryPoint":"testDebug"}},"specVersion":"v1alpha1","requiredAPIs":[],"extensions":{}}
+[debug] [2025-04-21T10:48:35.794Z] [functions] Loaded functions definitions from source: processCSV, checkEmailNotificationsManual, logPayslipView, testDebugLogging, testDebug.
+[debug] [2025-04-21T10:55:46.759Z] DEBUG: File C:\Users\naoot\payslip-system\functions\index.js changed, reloading triggers
+[debug] [2025-04-21T10:55:47.765Z] Validating nodejs source
+[debug] [2025-04-21T10:55:49.479Z] > [functions] package.json contents: {
+  "name": "functions",
+  "description": "Cloud Functions for Firebase",
+  "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "22"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "csv-parser": "^3.2.0",
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^6.3.2",
+    "node-fetch": "^2.7.0"
+  },
+  "devDependencies": {
+    "firebase-functions-test": "^3.1.0"
+  },
+  "private": true
+}
+[debug] [2025-04-21T10:55:49.479Z] Building nodejs source
+[debug] [2025-04-21T10:55:49.479Z] Failed to find version of module node: reached end of search path C:\Users\naoot\payslip-system\functions\node_modules
+[warn] !  functions: Your requested "node" version "22" doesn't match your global version "20". Using node@20 from host. 
+[debug] [2025-04-21T10:55:49.481Z] Could not find functions.yaml. Must use http discovery
+[debug] [2025-04-21T10:55:49.491Z] Found firebase-functions binary at 'C:\Users\naoot\payslip-system\functions\node_modules\.bin\firebase-functions'
+[info] Serving at port 8429
+
+[debug] [2025-04-21T10:55:50.429Z] Got response from /__/functions.yaml {"endpoints":{"processCSV":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"processCSV"},"checkEmailNotificationsManual":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"checkEmailNotificationsManual"},"logPayslipView":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"logPayslipView"},"testDebugLogging":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"testDebugLogging"},"testDebug":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"httpsTrigger":{},"entryPoint":"testDebug"}},"specVersion":"v1alpha1","requiredAPIs":[],"extensions":{}}
+[debug] [2025-04-21T10:55:54.481Z] [functions] Loaded functions definitions from source: processCSV, checkEmailNotificationsManual, logPayslipView, testDebugLogging, testDebug.
+[debug] [2025-04-21T10:56:06.927Z] DEBUG: File C:\Users\naoot\payslip-system\functions\index.js changed, reloading triggers
+[debug] [2025-04-21T10:56:07.931Z] Validating nodejs source
+[debug] [2025-04-21T10:56:09.186Z] > [functions] package.json contents: {
+  "name": "functions",
+  "description": "Cloud Functions for Firebase",
+  "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "22"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "csv-parser": "^3.2.0",
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^6.3.2",
+    "node-fetch": "^2.7.0"
+  },
+  "devDependencies": {
+    "firebase-functions-test": "^3.1.0"
+  },
+  "private": true
+}
+[debug] [2025-04-21T10:56:09.187Z] Building nodejs source
+[debug] [2025-04-21T10:56:09.187Z] Failed to find version of module node: reached end of search path C:\Users\naoot\payslip-system\functions\node_modules
+[warn] !  functions: Your requested "node" version "22" doesn't match your global version "20". Using node@20 from host. 
+[debug] [2025-04-21T10:56:09.189Z] Could not find functions.yaml. Must use http discovery
+[debug] [2025-04-21T10:56:09.197Z] Found firebase-functions binary at 'C:\Users\naoot\payslip-system\functions\node_modules\.bin\firebase-functions'
+[info] Serving at port 8034
+
+[debug] [2025-04-21T10:56:10.053Z] Got response from /__/functions.yaml {"endpoints":{"processCSV":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"processCSV"},"checkEmailNotificationsManual":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"checkEmailNotificationsManual"},"logPayslipView":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"logPayslipView"},"testDebugLogging":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"testDebugLogging"},"testDebug":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"httpsTrigger":{},"entryPoint":"testDebug"}},"specVersion":"v1alpha1","requiredAPIs":[],"extensions":{}}
+[debug] [2025-04-21T10:56:14.136Z] [functions] Loaded functions definitions from source: processCSV, checkEmailNotificationsManual, logPayslipView, testDebugLogging, testDebug.

@@ -1,0 +1,166 @@
+[debug] [2025-07-11T03:34:11.017Z] ----------------------------------------------------------------------
+[debug] [2025-07-11T03:34:11.024Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\naoot\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only functions
+[debug] [2025-07-11T03:34:11.025Z] CLI Version:   14.10.1
+[debug] [2025-07-11T03:34:11.025Z] Platform:      win32
+[debug] [2025-07-11T03:34:11.026Z] Node Version:  v20.18.0
+[debug] [2025-07-11T03:34:11.026Z] Time:          Fri Jul 11 2025 12:34:11 GMT+0900 (GMT+09:00)
+[debug] [2025-07-11T03:34:11.026Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-07-11T03:34:11.352Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-07-11T03:34:11.352Z] > authorizing via signed-in user (naoota12345678@gmail.com)
+[debug] [2025-07-11T03:34:11.353Z] [iam] checking project kyuyoprint for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]
+[debug] [2025-07-11T03:34:11.354Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:11.355Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:11.356Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/kyuyoprint:testIamPermissions [none]
+[debug] [2025-07-11T03:34:11.356Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/kyuyoprint:testIamPermissions x-goog-quota-user=projects/kyuyoprint
+[debug] [2025-07-11T03:34:11.356Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/kyuyoprint:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2025-07-11T03:34:12.110Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/kyuyoprint:testIamPermissions 200
+[debug] [2025-07-11T03:34:12.110Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/kyuyoprint:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2025-07-11T03:34:12.111Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:12.111Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:12.111Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/kyuyoprint/serviceAccounts/kyuyoprint@appspot.gserviceaccount.com:testIamPermissions [none]
+[debug] [2025-07-11T03:34:12.111Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/kyuyoprint/serviceAccounts/kyuyoprint@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[debug] [2025-07-11T03:34:12.399Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/kyuyoprint/serviceAccounts/kyuyoprint@appspot.gserviceaccount.com:testIamPermissions 200
+[debug] [2025-07-11T03:34:12.400Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/kyuyoprint/serviceAccounts/kyuyoprint@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[info] 
+[info] === Deploying to 'kyuyoprint'...
+[info] 
+[info] i  deploying functions 
+[debug] [2025-07-11T03:34:12.406Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:12.406Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:12.406Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/kyuyoprint [none]
+[debug] [2025-07-11T03:34:12.583Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/kyuyoprint 200
+[debug] [2025-07-11T03:34:12.583Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/kyuyoprint {"projectNumber":"300754692484","projectId":"kyuyoprint","lifecycleState":"ACTIVE","name":"kyuyoprint","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2025-04-11T08:48:54.508400Z"}
+[info] i  functions: preparing codebase default for deployment 
+[info] i  functions: ensuring required API cloudfunctions.googleapis.com is enabled... 
+[info] i  functions: ensuring required API cloudbuild.googleapis.com is enabled... 
+[info] i  artifactregistry: ensuring required API artifactregistry.googleapis.com is enabled... 
+[debug] [2025-07-11T03:34:12.588Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:12.588Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:12.588Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/kyuyoprint/adminSdkConfig [none]
+[debug] [2025-07-11T03:34:13.599Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/kyuyoprint/adminSdkConfig 200
+[debug] [2025-07-11T03:34:13.600Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/kyuyoprint/adminSdkConfig {"projectId":"kyuyoprint","storageBucket":"kyuyoprint.firebasestorage.app"}
+[debug] [2025-07-11T03:34:13.600Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:13.600Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:13.600Z] >>> [apiv2][query] GET https://runtimeconfig.googleapis.com/v1beta1/projects/kyuyoprint/configs [none]
+[debug] [2025-07-11T03:34:14.082Z] <<< [apiv2][status] GET https://runtimeconfig.googleapis.com/v1beta1/projects/kyuyoprint/configs 200
+[debug] [2025-07-11T03:34:14.083Z] <<< [apiv2][body] GET https://runtimeconfig.googleapis.com/v1beta1/projects/kyuyoprint/configs {}
+[debug] [2025-07-11T03:34:14.085Z] Validating nodejs source
+[debug] [2025-07-11T03:34:15.396Z] > [functions] package.json contents: {
+  "name": "functions",
+  "description": "Cloud Functions for Firebase",
+  "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "csv-parser": "^3.2.0",
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^6.3.2",
+    "handlebars": "^4.7.8",
+    "node-fetch": "^2.7.0",
+    "nodemailer": "^6.9.9"
+  },
+  "devDependencies": {
+    "firebase-functions-test": "^3.1.0"
+  },
+  "private": true
+}
+[debug] [2025-07-11T03:34:15.397Z] Building nodejs source
+[info] i  functions: Loading and analyzing source code for codebase default to determine what to deploy 
+[debug] [2025-07-11T03:34:15.398Z] Could not find functions.yaml. Must use http discovery
+[debug] [2025-07-11T03:34:15.411Z] Found firebase-functions binary at 'C:\Users\naoot\payslip-system\functions\node_modules\.bin\firebase-functions'
+[info] Serving at port 8140
+
+[debug] [2025-07-11T03:34:16.529Z] Got response from /__/functions.yaml {"endpoints":{"testSimpleCSV":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"testSimpleCSV"},"processCSVSimple":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"processCSVSimple"}},"specVersion":"v1alpha1","requiredAPIs":[],"extensions":{}}
+[info] i  extensions: ensuring required API firebaseextensions.googleapis.com is enabled... 
+[debug] [2025-07-11T03:34:20.587Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-07-11T03:34:20.588Z] > authorizing via signed-in user (naoota12345678@gmail.com)
+[debug] [2025-07-11T03:34:20.588Z] [iam] checking project kyuyoprint for permissions ["firebase.projects.get","firebaseextensions.instances.list"]
+[debug] [2025-07-11T03:34:20.588Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:20.588Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:20.588Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/kyuyoprint:testIamPermissions [none]
+[debug] [2025-07-11T03:34:20.588Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/kyuyoprint:testIamPermissions x-goog-quota-user=projects/kyuyoprint
+[debug] [2025-07-11T03:34:20.588Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/kyuyoprint:testIamPermissions {"permissions":["firebase.projects.get","firebaseextensions.instances.list"]}
+[debug] [2025-07-11T03:34:21.249Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/kyuyoprint:testIamPermissions 200
+[debug] [2025-07-11T03:34:21.249Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/kyuyoprint:testIamPermissions {"permissions":["firebase.projects.get","firebaseextensions.instances.list"]}
+[debug] [2025-07-11T03:34:21.250Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:21.250Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:21.251Z] >>> [apiv2][query] GET https://firebaseextensions.googleapis.com/v1beta/projects/kyuyoprint/instances pageSize=100&pageToken=
+[debug] [2025-07-11T03:34:22.095Z] <<< [apiv2][status] GET https://firebaseextensions.googleapis.com/v1beta/projects/kyuyoprint/instances 200
+[debug] [2025-07-11T03:34:22.096Z] <<< [apiv2][body] GET https://firebaseextensions.googleapis.com/v1beta/projects/kyuyoprint/instances {}
+[info] i  functions: preparing functions directory for uploading... 
+[info] i  functions: packaged C:\Users\naoot\payslip-system\functions (93.33 KB) for uploading 
+[debug] [2025-07-11T03:34:22.158Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:22.158Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:22.158Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v1/projects/kyuyoprint/locations/-/functions [none]
+[debug] [2025-07-11T03:34:23.072Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v1/projects/kyuyoprint/locations/-/functions 200
+[debug] [2025-07-11T03:34:23.072Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v1/projects/kyuyoprint/locations/-/functions {}
+[debug] [2025-07-11T03:34:23.072Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:23.072Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:23.072Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v2/projects/kyuyoprint/locations/-/functions filter=environment%3D%22GEN_2%22
+[debug] [2025-07-11T03:34:24.379Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v2/projects/kyuyoprint/locations/-/functions 200
+[debug] [2025-07-11T03:34:24.379Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v2/projects/kyuyoprint/locations/-/functions {"functions":[{"name":"projects/kyuyoprint/locations/us-central1/functions/processCSVSimple","buildConfig":{"build":"projects/300754692484/locations/us-central1/builds/302787b2-9fae-4b71-8a1c-b77a1a5b49ae","runtime":"nodejs20","entryPoint":"processCSVSimple","source":{"storageSource":{"bucket":"gcf-v2-sources-300754692484-us-central1","object":"processCSVSimple/function-source.zip","generation":"1752204714479156"}},"environmentVariables":{"GOOGLE_NODE_RUN_SCRIPTS":""},"dockerRepository":"projects/kyuyoprint/locations/us-central1/repositories/gcf-artifacts","sourceProvenance":{"resolvedStorageSource":{"bucket":"gcf-v2-sources-300754692484-us-central1","object":"processCSVSimple/function-source.zip","generation":"1752204714479156"}},"dockerRegistry":"ARTIFACT_REGISTRY","serviceAccount":"projects/kyuyoprint/serviceAccounts/300754692484-compute@developer.gserviceaccount.com","automaticUpdatePolicy":{}},"serviceConfig":{"service":"projects/kyuyoprint/locations/us-central1/services/processcsvsimple","timeoutSeconds":60,"environmentVariables":{"FIREBASE_CONFIG":"{\"projectId\":\"kyuyoprint\",\"storageBucket\":\"kyuyoprint.firebasestorage.app\"}","GCLOUD_PROJECT":"kyuyoprint","EVENTARC_CLOUD_EVENT_SOURCE":"projects/kyuyoprint/locations/us-central1/services/processCSVSimple","FUNCTION_TARGET":"processCSVSimple","LOG_EXECUTION_ID":"true","FUNCTION_SIGNATURE_TYPE":"http"},"maxInstanceCount":20,"ingressSettings":"ALLOW_ALL","uri":"https://processcsvsimple-rufnkvefeq-uc.a.run.app","serviceAccountEmail":"300754692484-compute@developer.gserviceaccount.com","availableMemory":"256Mi","allTrafficOnLatestRevision":true,"revision":"processcsvsimple-00003-mud","maxInstanceRequestConcurrency":80,"availableCpu":"1"},"state":"ACTIVE","updateTime":"2025-07-11T03:32:02.041949055Z","labels":{"deployment-tool":"cli-firebase","deployment-callable":"true","firebase-functions-hash":"8991cc81b753b980e88b18f5a5badc8dee068546"},"environment":"GEN_2","url":"https://us-central1-kyuyoprint.cloudfunctions.net/processCSVSimple","createTime":"2025-07-11T03:09:06.348571650Z","satisfiesPzi":true},{"name":"projects/kyuyoprint/locations/us-central1/functions/testSimpleCSV","buildConfig":{"build":"projects/300754692484/locations/us-central1/builds/302787b2-9fae-4b71-8a1c-b77a1a5b49ae","runtime":"nodejs20","entryPoint":"testSimpleCSV","source":{"storageSource":{"bucket":"gcf-v2-sources-300754692484-us-central1","object":"testSimpleCSV/function-source.zip","generation":"1752204657566747"}},"environmentVariables":{"GOOGLE_NODE_RUN_SCRIPTS":""},"dockerRepository":"projects/kyuyoprint/locations/us-central1/repositories/gcf-artifacts","sourceProvenance":{"resolvedStorageSource":{"bucket":"gcf-v2-sources-300754692484-us-central1","object":"testSimpleCSV/function-source.zip","generation":"1752204657566747"}},"dockerRegistry":"ARTIFACT_REGISTRY","serviceAccount":"projects/kyuyoprint/serviceAccounts/300754692484-compute@developer.gserviceaccount.com","automaticUpdatePolicy":{}},"serviceConfig":{"service":"projects/kyuyoprint/locations/us-central1/services/testsimplecsv","timeoutSeconds":60,"environmentVariables":{"FIREBASE_CONFIG":"{\"projectId\":\"kyuyoprint\",\"storageBucket\":\"kyuyoprint.firebasestorage.app\"}","GCLOUD_PROJECT":"kyuyoprint","EVENTARC_CLOUD_EVENT_SOURCE":"projects/kyuyoprint/locations/us-central1/services/testSimpleCSV","FUNCTION_TARGET":"testSimpleCSV","LOG_EXECUTION_ID":"true"},"maxInstanceCount":20,"ingressSettings":"ALLOW_ALL","uri":"https://testsimplecsv-rufnkvefeq-uc.a.run.app","serviceAccountEmail":"300754692484-compute@developer.gserviceaccount.com","availableMemory":"256Mi","allTrafficOnLatestRevision":true,"revision":"testsimplecsv-00003-vec","maxInstanceRequestConcurrency":80,"availableCpu":"1"},"state":"ACTIVE","updateTime":"2025-07-11T03:31:54.647630647Z","labels":{"deployment-callable":"true","firebase-functions-hash":"8991cc81b753b980e88b18f5a5badc8dee068546","deployment-tool":"cli-firebase"},"environment":"GEN_2","url":"https://us-central1-kyuyoprint.cloudfunctions.net/testSimpleCSV","createTime":"2025-07-11T03:05:04.857796019Z","satisfiesPzi":true}]}
+[info] i  functions: ensuring required API run.googleapis.com is enabled... 
+[info] i  functions: ensuring required API eventarc.googleapis.com is enabled... 
+[info] i  functions: ensuring required API pubsub.googleapis.com is enabled... 
+[info] i  functions: ensuring required API storage.googleapis.com is enabled... 
+[info] i  functions: generating the service identity for pubsub.googleapis.com... 
+[debug] [2025-07-11T03:34:24.386Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:24.386Z] Checked if tokens are valid: true, expires at: 1752206138890
+[info] i  functions: generating the service identity for eventarc.googleapis.com... 
+[debug] [2025-07-11T03:34:24.387Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:24.387Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:24.387Z] >>> [apiv2][query] POST https://serviceusage.googleapis.com/v1beta1/projects/300754692484/services/pubsub.googleapis.com:generateServiceIdentity [none]
+[debug] [2025-07-11T03:34:24.387Z] >>> [apiv2][(partial)header] POST https://serviceusage.googleapis.com/v1beta1/projects/300754692484/services/pubsub.googleapis.com:generateServiceIdentity x-goog-quota-user=projects/300754692484
+[debug] [2025-07-11T03:34:24.387Z] >>> [apiv2][body] POST https://serviceusage.googleapis.com/v1beta1/projects/300754692484/services/pubsub.googleapis.com:generateServiceIdentity {}
+[debug] [2025-07-11T03:34:24.389Z] >>> [apiv2][query] POST https://serviceusage.googleapis.com/v1beta1/projects/300754692484/services/eventarc.googleapis.com:generateServiceIdentity [none]
+[debug] [2025-07-11T03:34:24.389Z] >>> [apiv2][(partial)header] POST https://serviceusage.googleapis.com/v1beta1/projects/300754692484/services/eventarc.googleapis.com:generateServiceIdentity x-goog-quota-user=projects/300754692484
+[debug] [2025-07-11T03:34:24.389Z] >>> [apiv2][body] POST https://serviceusage.googleapis.com/v1beta1/projects/300754692484/services/eventarc.googleapis.com:generateServiceIdentity {}
+[debug] [2025-07-11T03:34:25.439Z] <<< [apiv2][status] POST https://serviceusage.googleapis.com/v1beta1/projects/300754692484/services/pubsub.googleapis.com:generateServiceIdentity 200
+[debug] [2025-07-11T03:34:25.439Z] <<< [apiv2][body] POST https://serviceusage.googleapis.com/v1beta1/projects/300754692484/services/pubsub.googleapis.com:generateServiceIdentity {"name":"operations/finished.DONE_OPERATION","done":true,"response":{"@type":"type.googleapis.com/google.api.serviceusage.v1beta1.ServiceIdentity","email":"service-300754692484@gcp-sa-pubsub.iam.gserviceaccount.com","uniqueId":"107138313567202117143"}}
+[debug] [2025-07-11T03:34:25.456Z] <<< [apiv2][status] POST https://serviceusage.googleapis.com/v1beta1/projects/300754692484/services/eventarc.googleapis.com:generateServiceIdentity 200
+[debug] [2025-07-11T03:34:25.456Z] <<< [apiv2][body] POST https://serviceusage.googleapis.com/v1beta1/projects/300754692484/services/eventarc.googleapis.com:generateServiceIdentity {"name":"operations/finished.DONE_OPERATION","done":true,"response":{"@type":"type.googleapis.com/google.api.serviceusage.v1beta1.ServiceIdentity","email":"service-300754692484@gcp-sa-eventarc.iam.gserviceaccount.com","uniqueId":"107206825944520438540"}}
+[debug] [2025-07-11T03:34:25.458Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:25.458Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:25.458Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/kyuyoprint [none]
+[debug] [2025-07-11T03:34:25.644Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/kyuyoprint 200
+[debug] [2025-07-11T03:34:25.645Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/kyuyoprint {"projectNumber":"300754692484","projectId":"kyuyoprint","lifecycleState":"ACTIVE","name":"kyuyoprint","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2025-04-11T08:48:54.508400Z"}
+[debug] [2025-07-11T03:34:25.645Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:25.645Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:25.645Z] >>> [apiv2][query] GET https://compute.googleapis.com/compute/v1/projects/300754692484 [none]
+[debug] [2025-07-11T03:34:25.981Z] <<< [apiv2][status] GET https://compute.googleapis.com/compute/v1/projects/300754692484 403
+[debug] [2025-07-11T03:34:25.981Z] <<< [apiv2][body] GET https://compute.googleapis.com/compute/v1/projects/300754692484 {"error":{"code":403,"message":"Compute Engine API has not been used in project 300754692484 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=300754692484 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.","errors":[{"message":"Compute Engine API has not been used in project 300754692484 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=300754692484 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.","domain":"usageLimits","reason":"accessNotConfigured","extendedHelp":"https://console.developers.google.com"}],"status":"PERMISSION_DENIED","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"SERVICE_DISABLED","domain":"googleapis.com","metadata":{"containerInfo":"300754692484","activationUrl":"https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=300754692484","serviceTitle":"Compute Engine API","consumer":"projects/300754692484","service":"compute.googleapis.com"}},{"@type":"type.googleapis.com/google.rpc.LocalizedMessage","locale":"en-US","message":"Compute Engine API has not been used in project 300754692484 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=300754692484 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry."},{"@type":"type.googleapis.com/google.rpc.Help","links":[{"description":"Google developers console API activation","url":"https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=300754692484"}]}]}}
+[debug] [2025-07-11T03:34:25.981Z] unable to look up default compute service account. Falling back to 300754692484-compute@developer.gserviceaccount.com. Error: {"name":"FirebaseError","children":[],"context":{"body":{"error":{"code":403,"message":"Compute Engine API has not been used in project 300754692484 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=300754692484 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.","errors":[{"message":"Compute Engine API has not been used in project 300754692484 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=300754692484 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.","domain":"usageLimits","reason":"accessNotConfigured","extendedHelp":"https://console.developers.google.com"}],"status":"PERMISSION_DENIED","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"SERVICE_DISABLED","domain":"googleapis.com","metadata":{"containerInfo":"300754692484","activationUrl":"https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=300754692484","serviceTitle":"Compute Engine API","consumer":"projects/300754692484","service":"compute.googleapis.com"}},{"@type":"type.googleapis.com/google.rpc.LocalizedMessage","locale":"en-US","message":"Compute Engine API has not been used in project 300754692484 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=300754692484 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry."},{"@type":"type.googleapis.com/google.rpc.Help","links":[{"description":"Google developers console API activation","url":"https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=300754692484"}]}]}},"response":{"statusCode":403}},"exit":1,"message":"Request to https://compute.googleapis.com/compute/v1/projects/300754692484 had HTTP Error: 403, Compute Engine API has not been used in project 300754692484 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=300754692484 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.","status":403}
+[debug] [2025-07-11T03:34:25.981Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:25.981Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:25.982Z] >>> [apiv2][query] GET https://compute.googleapis.com/compute/v1/projects/300754692484 [none]
+[debug] [2025-07-11T03:34:26.224Z] <<< [apiv2][status] GET https://compute.googleapis.com/compute/v1/projects/300754692484 403
+[debug] [2025-07-11T03:34:26.224Z] <<< [apiv2][body] GET https://compute.googleapis.com/compute/v1/projects/300754692484 {"error":{"code":403,"message":"Compute Engine API has not been used in project 300754692484 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=300754692484 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.","errors":[{"message":"Compute Engine API has not been used in project 300754692484 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=300754692484 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.","domain":"usageLimits","reason":"accessNotConfigured","extendedHelp":"https://console.developers.google.com"}],"status":"PERMISSION_DENIED","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"SERVICE_DISABLED","domain":"googleapis.com","metadata":{"activationUrl":"https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=300754692484","serviceTitle":"Compute Engine API","consumer":"projects/300754692484","service":"compute.googleapis.com","containerInfo":"300754692484"}},{"@type":"type.googleapis.com/google.rpc.LocalizedMessage","locale":"en-US","message":"Compute Engine API has not been used in project 300754692484 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=300754692484 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry."},{"@type":"type.googleapis.com/google.rpc.Help","links":[{"description":"Google developers console API activation","url":"https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=300754692484"}]}]}}
+[debug] [2025-07-11T03:34:26.224Z] unable to look up default compute service account. Falling back to 300754692484-compute@developer.gserviceaccount.com. Error: {"name":"FirebaseError","children":[],"context":{"body":{"error":{"code":403,"message":"Compute Engine API has not been used in project 300754692484 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=300754692484 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.","errors":[{"message":"Compute Engine API has not been used in project 300754692484 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=300754692484 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.","domain":"usageLimits","reason":"accessNotConfigured","extendedHelp":"https://console.developers.google.com"}],"status":"PERMISSION_DENIED","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"SERVICE_DISABLED","domain":"googleapis.com","metadata":{"activationUrl":"https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=300754692484","serviceTitle":"Compute Engine API","consumer":"projects/300754692484","service":"compute.googleapis.com","containerInfo":"300754692484"}},{"@type":"type.googleapis.com/google.rpc.LocalizedMessage","locale":"en-US","message":"Compute Engine API has not been used in project 300754692484 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=300754692484 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry."},{"@type":"type.googleapis.com/google.rpc.Help","links":[{"description":"Google developers console API activation","url":"https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=300754692484"}]}]}},"response":{"statusCode":403}},"exit":1,"message":"Request to https://compute.googleapis.com/compute/v1/projects/300754692484 had HTTP Error: 403, Compute Engine API has not been used in project 300754692484 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=300754692484 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.","status":403}
+[debug] [2025-07-11T03:34:26.225Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:26.225Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:26.225Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/kyuyoprint/billingInfo [none]
+[debug] [2025-07-11T03:34:27.355Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/kyuyoprint/billingInfo 200
+[debug] [2025-07-11T03:34:27.355Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/kyuyoprint/billingInfo {"name":"projects/kyuyoprint/billingInfo","projectId":"kyuyoprint","billingAccountName":"billingAccounts/01C603-5E2CD6-5A7D59","billingEnabled":true}
+[info] i  functions: Skipping the deploy of unchanged functions. 
+[info] +  functions[testSimpleCSV(us-central1)] Skipped (No changes detected) 
+[info] +  functions[processCSVSimple(us-central1)] Skipped (No changes detected) 
+[debug] [2025-07-11T03:34:27.362Z] Total Function Deployment time: 1
+[debug] [2025-07-11T03:34:27.362Z] 0 Functions Deployed
+[debug] [2025-07-11T03:34:27.363Z] 0 Functions Errored
+[debug] [2025-07-11T03:34:27.363Z] 0 Function Deployments Aborted
+[debug] [2025-07-11T03:34:27.363Z] Average Function Deployment time: NaN
+[debug] [2025-07-11T03:34:27.364Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:27.364Z] Checked if tokens are valid: true, expires at: 1752206138890
+[debug] [2025-07-11T03:34:27.364Z] >>> [apiv2][query] GET https://artifactregistry.googleapis.com/v1/projects/kyuyoprint/locations/us-central1/repositories/gcf-artifacts [none]
+[debug] [2025-07-11T03:34:28.504Z] <<< [apiv2][status] GET https://artifactregistry.googleapis.com/v1/projects/kyuyoprint/locations/us-central1/repositories/gcf-artifacts 200
+[debug] [2025-07-11T03:34:28.504Z] <<< [apiv2][body] GET https://artifactregistry.googleapis.com/v1/projects/kyuyoprint/locations/us-central1/repositories/gcf-artifacts {"name":"projects/kyuyoprint/locations/us-central1/repositories/gcf-artifacts","format":"DOCKER","description":"This repository is created and used by Cloud Functions for storing function docker images.","labels":{"goog-managed-by":"cloudfunctions"},"createTime":"2025-07-11T03:05:15.490539Z","updateTime":"2025-07-11T03:31:36.379559Z","mode":"STANDARD_REPOSITORY","sizeBytes":"254995784","vulnerabilityScanningConfig":{"lastEnableTime":"2025-07-11T03:05:05.059750864Z","enablementState":"SCANNING_DISABLED","enablementStateReason":"API containerscanning.googleapis.com is not enabled."},"satisfiesPzi":true,"registryUri":"us-central1-docker.pkg.dev/kyuyoprint/gcf-artifacts"}
+[warn] !  functions: No cleanup policy detected for repositories in us-central1. This may result in a small monthly bill as container images accumulate over time. 
