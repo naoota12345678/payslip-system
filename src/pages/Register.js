@@ -13,7 +13,7 @@ function Register() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { register } = useAuth();
+  const { signup } = useAuth();
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -35,18 +35,20 @@ function Register() {
       setError('');
       setLoading(true);
       
-      // Firebaseでユーザーを作成
-      const userCredential = await register(email, password);
+      // Firestoreにユーザー情報を保存する形でサインアップ
+      const userCredential = await signup(email, password, 'company_admin', null);
       const user = userCredential.user;
       
-      // Firestoreにユーザー情報を保存
+      // 追加でFirestoreにユーザー情報を更新（管理者として）
       await setDoc(doc(db, 'users', user.uid), {
         email: email,
-        userType: 'company',
+        userType: 'company_admin',
+        role: 'admin',
         companyId: user.uid, // 初期は自身のUIDを使用
         companyName: companyName,
         displayName: companyName,
         createdAt: new Date(),
+        updatedAt: new Date(),
         isActive: true
       });
 
@@ -58,8 +60,8 @@ function Register() {
         isActive: true
       });
 
-      // ダッシュボードへリダイレクト
-      navigate('/');
+      // 管理者ダッシュボードへリダイレクト
+      navigate('/admin/dashboard');
     } catch (error) {
       console.error("登録エラー:", error);
       
@@ -79,109 +81,118 @@ function Register() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full space-y-8 p-10 bg-white rounded-lg shadow-md">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            新規アカウント登録
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            会社情報を入力してアカウントを作成してください
-          </p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full mx-4">
+        <div className="text-center mb-8">
+          <div className="mx-auto w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mb-4">
+            <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">管理者アカウント登録</h1>
+          <p className="text-gray-600">会社情報を入力して管理者アカウントを作成してください</p>
         </div>
         
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
             {error}
           </div>
         )}
         
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="company-name" className="block text-sm font-medium text-gray-700">
-                会社名
-              </label>
-              <input
-                id="company-name"
-                name="companyName"
-                type="text"
-                required
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="株式会社サンプル"
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="email-address" className="block text-sm font-medium text-gray-700">
-                メールアドレス
-              </label>
-              <input
-                id="email-address"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="admin@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                パスワード
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="new-password"
-                required
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="6文字以上"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">
-                パスワード（確認）
-              </label>
-              <input
-                id="confirm-password"
-                name="confirmPassword"
-                type="password"
-                autoComplete="new-password"
-                required
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="パスワードを再入力"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="company-name" className="block text-sm font-medium text-gray-700 mb-1">
+              会社名
+            </label>
+            <input
+              id="company-name"
+              name="companyName"
+              type="text"
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="株式会社サンプル"
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+            />
           </div>
 
           <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-300"
-            >
-              {loading ? '登録中...' : 'アカウントを作成'}
-            </button>
+            <label htmlFor="email-address" className="block text-sm font-medium text-gray-700 mb-1">
+              メールアドレス
+            </label>
+            <input
+              id="email-address"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="admin@company.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
           </div>
           
-          <div className="text-center">
-            <Link to="/login" className="text-sm text-blue-600 hover:text-blue-800">
-              既にアカウントをお持ちの方はこちら
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+              パスワード
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="6文字以上"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 mb-1">
+              パスワード（確認）
+            </label>
+            <input
+              id="confirm-password"
+              name="confirmPassword"
+              type="password"
+              autoComplete="new-password"
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="パスワードを再入力"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? '登録中...' : 'アカウントを作成'}
+          </button>
+        </form>
+        
+        <div className="mt-6 text-center space-y-2">
+          <Link
+            to="/admin/login"
+            className="text-sm text-blue-600 hover:underline"
+          >
+            既にアカウントをお持ちの方はこちら
+          </Link>
+          
+          <div className="border-t pt-4 mt-4">
+            <Link
+              to="/"
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              ← トップページに戻る
             </Link>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );
