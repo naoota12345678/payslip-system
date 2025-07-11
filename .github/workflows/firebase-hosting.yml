@@ -41,7 +41,7 @@ jobs:
         projectId: kyuyoprint
         channelId: live
     
-    - name: Deploy Firestore Rules Only
+    - name: Deploy Firestore Rules and Functions
       run: |
         # Create service account file safely
         echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_KYUYOPRINT }}' > service-account.json
@@ -49,22 +49,11 @@ jobs:
         # Set up authentication
         export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/service-account.json"
         
-        # Deploy Firestore rules and indexes only
-        npx firebase-tools deploy --only firestore:rules,firestore:indexes --project kyuyoprint --non-interactive
+        # Install specific version of firebase-tools to avoid extensions issues
+        npm install -g firebase-tools@13.0.0
         
-        # Clean up
-        rm service-account.json
-    
-    - name: Deploy Functions Only
-      run: |
-        # Create service account file safely
-        echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_KYUYOPRINT }}' > service-account.json
-        
-        # Set up authentication
-        export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/service-account.json"
-        
-        # Deploy Functions only
-        npx firebase-tools deploy --only functions --project kyuyoprint --non-interactive
+        # Deploy with older CLI version
+        firebase deploy --only firestore:rules,firestore:indexes,functions --project kyuyoprint --non-interactive
         
         # Clean up
         rm service-account.json 
