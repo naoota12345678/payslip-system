@@ -1,6 +1,6 @@
 // src/App.js
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, Link } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import Layout from './components/Layout';
 import PrivateRoute from './components/PrivateRoute';
@@ -9,6 +9,8 @@ import ErrorBoundary from './components/ErrorBoundary';
 
 // 認証関連ページ
 import Login from './pages/Login';
+import AdminLogin from './pages/AdminLogin';
+import EmployeeLogin from './pages/EmployeeLogin';
 import Register from './pages/Register';
 import SignUp from './pages/SignUp';
 import ForgotPassword from './pages/ForgotPassword';
@@ -50,47 +52,63 @@ function App() {
       <AuthProvider>
         <Router>
         <Routes>
-          {/* 認証ページ（レイアウトなし） */}
+          {/* トップページ - 入り口選択 */}
+          <Route path="/" element={<HomePage />} />
+          
+          {/* 管理者向けルート */}
+          <Route path="/admin" element={<AdminLogin />} />
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin/register" element={<Register />} />
+          <Route path="/admin/signup" element={<SignUp />} />
+          
+          {/* 従業員向けルート */}
+          <Route path="/employee" element={<EmployeeLogin />} />
+          <Route path="/employee/login" element={<EmployeeLogin />} />
+          
+          {/* 共通認証ページ */}
           <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/signup" element={<SignUp />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           
           {/* レイアウト付きの保護されたルート */}
           <Route element={<Layout />}>
-            {/* 認証が必要なルート */}
-            <Route element={<PrivateRoute />}>
-              {/* ダッシュボード */}
-              <Route path="/" element={<Dashboard />} />
-              
-              {/* プロフィール */}
-              <Route path="/profile" element={<Profile />} />
-              
-              {/* 給与明細関連（一般ユーザーもアクセス可能） */}
-              <Route path="/payslips" element={<PayslipList />} />
-              <Route path="/payslips/:payslipId" element={<PayslipDetail />} />
-              <Route path="/payslips/:payslipId/print" element={<PayslipPrint />} />
-            </Route>
-            
             {/* 管理者専用機能 */}
-            <Route element={<AdminRoute />}>
+            <Route path="/admin" element={<AdminRoute />}>
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="profile" element={<Profile />} />
+              
               {/* ユーザー管理 */}
-              <Route path="/users" element={<UserList />} />
-              <Route path="/users/new" element={<UserForm />} />
-              <Route path="/users/:userId" element={<UserDetail />} />
-              <Route path="/users/:userId/edit" element={<UserForm />} />
+              <Route path="users" element={<UserList />} />
+              <Route path="users/new" element={<UserForm />} />
+              <Route path="users/:userId" element={<UserDetail />} />
+              <Route path="users/:userId/edit" element={<UserForm />} />
               
               {/* 給与データ管理 */}
-              <Route path="/upload" element={<CsvUpload />} />
-              <Route path="/settings/csv-mapping" element={<CsvMapping />} />
-              <Route path="/settings/payroll-items" element={<PayrollItemSettings />} />
+              <Route path="upload" element={<CsvUpload />} />
+              <Route path="settings/csv-mapping" element={<CsvMapping />} />
+              <Route path="settings/payroll-items" element={<PayrollItemSettings />} />
+              
+              {/* 給与明細管理 */}
+              <Route path="payslips" element={<PayslipList />} />
+              <Route path="payslips/:payslipId" element={<PayslipDetail />} />
+              <Route path="payslips/:payslipId/print" element={<PayslipPrint />} />
               
               {/* システム設定 */}
-              <Route path="/settings" element={<CompanySettings />} />
-              <Route path="/settings/departments" element={<DepartmentSettings />} />
-              <Route path="/settings/notifications" element={<NotificationSettings />} />
-              <Route path="/settings/backup" element={<DataBackup />} />
+              <Route path="settings" element={<CompanySettings />} />
+              <Route path="settings/departments" element={<DepartmentSettings />} />
+              <Route path="settings/notifications" element={<NotificationSettings />} />
+              <Route path="settings/backup" element={<DataBackup />} />
+            </Route>
+            
+            {/* 従業員専用機能 */}
+            <Route path="/employee" element={<PrivateRoute />}>
+              <Route path="dashboard" element={<EmployeeDashboard />} />
+              <Route path="profile" element={<Profile />} />
+              
+              {/* 給与明細閲覧 */}
+              <Route path="payslips" element={<PayslipList />} />
+              <Route path="payslips/:payslipId" element={<PayslipDetail />} />
+              <Route path="payslips/:payslipId/print" element={<PayslipPrint />} />
             </Route>
           </Route>
           
@@ -101,6 +119,51 @@ function App() {
         </Router>
       </AuthProvider>
     </ErrorBoundary>
+  );
+}
+
+// ホームページコンポーネント（入り口選択）
+function HomePage() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full mx-4">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">給与明細システム</h1>
+          <p className="text-gray-600">ご利用される立場をお選びください</p>
+        </div>
+        
+        <div className="space-y-4">
+          <Link 
+            to="/admin"
+            className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center"
+          >
+            <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clipRule="evenodd" />
+            </svg>
+            管理者としてログイン
+          </Link>
+          
+          <Link 
+            to="/employee"
+            className="w-full bg-green-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center"
+          >
+            <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+            </svg>
+            従業員としてログイン
+          </Link>
+        </div>
+        
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-500">
+            初回利用の管理者の方は
+            <Link to="/admin/register" className="text-blue-600 hover:underline ml-1">
+              こちらから登録
+            </Link>
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }
 
