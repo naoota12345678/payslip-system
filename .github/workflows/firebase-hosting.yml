@@ -41,7 +41,7 @@ jobs:
         projectId: kyuyoprint
         channelId: live
     
-    - name: Deploy Firestore Rules and Functions (Skip Extensions)
+    - name: Deploy Firestore Rules and Functions
       run: |
         # Create service account file safely
         echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_KYUYOPRINT }}' > service-account.json
@@ -55,8 +55,8 @@ jobs:
         # Set up authentication
         export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/service-account.json"
         
-        # Deploy only essential components (skip extensions)
-        npx firebase-tools deploy --only firestore:rules,firestore:indexes,functions --project kyuyoprint --non-interactive --except-extensions
+        # Deploy core services only (no extensions involved)
+        npx firebase-tools deploy --only firestore:rules,firestore:indexes,functions --project kyuyoprint --non-interactive
         
         # Clean up
         rm service-account.json 
