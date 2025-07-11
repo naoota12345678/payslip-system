@@ -39,4 +39,24 @@ jobs:
         repoToken: '${{ secrets.GITHUB_TOKEN }}'
         firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_KYUYOPRINT }}'
         projectId: kyuyoprint
-        channelId: live 
+        channelId: live
+    
+    - name: Deploy Firestore Rules and Functions
+      run: |
+        # Create service account file safely
+        echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_KYUYOPRINT }}' > service-account.json
+        
+        # Verify JSON format
+        if ! python3 -m json.tool service-account.json > /dev/null 2>&1; then
+          echo "Invalid JSON format"
+          exit 1
+        fi
+        
+        # Set up authentication
+        export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/service-account.json"
+        
+        # Deploy Firestore rules and Functions
+        npx firebase-tools deploy --only firestore:rules,firestore:indexes,functions --project kyuyoprint --non-interactive
+        
+        # Clean up
+        rm service-account.json 
