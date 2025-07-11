@@ -39,20 +39,4 @@ jobs:
         repoToken: '${{ secrets.GITHUB_TOKEN }}'
         firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_KYUYOPRINT }}'
         projectId: kyuyoprint
-        channelId: live
-    
-    - name: Deploy Firestore Rules and Indexes
-      env:
-        GOOGLE_APPLICATION_CREDENTIALS_JSON: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_KYUYOPRINT }}'
-      run: |
-        echo "$GOOGLE_APPLICATION_CREDENTIALS_JSON" > $HOME/gcloud-service-key.json
-        export GOOGLE_APPLICATION_CREDENTIALS="$HOME/gcloud-service-key.json"
-        npx firebase-tools deploy --only firestore:rules,firestore:indexes --project kyuyoprint --non-interactive
-    
-    - name: Deploy Firebase Functions
-      env:
-        GOOGLE_APPLICATION_CREDENTIALS_JSON: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_KYUYOPRINT }}'
-      run: |
-        echo "$GOOGLE_APPLICATION_CREDENTIALS_JSON" > $HOME/gcloud-service-key.json
-        export GOOGLE_APPLICATION_CREDENTIALS="$HOME/gcloud-service-key.json"
-        npx firebase-tools deploy --only functions --project kyuyoprint --non-interactive 
+        channelId: live 
