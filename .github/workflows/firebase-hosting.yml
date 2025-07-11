@@ -41,22 +41,30 @@ jobs:
         projectId: kyuyoprint
         channelId: live
     
-    - name: Deploy Firestore Rules and Functions
+    - name: Deploy Firestore Rules Only
       run: |
         # Create service account file safely
         echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_KYUYOPRINT }}' > service-account.json
         
-        # Verify JSON format
-        if ! python3 -m json.tool service-account.json > /dev/null 2>&1; then
-          echo "Invalid JSON format"
-          exit 1
-        fi
+        # Set up authentication
+        export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/service-account.json"
+        
+        # Deploy Firestore rules and indexes only
+        npx firebase-tools deploy --only firestore:rules,firestore:indexes --project kyuyoprint --non-interactive
+        
+        # Clean up
+        rm service-account.json
+    
+    - name: Deploy Functions Only
+      run: |
+        # Create service account file safely
+        echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_KYUYOPRINT }}' > service-account.json
         
         # Set up authentication
         export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/service-account.json"
         
-        # Deploy core services only (no extensions involved)
-        npx firebase-tools deploy --only firestore:rules,firestore:indexes,functions --project kyuyoprint --non-interactive
+        # Deploy Functions only
+        npx firebase-tools deploy --only functions --project kyuyoprint --non-interactive
         
         # Clean up
         rm service-account.json 
