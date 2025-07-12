@@ -13,6 +13,7 @@ const ItemTabs = ({
   onUpdateItemName,
   onUpdateItemVisibility,
   onRemoveItem,
+  onMoveItem,
   onAddItem
 }) => {
   // 安全性を確保
@@ -77,6 +78,7 @@ const ItemTabs = ({
           onUpdateItemName={onUpdateItemName}
           onUpdateItemVisibility={onUpdateItemVisibility}
           onRemoveItem={onRemoveItem}
+          onMoveItem={onMoveItem}
           availableHeaders={parsedHeaders}
           onAddItem={onAddItem}
           category="incomeItems"
@@ -91,6 +93,7 @@ const ItemTabs = ({
           onUpdateItemName={onUpdateItemName}
           onUpdateItemVisibility={onUpdateItemVisibility}
           onRemoveItem={onRemoveItem}
+          onMoveItem={onMoveItem}
           availableHeaders={parsedHeaders}
           onAddItem={onAddItem}
           category="deductionItems"
@@ -105,6 +108,7 @@ const ItemTabs = ({
           onUpdateItemName={onUpdateItemName}
           onUpdateItemVisibility={onUpdateItemVisibility}
           onRemoveItem={onRemoveItem}
+          onMoveItem={onMoveItem}
           availableHeaders={parsedHeaders}
           onAddItem={onAddItem}
           category="attendanceItems"
@@ -119,6 +123,7 @@ const ItemTabs = ({
           onUpdateItemName={onUpdateItemName}
           onUpdateItemVisibility={onUpdateItemVisibility}
           onRemoveItem={onRemoveItem}
+          onMoveItem={onMoveItem}
           availableHeaders={parsedHeaders}
           onAddItem={onAddItem}
           category="itemCodeItems"

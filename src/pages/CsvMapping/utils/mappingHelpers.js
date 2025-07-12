@@ -734,3 +734,90 @@ export const debugMappingFormats = (mapping) => {
   
   return newFormat;
 };
+
+/**
+ * 項目を異なるカテゴリ間で移動する
+ * @param {string} fromCategory - 移動元のカテゴリ
+ * @param {number} itemIndex - 移動する項目のインデックス
+ * @param {string} toCategory - 移動先のカテゴリ
+ * @param {Object} currentMapping - 現在のマッピング設定
+ * @returns {Object} 更新されたマッピング設定
+ */
+export const moveItemBetweenCategories = (fromCategory, itemIndex, toCategory, currentMapping) => {
+  // 移動元と移動先が同じ場合は何もしない
+  if (fromCategory === toCategory) {
+    return currentMapping;
+  }
+  
+  // 移動する項目を取得
+  const sourceItems = currentMapping[fromCategory] || [];
+  if (itemIndex < 0 || itemIndex >= sourceItems.length) {
+    console.error('無効な項目インデックス:', itemIndex);
+    return currentMapping;
+  }
+  
+  const itemToMove = sourceItems[itemIndex];
+  
+  // 新しいIDを生成（移動先のカテゴリに対応）
+  const newId = generateDeterministicId(
+    toCategory.replace('Items', ''), // 'incomeItems' -> 'income'
+    itemToMove.headerName,
+    itemToMove.columnIndex
+  );
+  
+  // 移動する項目を新しいカテゴリ用に調整
+  const movedItem = {
+    ...itemToMove,
+    id: newId
+  };
+  
+  // 移動元から項目を削除
+  const updatedSourceItems = sourceItems.filter((_, index) => index !== itemIndex);
+  
+  // 移動先に項目を追加
+  const targetItems = currentMapping[toCategory] || [];
+  const updatedTargetItems = [...targetItems, movedItem];
+  
+  return {
+    ...currentMapping,
+    [fromCategory]: updatedSourceItems,
+    [toCategory]: updatedTargetItems
+  };
+};
+
+/**
+ * 項目の移動可能なカテゴリのオプションを取得
+ * @param {string} currentCategory - 現在のカテゴリ
+ * @returns {Array} 移動可能なカテゴリのオプション配列
+ */
+export const getCategoryMoveOptions = (currentCategory) => {
+  const categoryMap = {
+    'incomeItems': { name: '支給項目', key: 'incomeItems' },
+    'deductionItems': { name: '控除項目', key: 'deductionItems' },
+    'attendanceItems': { name: '勤怠項目', key: 'attendanceItems' },
+    'itemCodeItems': { name: '項目コード', key: 'itemCodeItems' }
+  };
+  
+  return Object.entries(categoryMap)
+    .filter(([key]) => key !== currentCategory)
+    .map(([key, info]) => ({
+      value: key,
+      label: `${info.name}に移動`
+    }));
+};
+
+/**
+ * カテゴリ名を日本語表示名に変換
+ * @param {string} category - カテゴリ名
+ * @returns {string} 日本語表示名
+ */
+export const getCategoryDisplayName = (category) => {
+  const categoryMap = {
+    'incomeItems': '支給項目',
+    'deductionItems': '控除項目',
+    'attendanceItems': '勤怠項目',
+    'itemCodeItems': '項目コード'
+  };
+  
+  return categoryMap[category] || category;
+};

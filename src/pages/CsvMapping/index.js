@@ -26,6 +26,7 @@ import {
   updateItemVisibility, 
   addItemToCategory, 
   removeItemFromCategory,
+  moveItemBetweenCategories,
   validateMappingConfig,
   generateDeterministicId
 } from './utils/mappingHelpers';
@@ -233,6 +234,14 @@ function CsvMapping() {
       removeItemFromCategory(category, index, prev)
     );
   }, []);
+  
+  // 項目の移動ハンドラ
+  const handleMoveItem = useCallback((fromCategory, itemIndex, toCategory) => {
+    setMappingConfig(prev => 
+      moveItemBetweenCategories(fromCategory, itemIndex, toCategory, prev)
+    );
+    setSuccess(`項目を${fromCategory}から${toCategory}に移動しました。`);
+  }, [setSuccess]);
   
   // KY項目のヘッダー名と表示名を修正するハンドラ
   const handleFixKyItemsMapping = useCallback(() => {
@@ -514,6 +523,7 @@ function CsvMapping() {
               onUpdateItemName={handleUpdateItemName}
               onUpdateItemVisibility={handleUpdateItemVisibility}
               onRemoveItem={handleRemoveItem}
+              onMoveItem={handleMoveItem}
               onAddItem={handleAddItem}
             />
             
