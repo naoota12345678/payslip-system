@@ -95,7 +95,7 @@ const useFileUpload = (userDetails, currentUser) => {
     if (!hasMappedItems) {
       // ユーザーに確認を求める
       if (!window.confirm('給与項目とCSVカラムのマッピングが設定されていないようです。このまま続行しますか？')) {
-        setError('給与項目とCSVカラムのマッピングが設定されていません。先に給与項目設定画面でマッピングを行ってください。');
+        setError('給与項目とCSVカラムのマッピングが設定されていません。CSVマッピング設定画面でマッピングを行ってください。');
         return;
       }
       
