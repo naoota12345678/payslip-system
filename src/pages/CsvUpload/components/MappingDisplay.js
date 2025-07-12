@@ -64,9 +64,18 @@ const MappingDisplay = ({ payrollItems, refreshSettings, onCategoryChange }) => 
         </button>
       </div>
       
-      <p className="text-sm text-gray-600 mb-3">
-        {mappedItemsCount} / {payrollItems.length} 項目がマッピングされています
-      </p>
+      <div className="mb-6">
+        <p className="text-sm text-gray-600 mb-3">
+          {mappedItemsCount} / {payrollItems.length} 項目がマッピングされています
+        </p>
+        {mappedItemsCount === 0 && (
+          <div className="p-3 bg-yellow-100 border border-yellow-300 rounded">
+            <p className="text-sm text-yellow-800">
+              ⚠️ CSVマッピングが設定されていません。下記のリンクから設定を行ってください。
+            </p>
+          </div>
+        )}
+      </div>
       
       {/* カテゴリ別表示 */}
       {Object.entries(itemsByCategory).map(([category, items]) => (
@@ -90,11 +99,13 @@ const MappingDisplay = ({ payrollItems, refreshSettings, onCategoryChange }) => 
                 <tbody>
                   {items.map(item => (
                     <tr key={item.id} className="hover:bg-gray-50">
-                      <td className="border border-gray-300 px-3 py-2">{item.name}</td>
+                      <td className="border border-gray-300 px-3 py-2 font-medium">{item.name}</td>
                       <td className="border border-gray-300 px-3 py-2">
-                        {item.csvColumn 
-                          ? <span className="text-green-600 font-medium">{item.csvColumn}</span>
-                          : <span className="text-red-500 text-sm">マッピングなし</span>}
+                        {item.csvColumn ? (
+                          <span className="text-green-600 font-medium">{item.csvColumn}</span>
+                        ) : (
+                          <span className="text-red-500 text-sm">マッピングなし</span>
+                        )}
                       </td>
                       <td className="border border-gray-300 px-3 py-2 text-center">
                         {onCategoryChange ? renderCategoryButtons(item) : (
@@ -116,7 +127,7 @@ const MappingDisplay = ({ payrollItems, refreshSettings, onCategoryChange }) => 
             項目のカテゴリを変更したい場合は、各項目の「○○へ」ボタンをクリックしてください。
           </p>
           <a href="/settings/csv-mapping" className="text-blue-600 hover:underline text-sm">
-            マッピング設定を変更する
+            CSVマッピング設定画面で詳細設定
           </a>
         </div>
       </div>

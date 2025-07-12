@@ -267,7 +267,7 @@ function CsvUpload() {
       );
       setPayrollItems(updatedItems);
 
-      setSuccess(`「${item.name}」を${newCategoryName}に移動しました`);
+      alert(`「${item.name}」を${newCategoryName}に移動しました`);
       setError('');
 
       if (debugMode) {
@@ -355,14 +355,17 @@ function CsvUpload() {
       {/* 設定チェック - マッピング状態に基づいて警告表示 */}
       {mappingWarning && !settingsLoading && (
         <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6">
-          <p className="font-bold">設定が必要です</p>
-          <p>給与項目とCSVカラムのマッピングが設定されていません。先に給与項目設定画面でマッピングを行ってください。</p>
+          <p className="font-bold">CSVマッピング設定が必要です</p>
+          <p>
+            給与項目とCSVカラムのマッピングが設定されていません。
+            CSVマッピング設定画面でマッピングを行ってください。
+          </p>
           <div className="mt-3">
             <a href="/settings/csv-mapping" className="text-blue-600 hover:underline mr-4">
-              CSVマッピング設定へ
+              CSVマッピング設定画面へ
             </a>
             <a href="/settings/payroll-items" className="text-blue-600 hover:underline">
-              給与項目設定へ
+              給与項目設定画面へ
             </a>
           </div>
         </div>
@@ -374,7 +377,7 @@ function CsvUpload() {
           <p>{error}</p>
         </div>
       )}
-      
+
       {/* 成功メッセージ */}
       {success && (
         <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6">
