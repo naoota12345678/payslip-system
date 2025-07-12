@@ -2,7 +2,7 @@
 // マッピング設定を管理するカスタムフック
 
 import { useState, useEffect } from 'react';
-import { doc, getDoc, setDoc, writeBatch } from 'firebase/firestore';
+import { doc, getDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../../../firebase';
 import { initialMappingConfig } from '../constants';
 import { convertToNewFormat, convertFromNewFormat, debugMappingFormats, generateDeterministicId } from '../utils/mappingHelpers';

@@ -615,8 +615,8 @@ export const checkForDuplicateMappings = (mappingConfig) => {
   const usedColumns = new Map();
   
   // 主要フィールドのチェック
-  for (const [fieldName, field] of Object.entries(mappingConfig.mainFields)) {
-    if (field.columnIndex >= 0) {
+  for (const [fieldName, field] of Object.entries(mappingConfig.mainFields || {})) {
+    if (field && field.columnIndex >= 0) {
       const existing = usedColumns.get(field.columnIndex);
       if (existing) {
         return `列${field.columnIndex}が「${existing}」と「${fieldName}」で重複しています`;
@@ -625,12 +625,12 @@ export const checkForDuplicateMappings = (mappingConfig) => {
     }
   }
   
-  // 各カテゴリの項目チェック
-  const categories = ['incomeItems', 'deductionItems', 'attendanceItems', 'kyItems', 'itemCodeItems'];
+  // 各カテゴリの項目チェック - 実際に表示される項目のみチェック
+  const categories = ['incomeItems', 'deductionItems', 'attendanceItems', 'itemCodeItems'];
   for (const category of categories) {
     if (mappingConfig[category]) {
       for (const item of mappingConfig[category]) {
-        if (item.columnIndex >= 0) {
+        if (item && item.columnIndex >= 0 && item.isVisible !== false) {
           const existing = usedColumns.get(item.columnIndex);
           if (existing) {
             return `列${item.columnIndex}が「${existing}」と「${item.headerName}」で重複しています`;
