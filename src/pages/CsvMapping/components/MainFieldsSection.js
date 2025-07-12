@@ -51,12 +51,12 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
             従業員氏名
           </label>
           <select
-            value={mappingConfig.mainFields.employeeName.columnIndex}
+            value={safeMainFields.employeeName?.columnIndex ?? -1}
             onChange={(e) => updateMainFieldMapping('employeeName', e.target.value)}
             className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           >
             <option value="-1">選択してください</option>
-            {parsedHeaders.map((header, index) => (
+            {safeParsedHeaders.map((header, index) => (
               <option key={index} value={index}>{header}</option>
             ))}
           </select>
@@ -67,12 +67,12 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
             部門コード
           </label>
           <select
-            value={mappingConfig.mainFields.departmentCode.columnIndex}
+            value={safeMainFields.departmentCode?.columnIndex ?? -1}
             onChange={(e) => updateMainFieldMapping('departmentCode', e.target.value)}
             className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           >
             <option value="-1">選択してください</option>
-            {parsedHeaders.map((header, index) => (
+            {safeParsedHeaders.map((header, index) => (
               <option key={index} value={index}>{header}</option>
             ))}
           </select>
@@ -83,12 +83,12 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
             部門名
           </label>
           <select
-            value={mappingConfig.mainFields.departmentName.columnIndex}
+            value={safeMainFields.departmentName?.columnIndex ?? -1}
             onChange={(e) => updateMainFieldMapping('departmentName', e.target.value)}
             className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           >
             <option value="-1">選択してください</option>
-            {parsedHeaders.map((header, index) => (
+            {safeParsedHeaders.map((header, index) => (
               <option key={index} value={index}>{header}</option>
             ))}
           </select>
@@ -99,12 +99,12 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
             基本給
           </label>
           <select
-            value={mappingConfig.mainFields.basicSalary.columnIndex}
+            value={safeMainFields.basicSalary?.columnIndex ?? -1}
             onChange={(e) => updateMainFieldMapping('basicSalary', e.target.value)}
             className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           >
             <option value="-1">選択してください</option>
-            {parsedHeaders.map((header, index) => (
+            {safeParsedHeaders.map((header, index) => (
               <option key={index} value={index}>{header}</option>
             ))}
           </select>
@@ -115,12 +115,12 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
             総支給額
           </label>
           <select
-            value={mappingConfig.mainFields.totalIncome.columnIndex}
+            value={safeMainFields.totalIncome?.columnIndex ?? -1}
             onChange={(e) => updateMainFieldMapping('totalIncome', e.target.value)}
             className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           >
             <option value="-1">選択してください</option>
-            {parsedHeaders.map((header, index) => (
+            {safeParsedHeaders.map((header, index) => (
               <option key={index} value={index}>{header}</option>
             ))}
           </select>
@@ -131,12 +131,12 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
             総控除額
           </label>
           <select
-            value={mappingConfig.mainFields.totalDeduction.columnIndex}
+            value={safeMainFields.totalDeduction?.columnIndex ?? -1}
             onChange={(e) => updateMainFieldMapping('totalDeduction', e.target.value)}
             className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           >
             <option value="-1">選択してください</option>
-            {parsedHeaders.map((header, index) => (
+            {safeParsedHeaders.map((header, index) => (
               <option key={index} value={index}>{header}</option>
             ))}
           </select>
@@ -147,12 +147,12 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
             差引支給額
           </label>
           <select
-            value={mappingConfig.mainFields.netAmount.columnIndex}
+            value={safeMainFields.netAmount?.columnIndex ?? -1}
             onChange={(e) => updateMainFieldMapping('netAmount', e.target.value)}
             className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           >
             <option value="-1">選択してください</option>
-            {parsedHeaders.map((header, index) => (
+            {safeParsedHeaders.map((header, index) => (
               <option key={index} value={index}>{header}</option>
             ))}
           </select>
@@ -163,12 +163,12 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
             支払日
           </label>
           <select
-            value={mappingConfig.mainFields.paymentDate.columnIndex}
+            value={safeMainFields.paymentDate?.columnIndex ?? -1}
             onChange={(e) => updateMainFieldMapping('paymentDate', e.target.value)}
             className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           >
             <option value="-1">選択してください</option>
-            {parsedHeaders.map((header, index) => (
+            {safeParsedHeaders.map((header, index) => (
               <option key={index} value={index}>{header}</option>
             ))}
           </select>
