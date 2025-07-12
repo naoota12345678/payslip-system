@@ -223,7 +223,8 @@ export const generateRowBasedMapping = (headers, kyItems) => {
     incomeItems: [],
     deductionItems: [],
     attendanceItems: [],
-    itemCodeItems: [] // 全ての項目コードの設定を保存
+    itemCodeItems: [], // 全ての項目コードの設定を保存
+    kyItems: [] // 旧形式との互換性のため
   };
   
   // 主要フィールドのマッピング
@@ -275,6 +276,13 @@ export const generateRowBasedMapping = (headers, kyItems) => {
     console.log('項目コードデータ:', itemCodeData);
     newMappingConfig.itemCodeItems.push(itemCodeData);
     
+    // 旧形式との互換性のため、kyItemsにも同じデータを保存
+    newMappingConfig.kyItems.push({
+      ...itemCodeData,
+      kyItem: mapping.kyItem, // 旧形式のプロパティ名も保存
+      matchedHeader: mapping.headerName
+    });
+    
     // カテゴリにも分類
     const item = {
       columnIndex: mapping.columnIndex,
@@ -303,6 +311,8 @@ export const generateRowBasedMapping = (headers, kyItems) => {
   console.log('=== 最終的なマッピング設定 ===');
   console.log('項目コード数:', newMappingConfig.itemCodeItems.length);
   console.log('項目コード:', newMappingConfig.itemCodeItems);
+  console.log('旧形式KY項目数:', newMappingConfig.kyItems.length);
+  console.log('旧形式KY項目:', newMappingConfig.kyItems);
   console.log('=== generateRowBasedMapping デバッグ終了 ===');
   
   return newMappingConfig;

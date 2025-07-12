@@ -162,12 +162,18 @@ export const useHeaderParser = (
       // ヘッダー情報と元の入力も保存
       newMappingConfig.parsedHeaders = headers;
       newMappingConfig.rowBasedInput = originalInput;
-      newMappingConfig.kyItems = newMappingConfig.kyItems.map((item, index) => ({
-        ...item,
-        // KY項目のマッピング情報を確実に保存
-        matchedHeader: headers[index] || '',
-        index
-      }));
+      
+      // 項目コードアイテムが存在する場合のみ、KY項目としても設定
+      if (newMappingConfig.itemCodeItems && newMappingConfig.itemCodeItems.length > 0) {
+        newMappingConfig.kyItems = newMappingConfig.itemCodeItems.map((item, index) => ({
+          ...item,
+          // KY項目のマッピング情報を確実に保存
+          matchedHeader: headers[index] || '',
+          index
+        }));
+      } else {
+        newMappingConfig.kyItems = [];
+      }
       
       // デバッグログ
       console.log('生成されたマッピング設定:', newMappingConfig);
