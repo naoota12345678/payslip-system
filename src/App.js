@@ -26,6 +26,10 @@ import UserList from './pages/UserList';
 import UserDetail from './pages/UserDetail';
 import UserForm from './pages/UserForm';
 
+// 従業員管理関連
+import EmployeeManagement from './pages/EmployeeManagement';
+import EmployeeRegister from './pages/EmployeeRegister';
+
 // 給与管理関連
 import CsvUpload from './pages/CsvUpload';
 import CsvMapping from './pages/CsvMapping';
@@ -81,6 +85,10 @@ function App() {
               <Route path="users/new" element={<UserForm />} />
               <Route path="users/:userId" element={<UserDetail />} />
               <Route path="users/:userId/edit" element={<UserForm />} />
+              
+              {/* 従業員管理 */}
+              <Route path="employees" element={<EmployeeManagement />} />
+              <Route path="register-employee" element={<EmployeeRegister />} />
               
               {/* 給与データ管理 */}
               <Route path="upload" element={<CsvUpload />} />

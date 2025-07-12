@@ -89,24 +89,70 @@ function CsvMapping() {
       
       // 入力フィールドの状態を復元
       if (mappingConfig.headerInput) {
+        console.log('headerInputを復元:', mappingConfig.headerInput);
         setHeaderInput(mappingConfig.headerInput);
       }
       if (mappingConfig.kyItemInput) {
+        console.log('kyItemInputを復元:', mappingConfig.kyItemInput);
         setKyItemInput(mappingConfig.kyItemInput);
       }
       if (mappingConfig.rowBasedInput) {
+        console.log('rowBasedInputを復元:', mappingConfig.rowBasedInput);
         setRowBasedInput(mappingConfig.rowBasedInput);
         
         // 行ベースモードが使用されていた場合はそのモードを表示
         setRowMappingMode(true);
       }
       
-      // 解析済みヘッダーの復元
+      // 解析済みヘッダーの復元 - 複数のソースから復元を試みる
+      let headersToRestore = [];
+      
+      // 1. 保存されたparsedHeadersから復元
       if (mappingConfig.parsedHeaders && mappingConfig.parsedHeaders.length > 0) {
-        setParsedHeaders(mappingConfig.parsedHeaders);
+        console.log('保存されたparsedHeadersを復元:', mappingConfig.parsedHeaders);
+        headersToRestore = mappingConfig.parsedHeaders;
+      }
+      // 2. itemCodeItemsから復元
+      else if (mappingConfig.itemCodeItems && mappingConfig.itemCodeItems.length > 0) {
+        console.log('itemCodeItemsからヘッダーを復元:', mappingConfig.itemCodeItems.length, '個');
+        headersToRestore = mappingConfig.itemCodeItems
+          .map(item => item.headerName)
+          .filter(Boolean);
+        console.log('復元されたヘッダー:', headersToRestore);
+      }
+      // 3. kyItemsから復元
+      else if (mappingConfig.kyItems && mappingConfig.kyItems.length > 0) {
+        console.log('kyItemsからヘッダーを復元:', mappingConfig.kyItems.length, '個');
+        headersToRestore = mappingConfig.kyItems
+          .map(item => item.headerName)
+          .filter(Boolean);
+        console.log('復元されたヘッダー:', headersToRestore);
+      }
+      // 4. 他のカテゴリから復元
+      else {
+        const allItems = [
+          ...(mappingConfig.incomeItems || []),
+          ...(mappingConfig.deductionItems || []),
+          ...(mappingConfig.attendanceItems || [])
+        ];
+        if (allItems.length > 0) {
+          console.log('その他の項目からヘッダーを復元:', allItems.length, '個');
+          headersToRestore = allItems
+            .map(item => item.headerName)
+            .filter(Boolean);
+          console.log('復元されたヘッダー:', headersToRestore);
+        }
+      }
+      
+      // ヘッダーを設定
+      if (headersToRestore.length > 0) {
+        console.log('parsedHeadersを設定:', headersToRestore);
+        setParsedHeaders(headersToRestore);
+      } else {
+        console.log('復元可能なヘッダーが見つかりませんでした');
       }
     }
-  }, [mappingConfig, loading, setHeaderInput, setKyItemInput, setRowBasedInput, setParsedHeaders]);
+  }, [mappingConfig, loading, setHeaderInput, setKyItemInput, setRowBasedInput, setParsedHeaders, setRowMappingMode]);
 
   // デバウンスされたマッピング設定
   const debouncedMappingConfig = useDebounce(mappingConfig, 1000);

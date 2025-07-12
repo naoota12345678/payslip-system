@@ -29,6 +29,20 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId;
     }
     
+    // 部門設定（管理者のみ）
+    match /departments/{departmentId} {
+      allow read, write: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType in ['company_admin', 'company'];
+    }
+    
+    // 従業員設定（管理者のみ）
+    match /employees/{employeeId} {
+      allow read, write: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType in ['company_admin', 'company'];
+    }
+    
     // 給与項目設定（管理者のみ）
     match /payrollItems/{itemId} {
       allow read, write: if request.auth != null && 

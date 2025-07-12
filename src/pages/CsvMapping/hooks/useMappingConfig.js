@@ -59,12 +59,28 @@ export const useMappingConfig = (userDetails) => {
           const csvSettings = await getDoc(doc(db, 'csvSettings', userDetails.companyId));
           console.log('CSV設定の読み込み結果:', csvSettings.exists());
           
-          if (csvSettings.exists() && csvSettings.data().parsedHeaders) {
-            console.log('保存されたヘッダー情報を復元:', csvSettings.data());
-            convertedData.parsedHeaders = csvSettings.data().parsedHeaders;
-            convertedData.headerInput = csvSettings.data().headerInput;
-            convertedData.rowBasedInput = csvSettings.data().rowBasedInput;
+          if (csvSettings.exists()) {
+            const csvData = csvSettings.data();
+            console.log('保存されたCSV設定データ:', csvData);
+            
+            if (csvData.parsedHeaders) {
+              console.log('保存されたヘッダー情報を復元:', csvData.parsedHeaders);
+              convertedData.parsedHeaders = csvData.parsedHeaders;
+            }
+            if (csvData.headerInput) {
+              console.log('保存されたheaderInputを復元:', csvData.headerInput);
+              convertedData.headerInput = csvData.headerInput;
+            }
+            if (csvData.rowBasedInput) {
+              console.log('保存されたrowBasedInputを復元:', csvData.rowBasedInput);
+              convertedData.rowBasedInput = csvData.rowBasedInput;
+            }
+          } else {
+            console.log('CSV設定データが見つかりませんでした');
           }
+          
+          console.log('=== 最終的な変換済みデータ ===');
+          console.log('convertedData:', convertedData);
           
           // データを表示用に保存
           setDebugData({

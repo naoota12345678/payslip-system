@@ -464,12 +464,18 @@ export const convertFromNewFormat = (newFormat, initialMapping) => {
   // mappingsが存在する場合、各項目を復元
   if (newFormat.mappings) {
     const mappings = newFormat.mappings;
+    console.log('mappingsオブジェクト:', mappings);
     
     // 各IDから項目を復元
     for (const [id, headerName] of Object.entries(mappings)) {
       // IDからカテゴリを判定
       const parts = id.split('_');
       const category = parts[0];
+      
+      console.log(`項目 ${id} を処理中:`, { id, headerName, category });
+      
+      // headerNameから項目名を推定（日本語名かコードかを判定）
+      const isCode = /^[A-Z]{1,5}[0-9]{1,3}(_[0-9]+)?$/.test(headerName);
       
       const item = {
         id: id,
@@ -479,7 +485,13 @@ export const convertFromNewFormat = (newFormat, initialMapping) => {
         isVisible: true
       };
       
-      console.log(`項目 ${id} (${headerName}) をカテゴリ ${category} に復元`);
+      // 項目コードの場合は、適切な名前を設定
+      if (isCode) {
+        // headerNameは項目コード、itemNameは日本語名（後で設定）
+        item.itemCode = headerName;
+      }
+      
+      console.log(`項目 ${id} (${headerName}) をカテゴリ ${category} に復元:`, item);
       
       // カテゴリ別に項目を追加
       switch (category) {
@@ -498,6 +510,8 @@ export const convertFromNewFormat = (newFormat, initialMapping) => {
         case 'itemCode':
           oldFormat.itemCodeItems.push(item);
           break;
+        default:
+          console.warn('不明なカテゴリ:', category);
       }
     }
   }
@@ -505,6 +519,7 @@ export const convertFromNewFormat = (newFormat, initialMapping) => {
   // 従業員マッピング情報を復元
   if (newFormat.employeeMapping) {
     const employeeMapping = newFormat.employeeMapping;
+    console.log('従業員マッピング情報を復元:', employeeMapping);
     
     if (employeeMapping.employeeIdColumn) {
       oldFormat.mainFields.employeeCode = {
@@ -521,12 +536,45 @@ export const convertFromNewFormat = (newFormat, initialMapping) => {
     }
   }
   
+  // 追加情報があれば復元（新しい形式で保存されている場合）
+  if (newFormat.parsedHeaders) {
+    console.log('parsedHeadersを復元:', newFormat.parsedHeaders);
+    oldFormat.parsedHeaders = newFormat.parsedHeaders;
+  }
+  
+  if (newFormat.headerInput) {
+    console.log('headerInputを復元:', newFormat.headerInput);
+    oldFormat.headerInput = newFormat.headerInput;
+  }
+  
+  if (newFormat.rowBasedInput) {
+    console.log('rowBasedInputを復元:', newFormat.rowBasedInput);
+    oldFormat.rowBasedInput = newFormat.rowBasedInput;
+  }
+  
+  // parsedHeadersがない場合、項目からヘッダーリストを生成
+  if (!oldFormat.parsedHeaders || oldFormat.parsedHeaders.length === 0) {
+    const allHeaders = [
+      ...oldFormat.itemCodeItems.map(item => item.headerName),
+      ...oldFormat.kyItems.map(item => item.headerName),
+      ...oldFormat.incomeItems.map(item => item.headerName),
+      ...oldFormat.deductionItems.map(item => item.headerName),
+      ...oldFormat.attendanceItems.map(item => item.headerName)
+    ].filter(Boolean);
+    
+    if (allHeaders.length > 0) {
+      console.log('項目からparsedHeadersを生成:', allHeaders);
+      oldFormat.parsedHeaders = [...new Set(allHeaders)]; // 重複除去
+    }
+  }
+  
   console.log('=== 変換結果 ===');
   console.log('支給項目数:', oldFormat.incomeItems.length);
   console.log('控除項目数:', oldFormat.deductionItems.length);
   console.log('勤怠項目数:', oldFormat.attendanceItems.length);
   console.log('KY項目数:', oldFormat.kyItems.length);
   console.log('項目コード数:', oldFormat.itemCodeItems.length);
+  console.log('parsedHeaders:', oldFormat.parsedHeaders);
   console.log('=== convertFromNewFormat デバッグ終了 ===');
   
   return oldFormat;
@@ -576,7 +624,7 @@ export const checkForDuplicateMappings = (mappingConfig) => {
   }
   
   // 各カテゴリの項目チェック
-  const categories = ['incomeItems', 'deductionItems', 'attendanceItems', 'kyItems'];
+  const categories = ['incomeItems', 'deductionItems', 'attendanceItems', 'kyItems', 'itemCodeItems'];
   for (const category of categories) {
     if (mappingConfig[category]) {
       for (const item of mappingConfig[category]) {
