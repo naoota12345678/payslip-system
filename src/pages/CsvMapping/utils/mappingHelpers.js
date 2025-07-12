@@ -440,6 +440,99 @@ export const updateItemName = (category, index, itemName, currentMapping) => {
 };
 
 /**
+ * CsvUpload形式からCsvMapping形式へのデータ変換（逆変換）
+ * @param {Object} newFormat - CsvUpload形式のデータ
+ * @param {Object} initialMapping - 初期マッピング設定
+ * @returns {Object} CsvMapping形式のデータ
+ */
+export const convertFromNewFormat = (newFormat, initialMapping) => {
+  console.log('=== convertFromNewFormat デバッグ開始 ===');
+  console.log('新しい形式のデータ:', newFormat);
+  console.log('初期マッピング:', initialMapping);
+  
+  // 基本設定を初期値から作成
+  const oldFormat = {
+    ...initialMapping,
+    mainFields: { ...initialMapping.mainFields },
+    incomeItems: [],
+    deductionItems: [],
+    attendanceItems: [],
+    kyItems: [],
+    itemCodeItems: []
+  };
+  
+  // mappingsが存在する場合、各項目を復元
+  if (newFormat.mappings) {
+    const mappings = newFormat.mappings;
+    
+    // 各IDから項目を復元
+    for (const [id, headerName] of Object.entries(mappings)) {
+      // IDからカテゴリを判定
+      const parts = id.split('_');
+      const category = parts[0];
+      
+      const item = {
+        id: id,
+        headerName: headerName,
+        itemName: headerName, // 初期値として同じ値を設定
+        columnIndex: -1, // 実際のCSVでの列番号は再設定が必要
+        isVisible: true
+      };
+      
+      console.log(`項目 ${id} (${headerName}) をカテゴリ ${category} に復元`);
+      
+      // カテゴリ別に項目を追加
+      switch (category) {
+        case 'income':
+          oldFormat.incomeItems.push(item);
+          break;
+        case 'deduction':
+          oldFormat.deductionItems.push(item);
+          break;
+        case 'attendance':
+          oldFormat.attendanceItems.push(item);
+          break;
+        case 'ky':
+          oldFormat.kyItems.push(item);
+          break;
+        case 'itemCode':
+          oldFormat.itemCodeItems.push(item);
+          break;
+      }
+    }
+  }
+  
+  // 従業員マッピング情報を復元
+  if (newFormat.employeeMapping) {
+    const employeeMapping = newFormat.employeeMapping;
+    
+    if (employeeMapping.employeeIdColumn) {
+      oldFormat.mainFields.employeeCode = {
+        columnIndex: -1,
+        headerName: employeeMapping.employeeIdColumn
+      };
+    }
+    
+    if (employeeMapping.departmentCodeColumn) {
+      oldFormat.mainFields.departmentCode = {
+        columnIndex: -1,
+        headerName: employeeMapping.departmentCodeColumn
+      };
+    }
+  }
+  
+  console.log('=== 変換結果 ===');
+  console.log('支給項目数:', oldFormat.incomeItems.length);
+  console.log('控除項目数:', oldFormat.deductionItems.length);
+  console.log('勤怠項目数:', oldFormat.attendanceItems.length);
+  console.log('KY項目数:', oldFormat.kyItems.length);
+  console.log('項目コード数:', oldFormat.itemCodeItems.length);
+  console.log('=== convertFromNewFormat デバッグ終了 ===');
+  
+  return oldFormat;
+};
+
+/**
  * マッピング設定のバリデーション
  * @param {Object} mappingConfig - 検証するマッピング設定
  * @returns {string|null} エラーメッセージ（エラーがない場合はnull）
