@@ -6,7 +6,7 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
       allow read: if request.auth != null && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'company_admin';
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType in ['company_admin', 'company'];
     }
     
     // 給与明細コレクション
@@ -14,18 +14,18 @@ service cloud.firestore {
       allow read: if request.auth != null && (
         resource.data.userId == request.auth.uid || 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'company_admin'
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType in ['company_admin', 'company']
       );
       allow write: if request.auth != null && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'company_admin';
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType in ['company_admin', 'company'];
     }
     
     // 会社設定（管理者のみ）
     match /companies/{companyId} {
       allow read, write: if request.auth != null && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'company_admin' &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType in ['company_admin', 'company'] &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId;
     }
     
@@ -33,35 +33,35 @@ service cloud.firestore {
     match /payrollItems/{itemId} {
       allow read, write: if request.auth != null && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'company_admin';
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType in ['company_admin', 'company'];
     }
     
     // CSVアップロード履歴（管理者のみ）
     match /csvUploads/{uploadId} {
       allow read, write: if request.auth != null && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'company_admin';
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType in ['company_admin', 'company'];
     }
     
     // CSVマッピング設定（管理者のみ）- 古い形式
     match /csvMapping/{mappingId} {
       allow read, write: if request.auth != null && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'company_admin';
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType in ['company_admin', 'company'];
     }
     
     // CSVマッピング設定（管理者のみ）- 新しい形式
     match /csvMappings/{mappingId} {
       allow read, write: if request.auth != null && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'company_admin';
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType in ['company_admin', 'company'];
     }
     
     // CSV設定（管理者のみ）
     match /csvSettings/{settingId} {
       allow read, write: if request.auth != null && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'company_admin';
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType in ['company_admin', 'company'];
     }
   }
 } 
