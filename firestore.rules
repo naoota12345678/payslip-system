@@ -43,7 +43,14 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'company_admin';
     }
     
-    // CSVマッピング設定（管理者のみ）
+    // CSVマッピング設定（管理者のみ）- 古い形式
+    match /csvMapping/{mappingId} {
+      allow read, write: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'company_admin';
+    }
+    
+    // CSVマッピング設定（管理者のみ）- 新しい形式
     match /csvMappings/{mappingId} {
       allow read, write: if request.auth != null && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
