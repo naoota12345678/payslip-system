@@ -24,7 +24,16 @@ export const useMappingConfig = (userDetails) => {
   // 既存の設定を読み込む
   useEffect(() => {
     const fetchMappingConfig = async () => {
+      // 詳細なデバッグ情報を追加
+      console.log('=== fetchMappingConfig デバッグ開始 ===');
+      console.log('userDetails:', userDetails);
+      console.log('userDetails?.companyId:', userDetails?.companyId);
+      console.log('userDetails?.userType:', userDetails?.userType);
+      console.log('userDetails?.email:', userDetails?.email);
+      console.log('userDetails?.uid:', userDetails?.uid);
+      
       if (!userDetails?.companyId) {
+        console.error('companyIdが設定されていません');
         setError('会社情報が取得できませんでした');
         setLoading(false);
         return;
@@ -35,7 +44,10 @@ export const useMappingConfig = (userDetails) => {
         let configLoaded = false;
         
         // 1. 新しい形式 (csvMappings) でのデータ取得を試みる
+        console.log('=== 新しい形式 (csvMappings) での読み込み開始 ===');
         const newMappingDoc = await getDoc(doc(db, 'csvMappings', userDetails.companyId));
+        console.log('新しい形式の読み込み結果:', newMappingDoc.exists());
+        
         if (newMappingDoc.exists()) {
           console.log('新しい形式での設定が見つかりました:', newMappingDoc.data());
           
@@ -43,8 +55,12 @@ export const useMappingConfig = (userDetails) => {
           const convertedData = convertFromNewFormat(newMappingDoc.data(), initialMappingConfig);
           
           // 追加：保存されたヘッダー情報も復元
+          console.log('=== CSV設定の読み込み開始 ===');
           const csvSettings = await getDoc(doc(db, 'csvSettings', userDetails.companyId));
+          console.log('CSV設定の読み込み結果:', csvSettings.exists());
+          
           if (csvSettings.exists() && csvSettings.data().parsedHeaders) {
+            console.log('保存されたヘッダー情報を復元:', csvSettings.data());
             convertedData.parsedHeaders = csvSettings.data().parsedHeaders;
             convertedData.headerInput = csvSettings.data().headerInput;
             convertedData.rowBasedInput = csvSettings.data().rowBasedInput;
@@ -65,7 +81,10 @@ export const useMappingConfig = (userDetails) => {
         
         // 2. 新しい形式のデータがない場合、古い形式 (csvMapping) のデータを確認
         if (!configLoaded) {
+          console.log('=== 古い形式 (csvMapping) での読み込み開始 ===');
           const oldMappingDoc = await getDoc(doc(db, 'csvMapping', userDetails.companyId));
+          console.log('古い形式の読み込み結果:', oldMappingDoc.exists());
+          
           if (oldMappingDoc.exists() && oldMappingDoc.data().csvMapping) {
             console.log('既存のCSVマッピング設定を読み込みました（古い形式）');
             const oldFormatData = oldMappingDoc.data().csvMapping;
@@ -160,8 +179,30 @@ export const useMappingConfig = (userDetails) => {
         
         setLoading(false);
       } catch (err) {
-        console.error('マッピング設定取得エラー:', err);
-        setError('設定の取得中にエラーが発生しました');
+        console.error('=== マッピング設定取得エラー詳細 ===');
+        console.error('エラーオブジェクト:', err);
+        console.error('エラーコード:', err.code);
+        console.error('エラーメッセージ:', err.message);
+        console.error('スタックトレース:', err.stack);
+        
+        // 権限エラーの詳細分析
+        if (err.code === 'permission-denied') {
+          console.error('権限エラー詳細:');
+          console.error('- ユーザーの認証状態:', !!userDetails);
+          console.error('- ユーザータイプ:', userDetails?.userType);
+          console.error('- 会社ID:', userDetails?.companyId);
+          console.error('- メールアドレス:', userDetails?.email);
+          console.error('- UID:', userDetails?.uid);
+          
+          setError(`権限エラー: ${err.message}。ユーザータイプ: ${userDetails?.userType}、会社ID: ${userDetails?.companyId}`);
+        } else if (err.code === 'not-found') {
+          console.error('データが見つかりません:', err.message);
+          setError('設定データが見つかりません。新しい設定を作成してください。');
+        } else {
+          console.error('その他のエラー:', err.message);
+          setError(`設定の取得中にエラーが発生しました: ${err.message}`);
+        }
+        
         setLoading(false);
       }
     };

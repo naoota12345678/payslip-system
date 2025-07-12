@@ -55,15 +55,34 @@ export function AuthProvider({ children }) {
 
   async function fetchUserDetails(user) {
     try {
+      console.log('=== fetchUserDetails 開始 ===');
+      console.log('user:', user);
+      console.log('user.uid:', user.uid);
+      
       const userDoc = await getDoc(doc(db, 'users', user.uid));
+      console.log('userDoc.exists():', userDoc.exists());
+      
       if (userDoc.exists()) {
         const userData = userDoc.data();
+        console.log('取得したuserData:', userData);
+        console.log('userType:', userData.userType);
+        console.log('companyId:', userData.companyId);
+        console.log('email:', userData.email);
+        
         setUserDetails(userData);
+        console.log('userDetailsを設定しました:', userData);
         return userData;
+      } else {
+        console.error('ユーザー詳細が見つかりません');
+        setUserDetails(null);
+        return null;
       }
-      return null;
     } catch (error) {
-      console.error("Error fetching user details:", error);
+      console.error("=== fetchUserDetails エラー ===");
+      console.error("エラーオブジェクト:", error);
+      console.error("エラーコード:", error.code);
+      console.error("エラーメッセージ:", error.message);
+      setUserDetails(null);
       return null;
     }
   }
