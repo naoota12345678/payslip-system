@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../firebase';
-import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, setDoc, updateDoc } from 'firebase/firestore';
 
 // カスタムフック
 import useFileUpload from './hooks/useFileUpload';
@@ -224,6 +224,61 @@ function CsvUpload() {
     fetchMappingSettings();
   };
 
+  // 給与項目のカテゴリ変更
+  const handleCategoryChange = async (itemId, newCategory) => {
+    try {
+      if (!itemId || !newCategory) {
+        setError('項目IDまたは新しいカテゴリが指定されていません');
+        return;
+      }
+
+      // 確認ダイアログを表示
+      const item = payrollItems.find(item => item.id === itemId);
+      if (!item) {
+        setError('指定された項目が見つかりません');
+        return;
+      }
+
+      const categoryNames = {
+        'income': '支給項目',
+        'deduction': '控除項目',
+        'attendance': '勤怠項目'
+      };
+
+      const currentCategoryName = categoryNames[item.type] || item.type;
+      const newCategoryName = categoryNames[newCategory] || newCategory;
+
+      if (!window.confirm(`「${item.name}」を${currentCategoryName}から${newCategoryName}に移動しますか？`)) {
+        return;
+      }
+
+      // Firestoreの給与項目を更新
+      const itemRef = doc(db, "payrollItems", itemId);
+      await updateDoc(itemRef, {
+        type: newCategory,
+        updatedAt: new Date()
+      });
+
+      // ローカルステートを更新
+      const updatedItems = payrollItems.map(item => 
+        item.id === itemId 
+          ? { ...item, type: newCategory }
+          : item
+      );
+      setPayrollItems(updatedItems);
+
+      setSuccess(`「${item.name}」を${newCategoryName}に移動しました`);
+      setError('');
+
+      if (debugMode) {
+        console.log(`[Debug] 項目カテゴリ変更: ${item.name} (${item.id}) を ${item.type} から ${newCategory} に変更`);
+      }
+    } catch (err) {
+      console.error('カテゴリ変更エラー:', err);
+      setError('カテゴリの変更中にエラーが発生しました: ' + err.message);
+    }
+  };
+
   // システムデバッグの切り替え（5回クリックで有効化）
   const [clickCount, setClickCount] = useState(0);
   const handleSystemDebugClick = () => {
@@ -320,6 +375,13 @@ function CsvUpload() {
         </div>
       )}
       
+      {/* 成功メッセージ */}
+      {success && (
+        <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6">
+          <p>{success}</p>
+        </div>
+      )}
+      
       {/* 従業員情報更新設定 */}
       <EmployeeSettings
         updateEmployeeInfo={updateEmployeeInfo}
@@ -366,6 +428,7 @@ function CsvUpload() {
         <MappingDisplay 
           payrollItems={payrollItems}
           refreshSettings={refreshSettings}
+          onCategoryChange={handleCategoryChange}
         />
       )}
     </div>
