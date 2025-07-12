@@ -15,6 +15,13 @@ const ItemTabs = ({
   onRemoveItem,
   onAddItem
 }) => {
+  // 安全性を確保
+  const safeMappingConfig = mappingConfig || {};
+  const safeIncomeItems = safeMappingConfig.incomeItems || [];
+  const safeDeductionItems = safeMappingConfig.deductionItems || [];
+  const safeAttendanceItems = safeMappingConfig.attendanceItems || [];
+  const safeItemCodeItems = safeMappingConfig.itemCodeItems || [];
+  
   return (
     <div className="mb-6">
       <div className="border-b border-gray-200">
@@ -66,7 +73,7 @@ const ItemTabs = ({
       {activeTab === TABS.INCOME && (
         <ItemMappingTable
           title="支給項目のマッピング"
-          items={mappingConfig.incomeItems}
+          items={safeIncomeItems}
           onUpdateItemName={onUpdateItemName}
           onUpdateItemVisibility={onUpdateItemVisibility}
           onRemoveItem={onRemoveItem}
@@ -80,7 +87,7 @@ const ItemTabs = ({
       {activeTab === TABS.DEDUCTION && (
         <ItemMappingTable
           title="控除項目のマッピング"
-          items={mappingConfig.deductionItems}
+          items={safeDeductionItems}
           onUpdateItemName={onUpdateItemName}
           onUpdateItemVisibility={onUpdateItemVisibility}
           onRemoveItem={onRemoveItem}
@@ -94,7 +101,7 @@ const ItemTabs = ({
       {activeTab === TABS.ATTENDANCE && (
         <ItemMappingTable
           title="勤怠項目のマッピング"
-          items={mappingConfig.attendanceItems}
+          items={safeAttendanceItems}
           onUpdateItemName={onUpdateItemName}
           onUpdateItemVisibility={onUpdateItemVisibility}
           onRemoveItem={onRemoveItem}
@@ -108,7 +115,7 @@ const ItemTabs = ({
       {activeTab === TABS.KY && (
         <ItemMappingTable
           title="項目コードのマッピング"
-          items={mappingConfig.itemCodeItems || []}
+          items={safeItemCodeItems}
           onUpdateItemName={onUpdateItemName}
           onUpdateItemVisibility={onUpdateItemVisibility}
           onRemoveItem={onRemoveItem}
