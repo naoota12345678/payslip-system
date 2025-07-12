@@ -319,10 +319,15 @@ function CsvMapping() {
       ...mappingConfig,
       headerInput,
       kyItemInput,
-      rowBasedInput
+      rowBasedInput,
+      parsedHeaders // 解析済みヘッダーも保存
     };
-    await saveMappingConfig(configToSave, validateMappingConfig);
-  }, [mappingConfig, headerInput, kyItemInput, rowBasedInput, saveMappingConfig]);
+    console.log('保存する設定:', configToSave);
+    const success = await saveMappingConfig(configToSave, validateMappingConfig);
+    if (success) {
+      setSuccess('設定を正常に保存しました。ページを再読み込みしても設定が保持されます。');
+    }
+  }, [mappingConfig, headerInput, kyItemInput, rowBasedInput, parsedHeaders, saveMappingConfig, setSuccess]);
   
   // JSONからインポートするハンドラ
   const handleJsonImport = useCallback(() => {
@@ -466,26 +471,7 @@ function CsvMapping() {
               onAddItem={handleAddItem}
             />
             
-            {/* 保存ボタン */}
-            <div className="pt-5 border-t">
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => navigate('/settings')}
-                  className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 mr-3"
-                >
-                  キャンセル
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-300"
-                >
-                  {saving ? '保存中...' : '設定を保存'}
-                </button>
-              </div>
-            </div>
+
           </div>
         </div>
       )}

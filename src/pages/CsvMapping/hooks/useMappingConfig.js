@@ -200,6 +200,9 @@ export const useMappingConfig = (userDetails) => {
       if (Array.isArray(configToSave.kyItems)) {
         configToSave.kyItems = ensureItemsHaveIds(configToSave.kyItems, 'ky');
       }
+      if (Array.isArray(configToSave.itemCodeItems)) {
+        configToSave.itemCodeItems = ensureItemsHaveIds(configToSave.itemCodeItems, 'itemCode');
+      }
       
       // CsvMapping形式からCsvUpload形式への変換を実行
       const newFormatData = convertToNewFormat(configToSave);
@@ -303,6 +306,9 @@ export const useMappingConfig = (userDetails) => {
         }
         if (config.kyItems) {
           config.kyItems = ensureItemsHaveIds(config.kyItems, 'ky');
+        }
+        if (config.itemCodeItems) {
+          config.itemCodeItems = ensureItemsHaveIds(config.itemCodeItems, 'itemCode');
         }
         
         setMappingConfig(config);

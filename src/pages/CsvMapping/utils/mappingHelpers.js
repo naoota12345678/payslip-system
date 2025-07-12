@@ -233,7 +233,7 @@ export const generateRowBasedMapping = (headers, kyItems) => {
       if (possibleNames.some(name => mapping.headerName.includes(name))) {
         newMappingConfig.mainFields[fieldKey] = {
           columnIndex: mapping.columnIndex,
-          headerName: mapping.headerName,  // 日本語項目名をヘッダー名として保存
+          headerName: mapping.kyItem,      // 項目コードをヘッダー名として保存
           itemName: mapping.headerName,    // 日本語項目名を表示名として保存
           itemCode: mapping.kyItem         // 項目コードを保存
         };
@@ -266,7 +266,7 @@ export const generateRowBasedMapping = (headers, kyItems) => {
     // 項目コードを全て保存
     const itemCodeData = {
       columnIndex: mapping.columnIndex,
-      headerName: mapping.headerName,  // 日本語項目名をヘッダー名として保存
+      headerName: mapping.kyItem,      // 項目コードをヘッダー名として保存
       itemName: mapping.headerName,    // 日本語項目名を表示名として保存
       itemCode: mapping.kyItem,        // 項目コードを保存
       isVisible: true,
@@ -286,7 +286,7 @@ export const generateRowBasedMapping = (headers, kyItems) => {
     // カテゴリにも分類
     const item = {
       columnIndex: mapping.columnIndex,
-      headerName: mapping.headerName,  // 日本語項目名をヘッダー名として保存
+      headerName: mapping.kyItem,      // 項目コードをヘッダー名として保存
       itemName: mapping.headerName,    // 日本語項目名を表示名として保存
       itemCode: mapping.kyItem,        // 項目コードを保存
       isVisible: true,
