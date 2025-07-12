@@ -58,7 +58,8 @@ export const initialMappingConfig = {
   incomeItems: [],
   deductionItems: [],
   attendanceItems: [],
-  itemCodeItems: []
+  itemCodeItems: [],
+  kyItems: []
 };
 
 // タブ定数

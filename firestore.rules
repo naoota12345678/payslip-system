@@ -42,5 +42,19 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'company_admin';
     }
+    
+    // CSVマッピング設定（管理者のみ）
+    match /csvMappings/{mappingId} {
+      allow read, write: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'company_admin';
+    }
+    
+    // CSV設定（管理者のみ）
+    match /csvSettings/{settingId} {
+      allow read, write: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 'company_admin';
+    }
   }
 } 

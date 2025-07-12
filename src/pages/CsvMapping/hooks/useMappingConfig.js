@@ -50,27 +50,78 @@ export const useMappingConfig = (userDetails) => {
           console.log('既存のCSVマッピング設定を読み込みました');
           const oldFormatData = oldMappingDoc.data().csvMapping;
           
-          // 古い形式のデータを元にマッピング構造を更新
-          // 各項目にID属性が必要
-          const categories = ['incomeItems', 'deductionItems', 'attendanceItems', 'kyItems'];
-          for (const category of categories) {
-            if (Array.isArray(oldFormatData[category])) {
-              oldFormatData[category].forEach((item, index) => {
-                if (!item.id) {
-                  const columnIndex = item.columnIndex || index;
-                  item.id = `${category}_${columnIndex}_${Math.random().toString(36).substring(2, 7)}`;
+          // データ構造を安全に確保
+          const safeData = {
+            ...initialMappingConfig,
+            ...oldFormatData
+          };
+          
+          // mainFieldsを安全に初期化
+          if (!safeData.mainFields || typeof safeData.mainFields !== 'object') {
+            safeData.mainFields = initialMappingConfig.mainFields;
+          } else {
+            // 各mainFieldsプロパティを安全に確保
+            for (const [key, defaultValue] of Object.entries(initialMappingConfig.mainFields)) {
+              if (!safeData.mainFields[key] || typeof safeData.mainFields[key] !== 'object') {
+                safeData.mainFields[key] = defaultValue;
+              } else {
+                // columnIndexとheaderNameを安全に確保
+                if (typeof safeData.mainFields[key].columnIndex !== 'number') {
+                  safeData.mainFields[key].columnIndex = -1;
+                }
+                if (typeof safeData.mainFields[key].headerName !== 'string') {
+                  safeData.mainFields[key].headerName = '';
+                }
+              }
+            }
+          }
+          
+          // 配列項目を安全に初期化
+          const arrayCategories = ['incomeItems', 'deductionItems', 'attendanceItems', 'kyItems', 'itemCodeItems'];
+          for (const category of arrayCategories) {
+            if (!Array.isArray(safeData[category])) {
+              safeData[category] = [];
+            } else {
+              // 各項目にID属性を確保
+              safeData[category].forEach((item, index) => {
+                if (!item || typeof item !== 'object') {
+                  safeData[category][index] = {
+                    columnIndex: -1,
+                    headerName: '',
+                    itemName: '',
+                    isVisible: true,
+                    id: `${category}_${index}_${Math.random().toString(36).substring(2, 7)}`
+                  };
+                } else {
+                  // 必要なプロパティを安全に確保
+                  if (typeof item.columnIndex !== 'number') {
+                    item.columnIndex = -1;
+                  }
+                  if (typeof item.headerName !== 'string') {
+                    item.headerName = '';
+                  }
+                  if (typeof item.itemName !== 'string') {
+                    item.itemName = '';
+                  }
+                  if (typeof item.isVisible !== 'boolean') {
+                    item.isVisible = true;
+                  }
+                  if (!item.id) {
+                    const columnIndex = item.columnIndex || index;
+                    item.id = `${category}_${columnIndex}_${Math.random().toString(36).substring(2, 7)}`;
+                  }
                 }
               });
             }
           }
           
-          setMappingConfig(oldFormatData);
+          setMappingConfig(safeData);
           configLoaded = true;
           
           // データを表示用に保存
           setDebugData(prevData => ({
             ...prevData,
-            oldFormat: oldFormatData
+            oldFormat: safeData
           }));
         }
         

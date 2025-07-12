@@ -4,6 +4,12 @@
 import React from 'react';
 
 const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeaders }) => {
+  // 安全性を確保
+  const safeMainFields = mappingConfig?.mainFields || {};
+  const safeIdentificationCode = safeMainFields.identificationCode || { columnIndex: -1, headerName: '' };
+  const safeEmployeeCode = safeMainFields.employeeCode || { columnIndex: -1, headerName: '' };
+  const safeParsedHeaders = parsedHeaders || [];
+  
   return (
     <div>
       <h3 className="text-md font-medium mb-2">基本項目マッピング</h3>
@@ -13,12 +19,12 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
             識別コード <span className="text-red-500">*</span>
           </label>
           <select
-            value={mappingConfig.mainFields.identificationCode.columnIndex}
+            value={safeIdentificationCode.columnIndex}
             onChange={(e) => updateMainFieldMapping('identificationCode', e.target.value)}
             className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           >
             <option value="-1">選択してください</option>
-            {parsedHeaders.map((header, index) => (
+            {safeParsedHeaders.map((header, index) => (
               <option key={index} value={index}>{header}</option>
             ))}
           </select>
@@ -29,12 +35,12 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
             従業員コード <span className="text-red-500">*</span>
           </label>
           <select
-            value={mappingConfig.mainFields.employeeCode.columnIndex}
+            value={safeEmployeeCode.columnIndex}
             onChange={(e) => updateMainFieldMapping('employeeCode', e.target.value)}
             className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           >
             <option value="-1">選択してください</option>
-            {parsedHeaders.map((header, index) => (
+            {safeParsedHeaders.map((header, index) => (
               <option key={index} value={index}>{header}</option>
             ))}
           </select>
