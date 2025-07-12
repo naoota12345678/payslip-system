@@ -103,25 +103,40 @@ export const parseRowBasedMapping = (rows) => {
     return { headers: [], kyItems: [] };
   }
 
+  console.log('=== parseRowBasedMapping デバッグ開始 ===');
+  console.log('入力行数:', rows.length);
+  console.log('行1 (ヘッダー行):', rows[0]);
+  console.log('行2 (KY項目行):', rows[1]);
+
   // 区切り文字を検出（最初の行から判断）
   let separator;
   if (rows[0].includes('\t')) {
     separator = '\t';
+    console.log('区切り文字: タブ');
   } else if (rows[0].includes(',')) {
     separator = ',';
+    console.log('区切り文字: カンマ');
   } else {
     // タブやカンマがなければスペースで分割
     separator = /\s+/;
+    console.log('区切り文字: スペース');
   }
 
   // 各行を解析
   let headers = rows[0].split(separator instanceof RegExp ? separator : separator).map(item => item.trim());
   let kyItems = rows[1].split(separator instanceof RegExp ? separator : separator).map(item => item.trim());
 
+  console.log('解析されたヘッダー:', headers);
+  console.log('解析されたKY項目:', kyItems);
+
   // 長さを統一（短い方に合わせる）
   const minLength = Math.min(headers.length, kyItems.length);
   headers = headers.slice(0, minLength);
   kyItems = kyItems.slice(0, minLength);
+
+  console.log('最終的なヘッダー:', headers);
+  console.log('最終的なKY項目:', kyItems);
+  console.log('=== parseRowBasedMapping デバッグ終了 ===');
 
   return {
     headers,

@@ -57,7 +57,7 @@ const ItemTabs = ({
             }`}
             onClick={() => setActiveTab(TABS.KY)}
           >
-            KY項目
+            項目コード
           </button>
         </nav>
       </div>
@@ -104,17 +104,17 @@ const ItemTabs = ({
         />
       )}
       
-      {/* KY項目タブ */}
+      {/* 項目コードタブ */}
       {activeTab === TABS.KY && (
         <ItemMappingTable
-          title="KY項目のマッピング"
-          items={mappingConfig.kyItems}
+          title="項目コードのマッピング"
+          items={mappingConfig.itemCodeItems || []}
           onUpdateItemName={onUpdateItemName}
           onUpdateItemVisibility={onUpdateItemVisibility}
           onRemoveItem={onRemoveItem}
           availableHeaders={parsedHeaders}
           onAddItem={onAddItem}
-          category="kyItems"
+          category="itemCodeItems"
         />
       )}
     </div>

@@ -45,8 +45,8 @@ exports.processCSVSimple = functions.https.onCall(async (data, context) => {
     
     // パラメータ検証
     if (!uploadId || !fileUrl || !companyId) {
-      throw new functions.https.HttpsError(
-        'invalid-argument', 
+    throw new functions.https.HttpsError(
+      'invalid-argument',
         '必要なパラメータが不足しています'
       );
     }
@@ -57,7 +57,7 @@ exports.processCSVSimple = functions.https.onCall(async (data, context) => {
       message: '処理開始',
       timestamp: getServerTimestamp()
     });
-
+    
     return { 
       success: true, 
       processedCount: 1,
@@ -70,4 +70,4 @@ exports.processCSVSimple = functions.https.onCall(async (data, context) => {
       '処理中にエラーが発生しました: ' + error.message
     );
   }
-}); 
+});

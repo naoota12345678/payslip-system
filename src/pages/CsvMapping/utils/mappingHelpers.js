@@ -32,69 +32,70 @@ export const autoMapRequiredFields = (headers, currentMapping) => {
     }
   }
   
-  // 所得項目、控除項目、勤怠項目、KY項目の自動検出
+  // 所得項目、控除項目、勤怠項目、項目コードの自動検出
   const existingIncomeItems = new Set(newMapping.incomeItems.map(item => item.headerName));
   const existingDeductionItems = new Set(newMapping.deductionItems.map(item => item.headerName));
   const existingAttendanceItems = new Set(newMapping.attendanceItems.map(item => item.headerName));
-  const existingKyItems = new Set(newMapping.kyItems.map(item => item.headerName));
+  const existingItemCodeItems = new Set(newMapping.itemCodeItems ? newMapping.itemCodeItems.map(item => item.headerName) : []);
+
+  // 項目コードを自動検出（KY項目以外も含む）
+  const itemCodePattern = /^[A-Z]{1,3}[0-9]{1,3}(_[0-9]+)?$/; // KY01, A01, ITEM01, KY11_0などのパターン
   
-  headers.forEach((header, index) => {
-    // KY項目の検出
-    if (header.startsWith('KY') && !existingKyItems.has(header)) {
-      newMapping.kyItems.push({
-        columnIndex: index,
+  for (const header of headers) {
+    if (existingItemCodeItems.has(header)) continue;
+    
+    // 項目コードの自動検出
+    if (itemCodePattern.test(header)) {
+      const itemId = generateDeterministicId('itemCode', header, headers.indexOf(header));
+      newMapping.itemCodeItems = newMapping.itemCodeItems || [];
+      newMapping.itemCodeItems.push({
+        columnIndex: headers.indexOf(header),
         headerName: header,
-        itemName: header,
-        isVisible: false // KY項目はデフォルト非表示
+        itemName: header, // 初期値として同じ値を設定
+        isVisible: true,
+        id: itemId
       });
+      continue;
     }
-    // 所得項目の検出
-    else if (incomeKeywords.some(keyword => header.includes(keyword)) && !existingIncomeItems.has(header)) {
-      newMapping.incomeItems.push({
-        columnIndex: index,
-        headerName: header,
-        itemName: header,
-        isVisible: true
-      });
-    }
-    // 控除項目の検出
-    else if (deductionKeywords.some(keyword => header.includes(keyword)) && !existingDeductionItems.has(header)) {
-      newMapping.deductionItems.push({
-        columnIndex: index,
-        headerName: header,
-        itemName: header,
-        isVisible: true
-      });
-    }
-    // 勤怠項目の検出
-    else if (attendanceKeywords.some(keyword => header.includes(keyword)) && !existingAttendanceItems.has(header)) {
-      newMapping.attendanceItems.push({
-        columnIndex: index,
-        headerName: header,
-        itemName: header,
-        isVisible: true
-      });
-    }
-  });
-  
-  
-  // IDの付与を確実にする
-  const ensureIds = (items, category) => {
-    return items.map((item, index) => {
-      if (!item.id) {
-        return {
-          ...item,
-          id: generateDeterministicId(category, item.headerName, item.columnIndex || index)
-        };
+    
+    // 従来の項目分類
+    if (incomeKeywords.some(keyword => header.includes(keyword))) {
+      if (!existingIncomeItems.has(header)) {
+        const itemId = generateDeterministicId('income', header, headers.indexOf(header));
+        newMapping.incomeItems.push({
+          columnIndex: headers.indexOf(header),
+          headerName: header,
+          itemName: header,
+          isVisible: true,
+          id: itemId
+        });
       }
-      return item;
-    });
-  };
-  
-  newMapping.incomeItems = ensureIds(newMapping.incomeItems, 'income');
-  newMapping.deductionItems = ensureIds(newMapping.deductionItems, 'deduction');
-  newMapping.attendanceItems = ensureIds(newMapping.attendanceItems, 'attendance');
-  newMapping.kyItems = ensureIds(newMapping.kyItems, 'ky');
+    }
+    else if (deductionKeywords.some(keyword => header.includes(keyword))) {
+      if (!existingDeductionItems.has(header)) {
+        const itemId = generateDeterministicId('deduction', header, headers.indexOf(header));
+        newMapping.deductionItems.push({
+          columnIndex: headers.indexOf(header),
+          headerName: header,
+          itemName: header,
+          isVisible: true,
+          id: itemId
+        });
+      }
+    }
+    else if (attendanceKeywords.some(keyword => header.includes(keyword))) {
+      if (!existingAttendanceItems.has(header)) {
+        const itemId = generateDeterministicId('attendance', header, headers.indexOf(header));
+        newMapping.attendanceItems.push({
+          columnIndex: headers.indexOf(header),
+          headerName: header,
+          itemName: header,
+          isVisible: true,
+          id: itemId
+        });
+      }
+    }
+  }
   
   return newMapping;
 };
@@ -197,6 +198,10 @@ export const generateKyMapping = (kyItems) => {
  * @returns {Object} 生成されたマッピング設定
  */
 export const generateRowBasedMapping = (headers, kyItems) => {
+  console.log('=== generateRowBasedMapping デバッグ開始 ===');
+  console.log('入力ヘッダー:', headers);
+  console.log('入力KY項目:', kyItems);
+
   // マッピング設定を生成
   const mappings = [];
   const minLength = Math.min(headers.length, kyItems.length);
@@ -209,6 +214,8 @@ export const generateRowBasedMapping = (headers, kyItems) => {
       columnIndex: i
     });
   }
+
+  console.log('生成されたマッピング:', mappings);
   
   // 新しいマッピング設定
   const newMappingConfig = {
@@ -216,7 +223,7 @@ export const generateRowBasedMapping = (headers, kyItems) => {
     incomeItems: [],
     deductionItems: [],
     attendanceItems: [],
-    kyItems: [] // 全てのKY項目の設定を保存
+    itemCodeItems: [] // 全ての項目コードの設定を保存
   };
   
   // 主要フィールドのマッピング
@@ -225,9 +232,11 @@ export const generateRowBasedMapping = (headers, kyItems) => {
       if (possibleNames.some(name => mapping.headerName.includes(name))) {
         newMappingConfig.mainFields[fieldKey] = {
           columnIndex: mapping.columnIndex,
-          headerName: mapping.headerName,
-          kyItem: mapping.kyItem
+          headerName: mapping.kyItem,      // 項目コードをヘッダー名として保存
+          itemName: mapping.headerName,    // 元のヘッダー名を表示名として保存
+          itemCode: mapping.kyItem         // 項目コードを保存
         };
+        console.log(`主要フィールド ${fieldKey} をマッピング:`, newMappingConfig.mainFields[fieldKey]);
         break;
       }
     }
@@ -240,7 +249,10 @@ export const generateRowBasedMapping = (headers, kyItems) => {
       field => field.columnIndex === mapping.columnIndex
     );
     
-    if (isMainField) return;
+    if (isMainField) {
+      console.log(`列 ${mapping.columnIndex} は主要フィールドとして分類済み、スキップ`);
+      return;
+    }
     
     // 決定論的なIDを生成
     const categoryName = incomeKeywords.some(keyword => mapping.headerName.includes(keyword)) ? 'income' :
@@ -248,37 +260,50 @@ export const generateRowBasedMapping = (headers, kyItems) => {
                        attendanceKeywords.some(keyword => mapping.headerName.includes(keyword)) ? 'attendance' : 'other';
     const itemId = generateDeterministicId(categoryName, mapping.kyItem, mapping.columnIndex);
     
-    // KY項目を全て保存
-    newMappingConfig.kyItems.push({
+    console.log(`列 ${mapping.columnIndex} (${mapping.headerName}) をカテゴリ ${categoryName} に分類`);
+    
+    // 項目コードを全て保存
+    const itemCodeData = {
       columnIndex: mapping.columnIndex,
-      headerName: mapping.kyItem,      // KY項目コードをヘッダー名として保存
+      headerName: mapping.kyItem,      // 項目コードをヘッダー名として保存
       itemName: mapping.headerName,    // 元のヘッダー名を表示名として保存
-      kyItem: mapping.kyItem,
+      itemCode: mapping.kyItem,        // 項目コードを保存
       isVisible: true,
-      id: generateDeterministicId('ky', mapping.kyItem, mapping.columnIndex) // 決定論的なID属性を追加
-    });
+      id: generateDeterministicId('itemCode', mapping.kyItem, mapping.columnIndex) // 決定論的なID属性を追加
+    };
+    
+    console.log('項目コードデータ:', itemCodeData);
+    newMappingConfig.itemCodeItems.push(itemCodeData);
     
     // カテゴリにも分類
     const item = {
       columnIndex: mapping.columnIndex,
-      headerName: mapping.kyItem,      // KY項目コードをヘッダー名として保存
+      headerName: mapping.kyItem,      // 項目コードをヘッダー名として保存
       itemName: mapping.headerName,    // 元のヘッダー名を表示名として保存
-      kyItem: mapping.kyItem,
+      itemCode: mapping.kyItem,        // 項目コードを保存
       isVisible: true,
       id: itemId // ID属性を追加
     };
     
     // ヘッダー名に基づいてカテゴリ分類
     if (incomeKeywords.some(keyword => mapping.headerName.includes(keyword))) {
+      console.log('支給項目に追加:', item);
       newMappingConfig.incomeItems.push(item);
     }
     else if (deductionKeywords.some(keyword => mapping.headerName.includes(keyword))) {
+      console.log('控除項目に追加:', item);
       newMappingConfig.deductionItems.push(item);
     }
     else if (attendanceKeywords.some(keyword => mapping.headerName.includes(keyword))) {
+      console.log('勤怠項目に追加:', item);
       newMappingConfig.attendanceItems.push(item);
     }
   });
+  
+  console.log('=== 最終的なマッピング設定 ===');
+  console.log('項目コード数:', newMappingConfig.itemCodeItems.length);
+  console.log('項目コード:', newMappingConfig.itemCodeItems);
+  console.log('=== generateRowBasedMapping デバッグ終了 ===');
   
   return newMappingConfig;
 };

@@ -58,13 +58,13 @@ export const initialMappingConfig = {
   incomeItems: [],
   deductionItems: [],
   attendanceItems: [],
-  kyItems: []
+  itemCodeItems: []
 };
 
-// タブ識別子
+// タブ定数
 export const TABS = {
   INCOME: 'income',
   DEDUCTION: 'deduction',
   ATTENDANCE: 'attendance',
-  KY: 'ky'
+  KY: 'itemCode'
 };

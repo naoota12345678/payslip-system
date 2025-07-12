@@ -26,7 +26,8 @@ import {
   updateItemVisibility, 
   addItemToCategory, 
   removeItemFromCategory,
-  validateMappingConfig
+  validateMappingConfig,
+  generateDeterministicId
 } from './utils/mappingHelpers';
 
 function CsvMapping() {
@@ -187,6 +188,131 @@ function CsvMapping() {
     );
   }, []);
   
+  // KY項目のヘッダー名と表示名を修正するハンドラ
+  const handleFixKyItemsMapping = useCallback(() => {
+    setMappingConfig(prev => {
+      const fixed = { ...prev };
+      
+      // KY項目の headerName と itemName を修正
+      if (fixed.kyItems && fixed.kyItems.length > 0) {
+        fixed.kyItems = fixed.kyItems.map(item => {
+          // KY項目コードが itemName に入っている場合は修正
+          if (item.itemName && item.itemName.startsWith('KY') && 
+              item.headerName && !item.headerName.startsWith('KY')) {
+            console.log('KY項目を修正:', item.headerName, '<->', item.itemName);
+            return {
+              ...item,
+              headerName: item.itemName,  // KY項目コードを headerName に
+              itemName: item.headerName   // 日本語項目名を itemName に
+            };
+          }
+          return item;
+        });
+      }
+      
+      // 他のカテゴリも同様に修正
+      ['incomeItems', 'deductionItems', 'attendanceItems'].forEach(category => {
+        if (fixed[category] && fixed[category].length > 0) {
+          fixed[category] = fixed[category].map(item => {
+            if (item.itemName && item.itemName.startsWith('KY') && 
+                item.headerName && !item.headerName.startsWith('KY')) {
+              console.log(`${category}項目を修正:`, item.headerName, '<->', item.itemName);
+              return {
+                ...item,
+                headerName: item.itemName,  // KY項目コードを headerName に
+                itemName: item.headerName   // 日本語項目名を itemName に
+              };
+            }
+            return item;
+          });
+        }
+      });
+      
+      return fixed;
+    });
+    
+    setSuccess('KY項目のマッピングを修正しました。保存してください。');
+  }, [setSuccess]);
+
+  // 項目コードのヘッダー名と表示名を修正するハンドラ
+  const handleFixItemCodeMapping = useCallback(() => {
+    setMappingConfig(prev => {
+      const fixed = { ...prev };
+      
+      // 項目コードの headerName と itemName を修正
+      if (fixed.itemCodeItems && fixed.itemCodeItems.length > 0) {
+        fixed.itemCodeItems = fixed.itemCodeItems.map(item => {
+          // 項目コードが itemName に入っている場合は修正
+          if (item.itemName && /^[A-Z]{1,5}[0-9]{1,3}(_[0-9]+)?$/.test(item.itemName) && 
+              item.headerName && !/^[A-Z]{1,5}[0-9]{1,3}(_[0-9]+)?$/.test(item.headerName)) {
+            console.log('項目コードを修正:', item.headerName, '<->', item.itemName);
+            return {
+              ...item,
+              headerName: item.itemName,  // 項目コードを headerName に
+              itemName: item.headerName   // 日本語項目名を itemName に
+            };
+          }
+          return item;
+        });
+      }
+      
+      // 旧KY項目データがある場合は項目コードに移行
+      if (fixed.kyItems && fixed.kyItems.length > 0) {
+        console.log('旧KY項目データを項目コードデータに移行します');
+        fixed.itemCodeItems = fixed.itemCodeItems || [];
+        fixed.kyItems.forEach(item => {
+          const existingItem = fixed.itemCodeItems.find(codeItem => 
+            codeItem.columnIndex === item.columnIndex
+          );
+          if (!existingItem) {
+            // 項目コードが itemName に入っている場合は修正
+            if (item.itemName && /^[A-Z]{1,5}[0-9]{1,3}(_[0-9]+)?$/.test(item.itemName) && 
+                item.headerName && !/^[A-Z]{1,5}[0-9]{1,3}(_[0-9]+)?$/.test(item.headerName)) {
+              fixed.itemCodeItems.push({
+                ...item,
+                headerName: item.itemName,  // 項目コードを headerName に
+                itemName: item.headerName,  // 日本語項目名を itemName に
+                itemCode: item.itemName,    // 項目コードを保存
+                id: item.id || generateDeterministicId('itemCode', item.itemName, item.columnIndex)
+              });
+            } else {
+              fixed.itemCodeItems.push({
+                ...item,
+                itemCode: item.kyItem || item.headerName,
+                id: item.id || generateDeterministicId('itemCode', item.headerName, item.columnIndex)
+              });
+            }
+          }
+        });
+        // 旧KY項目データを削除
+        delete fixed.kyItems;
+      }
+      
+      // 他のカテゴリも同様に修正
+      ['incomeItems', 'deductionItems', 'attendanceItems'].forEach(category => {
+        if (fixed[category] && fixed[category].length > 0) {
+          fixed[category] = fixed[category].map(item => {
+            if (item.itemName && /^[A-Z]{1,5}[0-9]{1,3}(_[0-9]+)?$/.test(item.itemName) && 
+                item.headerName && !/^[A-Z]{1,5}[0-9]{1,3}(_[0-9]+)?$/.test(item.headerName)) {
+              console.log(`${category}項目を修正:`, item.headerName, '<->', item.itemName);
+              return {
+                ...item,
+                headerName: item.itemName,  // 項目コードを headerName に
+                itemName: item.headerName,  // 日本語項目名を itemName に
+                itemCode: item.itemName     // 項目コードを保存
+              };
+            }
+            return item;
+          });
+        }
+      });
+      
+      return fixed;
+    });
+    
+    setSuccess('項目コードのマッピングを修正しました。保存してください。');
+  }, [setSuccess]);
+
   // 設定を保存するハンドラ
   const handleSave = useCallback(async () => {
     const configToSave = {
@@ -234,16 +360,40 @@ function CsvMapping() {
     );
   }
 
+  // デバッグ: 現在のマッピング設定を表示
+  console.log('=== 現在のマッピング設定 ===');
+  console.log('項目コード:', mappingConfig.itemCodeItems);
+  console.log('旧KY項目:', mappingConfig.kyItems);
+  console.log('支給項目:', mappingConfig.incomeItems);
+  console.log('控除項目:', mappingConfig.deductionItems);
+  console.log('勤怠項目:', mappingConfig.attendanceItems);
+  console.log('=== デバッグ終了 ===');
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">CSVマッピング設定</h1>
-        <button
-          onClick={() => navigate('/settings')}
-          className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-        >
-          システム設定に戻る
-        </button>
+        <div className="flex space-x-2">
+          <button
+            onClick={handleFixItemCodeMapping}
+            className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+          >
+            項目コードを修正
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400"
+          >
+            {saving ? '保存中...' : '設定を保存'}
+          </button>
+          <button
+            onClick={() => navigate('/settings')}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+          >
+            システム設定に戻る
+          </button>
+        </div>
       </div>
       
       {error && (

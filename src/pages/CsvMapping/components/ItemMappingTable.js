@@ -31,8 +31,9 @@ const ItemMappingTable = ({
             <option value="">項目を追加...</option>
             {availableHeaders
               .filter(header => 
-                category === 'kyItems' ? 
-                  header.startsWith('KY') && !items.some(item => item.headerName === header) :
+                category === 'itemCodeItems' ? 
+                  // 項目コードパターンをチェック（KY01、A01、ITEM01など）
+                  /^[A-Z]{1,5}[0-9]{1,3}(_[0-9]+)?$/.test(header) && !items.some(item => item.headerName === header) :
                   !items.some(item => item.headerName === header)
               )
               .map((header, index) => (
