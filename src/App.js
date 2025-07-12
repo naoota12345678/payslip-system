@@ -10,7 +10,6 @@ import ErrorBoundary from './components/ErrorBoundary';
 // 認証関連ページ
 import Login from './pages/Login';
 import AdminLogin from './pages/AdminLogin';
-import EmployeeLogin from './pages/EmployeeLogin';
 import Register from './pages/Register';
 import SignUp from './pages/SignUp';
 import ForgotPassword from './pages/ForgotPassword';
@@ -62,8 +61,8 @@ function App() {
           <Route path="/admin/signup" element={<SignUp />} />
           
           {/* 従業員向けルート */}
-          <Route path="/employee" element={<EmployeeLogin />} />
-          <Route path="/employee/login" element={<EmployeeLogin />} />
+          <Route path="/employee" element={<Login />} />
+          <Route path="/employee/login" element={<Login />} />
           
           {/* 共通認証ページ */}
           <Route path="/login" element={<Login />} />
