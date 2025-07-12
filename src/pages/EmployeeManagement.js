@@ -104,7 +104,7 @@ function EmployeeManagement() {
       
       <div className="flex justify-end mb-6">
         <Link 
-          to="/register-employee" 
+          to="/admin/register-employee" 
           className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
         >
           新規従業員登録

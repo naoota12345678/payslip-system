@@ -317,6 +317,9 @@ export const useMappingConfig = (userDetails) => {
         parsedHeaders: configToSave.parsedHeaders || [],
         headerInput: configToSave.headerInput || '',
         rowBasedInput: configToSave.rowBasedInput || '',
+        // 項目情報も保存して復元時に使用
+        itemCodeItems: configToSave.itemCodeItems || [],
+        kyItems: configToSave.kyItems || [],
         updatedAt: new Date()
       }, { merge: true });
       

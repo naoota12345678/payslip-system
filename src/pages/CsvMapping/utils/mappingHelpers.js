@@ -263,7 +263,7 @@ export const generateRowBasedMapping = (headers, kyItems) => {
     
     console.log(`列 ${mapping.columnIndex} (${mapping.headerName}) をカテゴリ ${categoryName} に分類`);
     
-    // 項目コードを全て保存
+    // 項目データを作成
     const itemCodeData = {
       columnIndex: mapping.columnIndex,
       headerName: mapping.kyItem,      // 項目コードをヘッダー名として保存
@@ -274,6 +274,8 @@ export const generateRowBasedMapping = (headers, kyItems) => {
     };
     
     console.log('項目コードデータ:', itemCodeData);
+    
+    // 項目コードとして保存
     newMappingConfig.itemCodeItems.push(itemCodeData);
     
     // 旧形式との互換性のため、kyItemsにも同じデータを保存
@@ -283,28 +285,28 @@ export const generateRowBasedMapping = (headers, kyItems) => {
       matchedHeader: mapping.headerName
     });
     
-    // カテゴリにも分類
-    const item = {
+    // カテゴリ分類は項目コードと重複を避けるため、個別のIDを使用
+    const categorizedItem = {
       columnIndex: mapping.columnIndex,
       headerName: mapping.kyItem,      // 項目コードをヘッダー名として保存
       itemName: mapping.headerName,    // 日本語項目名を表示名として保存
       itemCode: mapping.kyItem,        // 項目コードを保存
       isVisible: true,
-      id: itemId // ID属性を追加
+      id: itemId // 異なるID属性を追加
     };
     
-    // ヘッダー名に基づいてカテゴリ分類
+    // ヘッダー名に基づいてカテゴリ分類（但し、項目コードタブで既に管理されているので、デフォルトではvisibleをfalseに）
     if (incomeKeywords.some(keyword => mapping.headerName.includes(keyword))) {
-      console.log('支給項目に追加:', item);
-      newMappingConfig.incomeItems.push(item);
+      console.log('支給項目に追加:', categorizedItem);
+      newMappingConfig.incomeItems.push({...categorizedItem, isVisible: false});
     }
     else if (deductionKeywords.some(keyword => mapping.headerName.includes(keyword))) {
-      console.log('控除項目に追加:', item);
-      newMappingConfig.deductionItems.push(item);
+      console.log('控除項目に追加:', categorizedItem);
+      newMappingConfig.deductionItems.push({...categorizedItem, isVisible: false});
     }
     else if (attendanceKeywords.some(keyword => mapping.headerName.includes(keyword))) {
-      console.log('勤怠項目に追加:', item);
-      newMappingConfig.attendanceItems.push(item);
+      console.log('勤怠項目に追加:', categorizedItem);
+      newMappingConfig.attendanceItems.push({...categorizedItem, isVisible: false});
     }
   });
   
