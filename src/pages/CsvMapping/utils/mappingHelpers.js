@@ -39,7 +39,7 @@ export const autoMapRequiredFields = (headers, currentMapping) => {
   const existingItemCodeItems = new Set(newMapping.itemCodeItems ? newMapping.itemCodeItems.map(item => item.headerName) : []);
 
   // 項目コードを自動検出（KY項目以外も含む）
-  const itemCodePattern = /^[A-Z]{1,3}[0-9]{1,3}(_[0-9]+)?$/; // KY01, A01, ITEM01, KY11_0などのパターン
+  const itemCodePattern = /^[A-Z]{1,5}[0-9]{1,3}(_[0-9]+)?$/; // KY01, A01, ITEM01, CODE01, KY11_0などのパターン
   
   for (const header of headers) {
     if (existingItemCodeItems.has(header)) continue;
@@ -232,8 +232,8 @@ export const generateRowBasedMapping = (headers, kyItems) => {
       if (possibleNames.some(name => mapping.headerName.includes(name))) {
         newMappingConfig.mainFields[fieldKey] = {
           columnIndex: mapping.columnIndex,
-          headerName: mapping.kyItem,      // 項目コードをヘッダー名として保存
-          itemName: mapping.headerName,    // 元のヘッダー名を表示名として保存
+          headerName: mapping.headerName,  // 日本語項目名をヘッダー名として保存
+          itemName: mapping.headerName,    // 日本語項目名を表示名として保存
           itemCode: mapping.kyItem         // 項目コードを保存
         };
         console.log(`主要フィールド ${fieldKey} をマッピング:`, newMappingConfig.mainFields[fieldKey]);
@@ -265,8 +265,8 @@ export const generateRowBasedMapping = (headers, kyItems) => {
     // 項目コードを全て保存
     const itemCodeData = {
       columnIndex: mapping.columnIndex,
-      headerName: mapping.kyItem,      // 項目コードをヘッダー名として保存
-      itemName: mapping.headerName,    // 元のヘッダー名を表示名として保存
+      headerName: mapping.headerName,  // 日本語項目名をヘッダー名として保存
+      itemName: mapping.headerName,    // 日本語項目名を表示名として保存
       itemCode: mapping.kyItem,        // 項目コードを保存
       isVisible: true,
       id: generateDeterministicId('itemCode', mapping.kyItem, mapping.columnIndex) // 決定論的なID属性を追加
@@ -278,8 +278,8 @@ export const generateRowBasedMapping = (headers, kyItems) => {
     // カテゴリにも分類
     const item = {
       columnIndex: mapping.columnIndex,
-      headerName: mapping.kyItem,      // 項目コードをヘッダー名として保存
-      itemName: mapping.headerName,    // 元のヘッダー名を表示名として保存
+      headerName: mapping.headerName,  // 日本語項目名をヘッダー名として保存
+      itemName: mapping.headerName,    // 日本語項目名を表示名として保存
       itemCode: mapping.kyItem,        // 項目コードを保存
       isVisible: true,
       id: itemId // ID属性を追加

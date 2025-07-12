@@ -129,17 +129,33 @@ export const parseRowBasedMapping = (rows) => {
   console.log('解析されたヘッダー:', headers);
   console.log('解析されたKY項目:', kyItems);
 
-  // 長さを統一（短い方に合わせる）
+  // 項目コードパターンで検証
+  const itemCodePattern = /^[A-Z]{1,5}[0-9]{1,3}(_[0-9]+)?$/;
+  const validItemCodes = [];
+  const validHeaders = [];
+  
+  // 同じインデックスの項目だけを処理
   const minLength = Math.min(headers.length, kyItems.length);
-  headers = headers.slice(0, minLength);
-  kyItems = kyItems.slice(0, minLength);
+  for (let i = 0; i < minLength; i++) {
+    const header = headers[i];
+    const kyItem = kyItems[i];
+    
+    // 項目コードパターンに合致するかチェック
+    if (itemCodePattern.test(kyItem)) {
+      validHeaders.push(header);
+      validItemCodes.push(kyItem);
+      console.log(`項目コード検証OK: ${header} -> ${kyItem}`);
+    } else {
+      console.log(`項目コード検証NG: ${header} -> ${kyItem} (パターンに合致しません)`);
+    }
+  }
 
-  console.log('最終的なヘッダー:', headers);
-  console.log('最終的なKY項目:', kyItems);
+  console.log('最終的なヘッダー:', validHeaders);
+  console.log('最終的な項目コード:', validItemCodes);
   console.log('=== parseRowBasedMapping デバッグ終了 ===');
 
   return {
-    headers,
-    kyItems
+    headers: validHeaders,
+    kyItems: validItemCodes
   };
 };
