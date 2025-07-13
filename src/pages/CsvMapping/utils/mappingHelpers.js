@@ -44,28 +44,30 @@ export const autoMapRequiredFields = (headers, currentMapping) => {
   for (const header of headers) {
     if (existingItemCodeItems.has(header)) continue;
     
-    // 項目コードの自動検出
-    if (itemCodePattern.test(header)) {
-      const itemId = generateDeterministicId('itemCode', header, headers.indexOf(header));
-      newMapping.itemCodeItems = newMapping.itemCodeItems || [];
-      newMapping.itemCodeItems.push({
-        columnIndex: headers.indexOf(header),
-        headerName: header,
-        itemName: header, // 初期値として同じ値を設定
-        isVisible: true,
-        id: itemId
-      });
-      continue;
-    }
+          // 項目コードの自動検出
+      if (itemCodePattern.test(header)) {
+        const itemId = generateDeterministicId('itemCode', header, headers.indexOf(header));
+        newMapping.itemCodeItems = newMapping.itemCodeItems || [];
+        newMapping.itemCodeItems.push({
+          columnIndex: headers.indexOf(header),
+          headerName: header,
+          itemName: '', // 項目コードの場合は空文字列でユーザーが手動で入力
+          isVisible: true,
+          id: itemId
+        });
+        continue;
+      }
     
     // 従来の項目分類
     if (incomeKeywords.some(keyword => header.includes(keyword))) {
       if (!existingIncomeItems.has(header)) {
         const itemId = generateDeterministicId('income', header, headers.indexOf(header));
+        // 項目コードの場合は空文字列、そうでなければheaderNameを設定
+        const isItemCode = /^[A-Z]{1,5}[0-9]{1,3}(_[0-9]+)?$/.test(header);
         newMapping.incomeItems.push({
           columnIndex: headers.indexOf(header),
           headerName: header,
-          itemName: header,
+          itemName: isItemCode ? '' : header,
           isVisible: true,
           id: itemId
         });
@@ -74,10 +76,12 @@ export const autoMapRequiredFields = (headers, currentMapping) => {
     else if (deductionKeywords.some(keyword => header.includes(keyword))) {
       if (!existingDeductionItems.has(header)) {
         const itemId = generateDeterministicId('deduction', header, headers.indexOf(header));
+        // 項目コードの場合は空文字列、そうでなければheaderNameを設定
+        const isItemCode = /^[A-Z]{1,5}[0-9]{1,3}(_[0-9]+)?$/.test(header);
         newMapping.deductionItems.push({
           columnIndex: headers.indexOf(header),
           headerName: header,
-          itemName: header,
+          itemName: isItemCode ? '' : header,
           isVisible: true,
           id: itemId
         });
@@ -86,10 +90,12 @@ export const autoMapRequiredFields = (headers, currentMapping) => {
     else if (attendanceKeywords.some(keyword => header.includes(keyword))) {
       if (!existingAttendanceItems.has(header)) {
         const itemId = generateDeterministicId('attendance', header, headers.indexOf(header));
+        // 項目コードの場合は空文字列、そうでなければheaderNameを設定
+        const isItemCode = /^[A-Z]{1,5}[0-9]{1,3}(_[0-9]+)?$/.test(header);
         newMapping.attendanceItems.push({
           columnIndex: headers.indexOf(header),
           headerName: header,
-          itemName: header,
+          itemName: isItemCode ? '' : header,
           isVisible: true,
           id: itemId
         });
@@ -371,10 +377,13 @@ export const addItemToCategory = (category, headerName, parsedHeaders, currentMa
   // 決定論的なIDを生成
   const itemId = generateDeterministicId(category, headerName, columnIndex);
   
+  // 項目コードの場合は空文字列、そうでなければheaderNameを設定
+  const isItemCode = /^[A-Z]{1,5}[0-9]{1,3}(_[0-9]+)?$/.test(headerName);
+  
   const newItem = {
     columnIndex,
     headerName,
-    itemName: headerName,
+    itemName: isItemCode ? '' : headerName,
     isVisible: category !== 'kyItems', // KY項目以外はデフォルトで表示
     id: itemId // ID属性を追加
   };
@@ -482,7 +491,7 @@ export const convertFromNewFormat = (newFormat, initialMapping) => {
       const item = {
         id: id,
         headerName: headerName,
-        itemName: headerName, // 初期値として同じ値を設定
+        itemName: isCode ? '' : headerName, // 項目コードの場合は空文字列、そうでなければheaderNameを設定
         columnIndex: -1, // 実際のCSVでの列番号は再設定が必要
         isVisible: true
       };
