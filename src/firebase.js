@@ -25,7 +25,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyBzmFj5-DH-SECGcQ0FLDujxfXJg9pd0-8",
   authDomain: "kyuyoprint.firebaseapp.com",
   projectId: "kyuyoprint",
-  storageBucket: "kyuyoprint.appspot.com", // 標準的なストレージバケット形式に修正
+  storageBucket: "kyuyoprint.firebasestorage.app", // 実際のストレージバケット名に修正
   messagingSenderId: "300754692484",
   appId: "1:300754692484:web:da56e0c2f86543b61395d1",
   measurementId: "G-248TDC31LZ"
