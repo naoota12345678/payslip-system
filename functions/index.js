@@ -175,7 +175,15 @@ exports.processCSV = functions.https.onCall(async (data, context) => {
   }
   console.log('=== パラメータデバッグ終了 ===');
   
-  const { uploadId, fileUrl, companyId, updateEmployeeInfo, registerNewEmployees, employeeIdColumn, departmentCodeColumn, columnMappings } = data;
+  // 安全なパラメータ取得
+  const uploadId = data ? data.uploadId : null;
+  const fileUrl = data ? data.fileUrl : null;
+  const companyId = data ? data.companyId : null;
+  const updateEmployeeInfo = data ? data.updateEmployeeInfo : false;
+  const registerNewEmployees = data ? data.registerNewEmployees : false;
+  const employeeIdColumn = data ? data.employeeIdColumn : null;
+  const departmentCodeColumn = data ? data.departmentCodeColumn : null;
+  const columnMappings = data ? data.columnMappings : {};
   
   // パラメータ検証
   if (!uploadId) {
