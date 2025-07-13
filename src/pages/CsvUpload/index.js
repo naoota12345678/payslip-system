@@ -101,20 +101,8 @@ function CsvUpload() {
     
     setSettingsLoading(true);
     try {
-      // 給与項目とCSVマッピングを取得
-      // 1. 給与項目を取得
-      const itemsQuery = query(
-        collection(db, "payrollItems"),
-        where("companyId", "==", userDetails.companyId)
-      );
-      const itemsSnapshot = await getDocs(itemsQuery);
-      const items = itemsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      
-      // 2. マッピング情報をロード
-      const mappingResult = await fetchCompanyMappings(db, userDetails.companyId, items, debugMode);
+      // CSVマッピング設定から直接給与項目を取得
+      const mappingResult = await fetchCompanyMappings(db, userDetails.companyId, [], debugMode);
       
       if (mappingResult.error) {
         console.error("マッピング取得エラー:", mappingResult.error);
@@ -122,6 +110,10 @@ function CsvUpload() {
       
       setPayrollItems(mappingResult.items);
       setMappingWarning(!mappingResult.hasMappings);
+      
+      if (debugMode) {
+        console.log('[Debug] CSVマッピングから取得した給与項目:', mappingResult.items);
+      }
       
     } catch (err) {
       console.error("設定の取得エラー:", err);
