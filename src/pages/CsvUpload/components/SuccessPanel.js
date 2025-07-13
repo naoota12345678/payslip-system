@@ -1,7 +1,6 @@
 // src/pages/CsvUpload/components/SuccessPanel.js
 
 import React from 'react';
-import PayslipDataSample from '../../../components/payslip/PayslipDataSample';
 
 /**
  * 成功メッセージとプレビューコンポーネント
@@ -44,9 +43,17 @@ const SuccessPanel = ({
       
       {/* 給与データのサンプルを表示 */}
       {uploadId && (
-        <div className="mt-6 pt-4 border-t border-gray-300">
-          <h3 className="text-lg font-semibold mb-3">生成された給与明細プレビュー</h3>
-          <PayslipDataSample uploadId={uploadId} maxSamples={3} />
+        <div className="mt-6 pt-4 border-gray-300">
+          <h3 className="text-lg font-semibold mb-3">処理完了通知</h3>
+          <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+            <p className="text-green-800">
+              <strong>✅ CSV処理が正常に完了しました</strong><br/>
+              給与明細データが正常に保存されました。<br/>
+              <span className="text-sm text-green-600">
+                ※ データプレビューはFirestoreインデックス作成完了後に表示されます
+              </span>
+            </p>
+          </div>
         </div>
       )}
     </div>

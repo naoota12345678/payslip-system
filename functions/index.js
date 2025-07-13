@@ -69,74 +69,130 @@ const generatePayrollItemsFromMappings = async (companyId) => {
   try {
     console.log(`[DEBUG] CSVマッピング設定から給与項目を生成開始: companyId=${companyId}`);
     
-    const mappingDoc = await db.collection('csvMappings').doc(companyId).get();
-    
-    if (!mappingDoc.exists) {
-      throw new Error('CSVマッピング設定が見つかりません');
-    }
-    
-    const mappingData = mappingDoc.data();
     const items = [];
     
-    // 支給項目を追加
-    if (mappingData.incomeItems && Array.isArray(mappingData.incomeItems)) {
-      mappingData.incomeItems.forEach((item, index) => {
-        if (item.headerName && item.itemName) {
-          items.push({
-            id: item.id || `income_${index}`,
-            name: item.itemName,
-            type: 'income',
-            csvColumn: item.headerName,
-            isVisible: item.isVisible !== false
-          });
-        }
-      });
+    // 方式1: 新しい方式 (csvMappings) - 給与項目と個別のマッピング
+    console.log('[DEBUG] 新しい方式 (csvMappings) を確認中...');
+    const mappingDoc = await db.collection('csvMappings').doc(companyId).get();
+    
+    if (mappingDoc.exists) {
+      const mappingData = mappingDoc.data();
+      console.log('[DEBUG] csvMappings データ:', JSON.stringify(mappingData, null, 2));
+      
+      // 給与項目を取得
+      const payrollItemsSnapshot = await db.collection('payrollItems')
+        .where('companyId', '==', companyId)
+        .get();
+      
+      if (!payrollItemsSnapshot.empty) {
+        console.log(`[DEBUG] 給与項目を${payrollItemsSnapshot.docs.length}件取得`);
+        
+        const payrollItems = payrollItemsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        
+        // マッピング情報を適用
+        const mappings = mappingData.mappings || {};
+        console.log('[DEBUG] マッピング情報:', JSON.stringify(mappings, null, 2));
+        
+        payrollItems.forEach(item => {
+          const csvColumn = mappings[item.id];
+          if (csvColumn) {
+            items.push({
+              id: item.id,
+              name: item.name,
+              type: item.type,
+              csvColumn: csvColumn,
+              isVisible: item.isVisible !== false
+            });
+          }
+        });
+        
+        console.log(`[DEBUG] 新しい方式で${items.length}件のマッピング済み項目を生成`);
+      }
     }
     
-    // 控除項目を追加
-    if (mappingData.deductionItems && Array.isArray(mappingData.deductionItems)) {
-      mappingData.deductionItems.forEach((item, index) => {
-        if (item.headerName && item.itemName) {
-          items.push({
-            id: item.id || `deduction_${index}`,
-            name: item.itemName,
-            type: 'deduction',
-            csvColumn: item.headerName,
-            isVisible: item.isVisible !== false
+    // 方式2: 古い方式 (csvMapping) - 項目とマッピングが一体化
+    if (items.length === 0) {
+      console.log('[DEBUG] 古い方式 (csvMapping) を確認中...');
+      const oldMappingDoc = await db.collection('csvMapping').doc(companyId).get();
+      
+      if (oldMappingDoc.exists) {
+        const oldMappingData = oldMappingDoc.data();
+        console.log('[DEBUG] csvMapping データ:', JSON.stringify(oldMappingData, null, 2));
+        
+        const csvMapping = oldMappingData.csvMapping || oldMappingData;
+        
+        // 支給項目を追加
+        if (csvMapping.incomeItems && Array.isArray(csvMapping.incomeItems)) {
+          csvMapping.incomeItems.forEach((item, index) => {
+            if (item.headerName && item.itemName) {
+              items.push({
+                id: item.id || `income_${index}`,
+                name: item.itemName,
+                type: 'income',
+                csvColumn: item.headerName,
+                isVisible: item.isVisible !== false
+              });
+            }
           });
         }
-      });
+        
+        // 控除項目を追加
+        if (csvMapping.deductionItems && Array.isArray(csvMapping.deductionItems)) {
+          csvMapping.deductionItems.forEach((item, index) => {
+            if (item.headerName && item.itemName) {
+              items.push({
+                id: item.id || `deduction_${index}`,
+                name: item.itemName,
+                type: 'deduction',
+                csvColumn: item.headerName,
+                isVisible: item.isVisible !== false
+              });
+            }
+          });
+        }
+        
+        // 勤怠項目を追加
+        if (csvMapping.attendanceItems && Array.isArray(csvMapping.attendanceItems)) {
+          csvMapping.attendanceItems.forEach((item, index) => {
+            if (item.headerName && item.itemName) {
+              items.push({
+                id: item.id || `attendance_${index}`,
+                name: item.itemName,
+                type: 'attendance',
+                csvColumn: item.headerName,
+                isVisible: item.isVisible !== false
+              });
+            }
+          });
+        }
+        
+        // 項目コード項目を追加
+        if (csvMapping.itemCodeItems && Array.isArray(csvMapping.itemCodeItems)) {
+          csvMapping.itemCodeItems.forEach((item, index) => {
+            if (item.headerName && item.itemName) {
+              const itemType = item.type || 'income';
+              items.push({
+                id: item.id || `itemcode_${index}`,
+                name: item.itemName,
+                type: itemType,
+                csvColumn: item.headerName,
+                isVisible: item.isVisible !== false
+              });
+            }
+          });
+        }
+        
+        console.log(`[DEBUG] 古い方式で${items.length}件のマッピング済み項目を生成`);
+      }
     }
     
-    // 勤怠項目を追加
-    if (mappingData.attendanceItems && Array.isArray(mappingData.attendanceItems)) {
-      mappingData.attendanceItems.forEach((item, index) => {
-        if (item.headerName && item.itemName) {
-          items.push({
-            id: item.id || `attendance_${index}`,
-            name: item.itemName,
-            type: 'attendance',
-            csvColumn: item.headerName,
-            isVisible: item.isVisible !== false
-          });
-        }
-      });
-    }
-    
-    // 項目コード項目を追加
-    if (mappingData.itemCodeItems && Array.isArray(mappingData.itemCodeItems)) {
-      mappingData.itemCodeItems.forEach((item, index) => {
-        if (item.headerName && item.itemName) {
-          const itemType = item.type || 'income';
-          items.push({
-            id: item.id || `itemcode_${index}`,
-            name: item.itemName,
-            type: itemType,
-            csvColumn: item.headerName,
-            isVisible: item.isVisible !== false
-          });
-        }
-      });
+    // 項目が見つからない場合のエラー処理
+    if (items.length === 0) {
+      console.log('[DEBUG] マッピング済み項目が見つかりませんでした');
+      throw new Error('CSVマッピング設定から給与項目を取得できませんでした');
     }
     
     console.log(`[DEBUG] CSVマッピングから生成された給与項目: ${items.length}件`);
@@ -168,33 +224,77 @@ exports.processCSV = functions.https.onCall(async (data, context) => {
   console.log('data:', data);
   console.log('data type:', typeof data);
   console.log('data keys:', data ? Object.keys(data) : 'null');
-  if (data) {
-    console.log('uploadId:', data.uploadId, 'type:', typeof data.uploadId);
-    console.log('fileUrl:', data.fileUrl, 'type:', typeof data.fileUrl);
-    console.log('companyId:', data.companyId, 'type:', typeof data.companyId);
+  
+  // dataオブジェクトが複雑な構造の場合、実際のデータを探す
+  let actualData = data;
+  if (data && typeof data === 'object') {
+    // 実際のパラメータを含む可能性のあるプロパティを探す
+    if (data.uploadId) {
+      actualData = data;
+    } else if (data.data && data.data.uploadId) {
+      actualData = data.data;
+    } else if (data.body && data.body.uploadId) {
+      actualData = data.body;
+    } else {
+      // dataオブジェクトの中から実際のデータを探す
+      console.log('データ構造を詳細に調査中...');
+      console.log('uploadId直接アクセス:', data.uploadId);
+      console.log('data.data:', data.data);
+      console.log('data.body:', data.body);
+      
+      // dataオブジェクトの各プロパティを確認
+      for (const key in data) {
+        if (data[key] && typeof data[key] === 'object') {
+          console.log(`data.${key}のプロパティ:`, Object.keys(data[key]));
+          if (data[key].uploadId) {
+            console.log(`実際のデータはdata.${key}にあります`);
+            actualData = data[key];
+            break;
+          }
+        }
+      }
+    }
+  }
+  
+  console.log('actualData:', actualData);
+  console.log('actualData keys:', actualData ? Object.keys(actualData) : 'null');
+  if (actualData) {
+    console.log('uploadId:', actualData.uploadId, 'type:', typeof actualData.uploadId);
+    console.log('fileUrl:', actualData.fileUrl, 'type:', typeof actualData.fileUrl);
+    console.log('companyId:', actualData.companyId, 'type:', typeof actualData.companyId);
   }
   console.log('=== パラメータデバッグ終了 ===');
   
   // 安全なパラメータ取得
-  const uploadId = data ? data.uploadId : null;
-  const fileUrl = data ? data.fileUrl : null;
-  const companyId = data ? data.companyId : null;
-  const updateEmployeeInfo = data ? data.updateEmployeeInfo : false;
-  const registerNewEmployees = data ? data.registerNewEmployees : false;
-  const employeeIdColumn = data ? data.employeeIdColumn : null;
-  const departmentCodeColumn = data ? data.departmentCodeColumn : null;
-  const columnMappings = data ? data.columnMappings : {};
+  const uploadId = actualData ? actualData.uploadId : null;
+  const fileUrl = actualData ? actualData.fileUrl : null;
+  const companyId = actualData ? actualData.companyId : null;
+  const updateEmployeeInfo = actualData ? actualData.updateEmployeeInfo : false;
+  const registerNewEmployees = actualData ? actualData.registerNewEmployees : false;
+  const employeeIdColumn = actualData ? actualData.employeeIdColumn : null;
+  const departmentCodeColumn = actualData ? actualData.departmentCodeColumn : null;
+  const columnMappings = actualData ? actualData.columnMappings : {};
   
-  // パラメータ検証
+  // パラメータ検証（一時的に無効化してテスト）
+  console.log('パラメータ検証開始');
+  console.log('uploadId値:', uploadId, 'type:', typeof uploadId, 'truthy:', !!uploadId);
+  console.log('fileUrl値:', fileUrl, 'type:', typeof fileUrl, 'truthy:', !!fileUrl);
+  console.log('companyId値:', companyId, 'type:', typeof companyId, 'truthy:', !!companyId);
+  
   if (!uploadId) {
+    console.error('uploadId検証失敗:', uploadId);
     throw new functions.https.HttpsError('invalid-argument', '必要なパラメータが不足しています: uploadId');
   }
   if (!fileUrl) {
+    console.error('fileUrl検証失敗:', fileUrl);
     throw new functions.https.HttpsError('invalid-argument', '必要なパラメータが不足しています: fileUrl');
   }
   if (!companyId) {
+    console.error('companyId検証失敗:', companyId);
     throw new functions.https.HttpsError('invalid-argument', '必要なパラメータが不足しています: companyId');
   }
+  
+  console.log('すべてのパラメータ検証通過');
   
   try {
     await logDebug(uploadId, '処理開始', { companyId, updateEmployeeInfo });

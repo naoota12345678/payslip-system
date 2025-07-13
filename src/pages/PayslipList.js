@@ -42,14 +42,35 @@ function PayslipList() {
         const querySnapshot = await getDocs(q);
         const payslipList = [];
         
+        // デバッグログを追加
+        console.log('[PayslipList Debug] クエリ結果:', {
+          isEmpty: querySnapshot.empty,
+          size: querySnapshot.size,
+          userRole: userDetails.role,
+          companyId: userDetails.companyId
+        });
+        
         querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          console.log('[PayslipList Debug] 給与明細データ:', {
+            id: doc.id,
+            companyId: data.companyId,
+            paymentDate: data.paymentDate,
+            uploadId: data.uploadId,
+            userId: data.userId,
+            totalIncome: data.totalIncome,
+            totalDeduction: data.totalDeduction,
+            netAmount: data.netAmount
+          });
+          
           payslipList.push({
             id: doc.id,
-            ...doc.data(),
-            paymentDate: doc.data().paymentDate?.toDate() // Timestamp→Date変換
+            ...data,
+            paymentDate: data.paymentDate?.toDate() // Timestamp→Date変換
           });
         });
         
+        console.log('[PayslipList Debug] 最終リスト:', payslipList.length, '件');
         setPayslips(payslipList);
       } catch (err) {
         console.error("明細データの取得エラー:", err);
