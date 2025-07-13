@@ -238,48 +238,63 @@ const useFileUpload = (userDetails, currentUser) => {
               };
               
               // 各パラメータを個別に検証（デバッグ用）
+              console.log('[強制Debug] Cloud Functionに送信するデータ:', processData);
+              console.log('[強制Debug] 送信パラメータの詳細検証:');
+              console.log('- uploadId:', processData.uploadId, typeof processData.uploadId);
+              console.log('- uploadRef.id:', uploadRef.id, typeof uploadRef.id);
+              console.log('- fileUrl:', processData.fileUrl ? '(URL設定済み)' : '(URL未設定)', typeof processData.fileUrl);
+              console.log('- companyId:', processData.companyId, typeof processData.companyId);
+              console.log('- updateEmployeeInfo:', processData.updateEmployeeInfo, typeof processData.updateEmployeeInfo);
+              console.log('- registerNewEmployees:', processData.registerNewEmployees, typeof processData.registerNewEmployees);
+              console.log('- columnMappings:', Object.keys(processData.columnMappings).length, '項目', typeof processData.columnMappings);
+              console.log('[強制Debug] パラメータJSON:', JSON.stringify(processData, null, 2));
+              
               if (debugMode) {
-                console.log('[Debug] Cloud Functionに送信するデータ:', processData);
-                console.log('[Debug] 送信パラメータの詳細検証:');
-                console.log('- uploadId:', processData.uploadId, typeof processData.uploadId);
-                console.log('- fileUrl:', '(URL省略)', typeof processData.fileUrl);
-                console.log('- companyId:', processData.companyId, typeof processData.companyId);
-                console.log('- updateEmployeeInfo:', processData.updateEmployeeInfo, typeof processData.updateEmployeeInfo);
-                console.log('- registerNewEmployees:', processData.registerNewEmployees, typeof processData.registerNewEmployees);
-                console.log('- columnMappings:', Object.keys(processData.columnMappings).length, '項目', typeof processData.columnMappings);
+                console.log('[Debug] 詳細なデバッグ情報');
               }
               
               // Cloud Functions呼び出し
-              const result = await processCSV(processData);
-              
-              if (debugMode) {
-                console.log('[Debug] Cloud Function実行結果:', result.data);
-              }
-              setUploadProgress(100);
-              
-              // 処理結果を表示
-              if (result.data) {
-                let successMessage = '';
+              console.log('[強制Debug] Cloud Function呼び出し直前');
+              try {
+                const result = await processCSV(processData);
+                console.log('[強制Debug] Cloud Function実行成功:', result.data);
                 
-                if (result.data.processedCount) {
-                  successMessage += `${result.data.processedCount}件の給与データを処理しました。`;
+                if (debugMode) {
+                  console.log('[Debug] Cloud Function実行結果:', result.data);
                 }
                 
-                if (result.data.employeesUpdated) {
-                  successMessage += ` ${result.data.employeesUpdated}件の従業員情報を更新しました。`;
-                }
+                setUploadProgress(100);
                 
-                if (result.data.employeesCreated) {
-                  successMessage += ` ${result.data.employeesCreated}件の新規従業員を登録しました。`;
-                }
-                
-                if (successMessage) {
-                  setSuccess(successMessage);
+                // 処理結果を表示
+                if (result.data) {
+                  let successMessage = '';
+                  
+                  if (result.data.processedCount) {
+                    successMessage += `${result.data.processedCount}件の給与データを処理しました。`;
+                  }
+                  
+                  if (result.data.employeesUpdated) {
+                    successMessage += ` ${result.data.employeesUpdated}件の従業員情報を更新しました。`;
+                  }
+                  
+                  if (result.data.employeesCreated) {
+                    successMessage += ` ${result.data.employeesCreated}件の新規従業員を登録しました。`;
+                  }
+                  
+                  if (successMessage) {
+                    setSuccess(successMessage);
+                  } else {
+                    setSuccess('CSVファイルのアップロードと処理が完了しました');
+                  }
                 } else {
                   setSuccess('CSVファイルのアップロードと処理が完了しました');
                 }
-              } else {
-                setSuccess('CSVファイルのアップロードと処理が完了しました');
+              } catch (functionError) {
+                console.error('[強制Debug] Cloud Function実行エラー:', functionError);
+                console.error('[強制Debug] エラーコード:', functionError.code);
+                console.error('[強制Debug] エラーメッセージ:', functionError.message);
+                console.error('[強制Debug] エラー詳細:', functionError.details);
+                throw functionError; // エラーを再発生させる
               }
             } catch (firestoreError) {
               console.error('[エラー] Firestoreへの保存エラー:', firestoreError);

@@ -163,6 +163,18 @@ exports.processCSV = functions.https.onCall(async (data, context) => {
   }
   */
   
+  // パラメータの詳細デバッグ
+  console.log('=== パラメータデバッグ開始 ===');
+  console.log('data:', data);
+  console.log('data type:', typeof data);
+  console.log('data keys:', data ? Object.keys(data) : 'null');
+  if (data) {
+    console.log('uploadId:', data.uploadId, 'type:', typeof data.uploadId);
+    console.log('fileUrl:', data.fileUrl, 'type:', typeof data.fileUrl);
+    console.log('companyId:', data.companyId, 'type:', typeof data.companyId);
+  }
+  console.log('=== パラメータデバッグ終了 ===');
+  
   const { uploadId, fileUrl, companyId, updateEmployeeInfo, registerNewEmployees, employeeIdColumn, departmentCodeColumn, columnMappings } = data;
   
   // パラメータ検証
