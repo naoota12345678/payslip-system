@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { doc, getDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../../../firebase';
 import { initialMappingConfig } from '../constants';
-import { convertToNewFormat, convertFromNewFormat, debugMappingFormats, generateDeterministicId } from '../utils/mappingHelpers';
+import { convertToNewFormat, convertFromNewFormat, debugMappingFormats, generateDeterministicId, validateMappingConfig } from '../utils/mappingHelpers';
 
 /**
  * マッピング設定を管理するカスタムフック
@@ -63,10 +63,12 @@ export const useMappingConfig = (userDetails) => {
             const csvData = csvSettings.data();
             console.log('保存されたCSV設定データ:', csvData);
             
-            if (csvData.parsedHeaders) {
-              console.log('保存されたヘッダー情報を復元:', csvData.parsedHeaders);
-              convertedData.parsedHeaders = csvData.parsedHeaders;
-            }
+            // ⚠️ parsedHeadersの自動復元を停止（ユーザーが手動設定のみ）
+            // if (csvData.parsedHeaders) {
+            //   console.log('保存されたヘッダー情報を復元:', csvData.parsedHeaders);
+            //   convertedData.parsedHeaders = csvData.parsedHeaders;
+            // }
+            
             if (csvData.headerInput) {
               console.log('保存されたheaderInputを復元:', csvData.headerInput);
               convertedData.headerInput = csvData.headerInput;
@@ -95,95 +97,9 @@ export const useMappingConfig = (userDetails) => {
           console.log('新しい形式のデータを古い形式に変換して読み込みました');
         }
         
-        // 2. 新しい形式のデータがない場合、古い形式 (csvMapping) のデータを確認
+        // csvMappingsのみを使用（統一済み）
         if (!configLoaded) {
-          console.log('=== 古い形式 (csvMapping) での読み込み開始 ===');
-          const oldMappingDoc = await getDoc(doc(db, 'csvMapping', userDetails.companyId));
-          console.log('古い形式の読み込み結果:', oldMappingDoc.exists());
-          
-          if (oldMappingDoc.exists() && oldMappingDoc.data().csvMapping) {
-            console.log('既存のCSVマッピング設定を読み込みました（古い形式）');
-            const oldFormatData = oldMappingDoc.data().csvMapping;
-          
-            // データ構造を安全に確保
-            const safeData = {
-              ...initialMappingConfig,
-              ...oldFormatData
-            };
-            
-            // mainFieldsを安全に初期化
-            if (!safeData.mainFields || typeof safeData.mainFields !== 'object') {
-              safeData.mainFields = initialMappingConfig.mainFields;
-            } else {
-              // 各mainFieldsプロパティを安全に確保
-              for (const [key, defaultValue] of Object.entries(initialMappingConfig.mainFields)) {
-                if (!safeData.mainFields[key] || typeof safeData.mainFields[key] !== 'object') {
-                  safeData.mainFields[key] = defaultValue;
-                } else {
-                  // columnIndexとheaderNameを安全に確保
-                  if (typeof safeData.mainFields[key].columnIndex !== 'number') {
-                    safeData.mainFields[key].columnIndex = -1;
-                  }
-                  if (typeof safeData.mainFields[key].headerName !== 'string') {
-                    safeData.mainFields[key].headerName = '';
-                  }
-                }
-              }
-            }
-            
-            // 配列項目を安全に初期化
-            const arrayCategories = ['incomeItems', 'deductionItems', 'attendanceItems', 'kyItems', 'itemCodeItems'];
-            for (const category of arrayCategories) {
-              if (!Array.isArray(safeData[category])) {
-                safeData[category] = [];
-              } else {
-                // 各項目にID属性を確保
-                safeData[category].forEach((item, index) => {
-                  if (!item || typeof item !== 'object') {
-                    safeData[category][index] = {
-                      columnIndex: -1,
-                      headerName: '',
-                      itemName: '',
-                      isVisible: true,
-                      id: `${category}_${index}_${Math.random().toString(36).substring(2, 7)}`
-                    };
-                  } else {
-                    // 必要なプロパティを安全に確保
-                    if (typeof item.columnIndex !== 'number') {
-                      item.columnIndex = -1;
-                    }
-                    if (typeof item.headerName !== 'string') {
-                      item.headerName = '';
-                    }
-                    if (typeof item.itemName !== 'string') {
-                      item.itemName = '';
-                    }
-                    if (typeof item.isVisible !== 'boolean') {
-                      item.isVisible = true;
-                    }
-                    if (!item.id) {
-                      const columnIndex = item.columnIndex || index;
-                      item.id = `${category}_${columnIndex}_${Math.random().toString(36).substring(2, 7)}`;
-                    }
-                  }
-                });
-              }
-            }
-            
-            setMappingConfig(safeData);
-            configLoaded = true;
-            
-            // データを表示用に保存
-            setDebugData(prevData => ({
-              ...prevData,
-              oldFormat: safeData
-            }));
-          }
-        }
-        
-        if (!configLoaded) {
-          console.log('既存のマッピング設定がありません。初期値を使用します。');
-          // 初期値を適用
+          console.log('csvMappings にデータが見つかりませんでした。初期設定を使用します');
           setMappingConfig(initialMappingConfig);
         }
         
@@ -252,6 +168,14 @@ export const useMappingConfig = (userDetails) => {
       // 保存用の設定オブジェクトを作成（ディープコピーを作成）
       const configToSave = JSON.parse(JSON.stringify(config));
       
+      // データ整合性チェック（itemName=headerNameの検出）
+      const validationError = validateMappingConfig(configToSave);
+      if (validationError) {
+        console.error('❌ バリデーションエラー:', validationError);
+        setError(validationError);
+        return false;
+      }
+      
       // 各項目にIDが設定されているか確認（未設定の場合は決定論的なIDを追加）
       const ensureItemsHaveIds = (items, categoryPrefix) => {
         return items.map((item, index) => {
@@ -282,11 +206,38 @@ export const useMappingConfig = (userDetails) => {
         configToSave.itemCodeItems = ensureItemsHaveIds(configToSave.itemCodeItems, 'itemCode');
       }
       
-      // CsvMapping形式からCsvUpload形式への変換を実行
+      console.log('🔍 保存前のマッピング設定詳細確認:');
+      console.log('configToSave.deductionItems:', configToSave.deductionItems);
+      console.log('configToSave.incomeItems:', configToSave.incomeItems);
+      console.log('configToSave.attendanceItems:', configToSave.attendanceItems);
+      console.log('configToSave.itemCodeItems:', configToSave.itemCodeItems);
+      
+      // 各カテゴリのitemNameを確認
+      ['deductionItems', 'incomeItems', 'attendanceItems', 'itemCodeItems'].forEach(category => {
+        const items = configToSave[category] || [];
+        console.log(`📋 ${category} のitemName確認:`);
+        items.forEach((item, index) => {
+          console.log(`  [${index}] headerName="${item.headerName}", itemName="${item.itemName}"`);
+        });
+      });
+      
+      // CsvMapping形式からcsvMappings形式への変換を実行
       const newFormatData = convertToNewFormat(configToSave);
       
+      console.log('🔄 変換後のデータ詳細確認:');
+      console.log('newFormatData.deductionItems:', newFormatData.deductionItems);
+      
+      // 変換後のitemNameを確認
+      ['deductionItems', 'incomeItems', 'attendanceItems', 'itemCodeItems'].forEach(category => {
+        const items = newFormatData[category] || [];
+        console.log(`📋 変換後 ${category} のitemName確認:`);
+        items.forEach((item, index) => {
+          console.log(`  [${index}] headerName="${item.headerName}", itemName="${item.itemName}"`);
+        });
+      });
+      
       // デバッグ情報を表示
-      const debugInfo = debugMappingFormats(configToSave);
+      debugMappingFormats(configToSave);
       setDebugData({
         oldFormat: configToSave,
         newFormat: newFormatData
@@ -295,26 +246,24 @@ export const useMappingConfig = (userDetails) => {
       // バッチ処理を使用して複数のドキュメントを原子的に更新
       const batch = writeBatch(db);
       
-      // 1. 従来形式でFirestoreに設定を保存 (下位互換性のため)
-      batch.set(doc(db, 'csvMapping', userDetails.companyId), {
-        csvMapping: configToSave,
-        updatedAt: new Date(),
-        updatedBy: userDetails.email || ''
-      });
-      
-      // 2. 新しい形式でもFirestoreに設定を保存
+      // csvMappings（カテゴリ配列形式）に保存
       batch.set(doc(db, 'csvMappings', userDetails.companyId), {
-        mappings: newFormatData.mappings,
-        employeeMapping: newFormatData.employeeMapping,
+        ...newFormatData,
+        // mainFieldsを確実に保存
+        mainFields: configToSave.mainFields || {},
         updatedAt: new Date(),
         updatedBy: userDetails.email || ''
       });
       
-      // 3. CSV設定にも従業員IDと部門コードカラムを保存
+      // CSV設定にも従業員IDと部門コードカラムを保存
+      const employeeIdColumn = configToSave.mainFields?.employeeCode?.headerName || '';
+      const departmentCodeColumn = configToSave.mainFields?.departmentCode?.headerName || '';
+      
       batch.set(doc(db, 'csvSettings', userDetails.companyId), {
-        employeeIdColumn: newFormatData.employeeMapping.employeeIdColumn,
-        departmentCodeColumn: newFormatData.employeeMapping.departmentCodeColumn,
-        parsedHeaders: configToSave.parsedHeaders || [],
+        employeeIdColumn: employeeIdColumn,
+        departmentCodeColumn: departmentCodeColumn,
+        // ⚠️ parsedHeadersの保存を停止（ヘッダー固定化を防ぐ）
+        // parsedHeaders: configToSave.parsedHeaders || [],
         headerInput: configToSave.headerInput || '',
         rowBasedInput: configToSave.rowBasedInput || '',
         // 項目情報も保存して復元時に使用
@@ -425,18 +374,112 @@ export const useMappingConfig = (userDetails) => {
     }
   };
 
+  /**
+   * マッピング設定をリセットする
+   * @param {string} type - リセットタイプ: 'all', 'mapping', 'firestore'
+   */
+  const resetMappingConfig = async (type = 'mapping') => {
+    try {
+      setSaving(true);
+      setError('');
+      setSuccess('');
+      
+      if (type === 'mapping') {
+        // マッピング設定のみをリセット（ヘッダー情報は保持）
+        setMappingConfig(prev => ({
+          ...initialMappingConfig,
+          headerInput: prev.headerInput,
+          rowBasedInput: prev.rowBasedInput,
+          parsedHeaders: prev.parsedHeaders
+        }));
+        setSuccess('マッピング設定をリセットしました');
+        
+      } else if (type === 'all') {
+        // 全ての設定をリセット
+        setMappingConfig(initialMappingConfig);
+        setSuccess('全ての設定をリセットしました');
+        
+      } else if (type === 'firestore') {
+        // Firestoreからも削除
+        if (!userDetails?.companyId) {
+          setError('会社情報が取得できません');
+          return false;
+        }
+        
+        const batch = writeBatch(db);
+        
+        // 新しい形式の設定を削除
+        const newMappingRef = doc(db, 'csvMappings', userDetails.companyId);
+        batch.delete(newMappingRef);
+        
+        // CSV設定も削除
+        const csvSettingsRef = doc(db, 'csvSettings', userDetails.companyId);
+        batch.delete(csvSettingsRef);
+        
+        // csvMappings統一により、この処理は不要
+        
+        await batch.commit();
+        
+        // ローカル設定もリセット
+        setMappingConfig(initialMappingConfig);
+        setSuccess('Firestoreからマッピング設定を完全に削除しました');
+      }
+      
+      return true;
+      
+    } catch (err) {
+      console.error('マッピング設定のリセットエラー:', err);
+      setError(`設定のリセット中にエラーが発生しました: ${err.message}`);
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /**
+   * 特定カテゴリのマッピングをリセットする
+   * @param {string} category - カテゴリ名: 'incomeItems', 'deductionItems', 'attendanceItems', 'itemCodeItems'
+   */
+  const resetCategoryMapping = (category) => {
+    try {
+      setMappingConfig(prev => ({
+        ...prev,
+        [category]: []
+      }));
+      
+      const categoryNames = {
+        incomeItems: '支給項目',
+        deductionItems: '控除項目', 
+        attendanceItems: '勤怠項目',
+        totalItems: '合計項目',
+        itemCodeItems: '項目コード'
+      };
+      
+      setSuccess(`${categoryNames[category] || category}のマッピングをリセットしました`);
+      return true;
+      
+    } catch (err) {
+      console.error('カテゴリリセットエラー:', err);
+      setError(`${category}のリセット中にエラーが発生しました`);
+      return false;
+    }
+  };
+
   return {
     mappingConfig,
     setMappingConfig,
     loading,
     saving,
+    setSaving,  // 追加
     error,
     setError,
     success,
     setSuccess,
     saveMappingConfig,
     importFromJson,
-    debugData
+    debugData,
+    resetMappingConfig,
+    resetCategoryMapping
   };
 };
 

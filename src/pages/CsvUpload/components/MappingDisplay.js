@@ -5,7 +5,7 @@ import React from 'react';
 /**
  * マッピング情報表示コンポーネント
  */
-const MappingDisplay = ({ payrollItems, refreshSettings, onCategoryChange }) => {
+const MappingDisplay = ({ payrollItems, refreshSettings, onCategoryChange, onSaveMapping, isSaving = false }) => {
   if (!payrollItems || payrollItems.length === 0) return null;
   
   // マッピングが設定されている項目数を計算
@@ -122,7 +122,7 @@ const MappingDisplay = ({ payrollItems, refreshSettings, onCategoryChange }) => 
       ))}
       
       <div className="mt-6 pt-4 border-t border-gray-200">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center mb-4">
           <p className="text-sm text-gray-600">
             項目のカテゴリを変更したい場合は、各項目の「○○へ」ボタンをクリックしてください。
           </p>
@@ -130,6 +130,29 @@ const MappingDisplay = ({ payrollItems, refreshSettings, onCategoryChange }) => 
             CSVマッピング設定画面で詳細設定
           </a>
         </div>
+        
+        {/* 保存ボタン */}
+        {onSaveMapping && (
+          <div className="flex justify-center">
+            <button
+              onClick={onSaveMapping}
+              disabled={isSaving}
+              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            >
+              {isSaving ? (
+                <span className="flex items-center">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  保存中...
+                </span>
+              ) : (
+                'マッピング設定を保存'
+              )}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

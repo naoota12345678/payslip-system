@@ -1,41 +1,10 @@
 // src/components/payslip/PayslipPreview.js
 import React from 'react';
 
-// 給与明細プレビューコンポーネント
-const PayslipPreview = ({ payslipData, showDetailedInfo = true }) => {
-  // データがない場合
-  if (!payslipData) {
-    return (
-      <div className="bg-gray-50 rounded-lg p-4 text-center">
-        <p className="text-gray-500">給与明細データがありません</p>
-      </div>
-    );
-  }
+function PayslipPreview({ payslipData, showDetailedInfo = false }) {
+  // PayslipDetailで既に分類済みの項目を使用
 
-  // 日付フォーマット関数
-  const formatDate = (date) => {
-    if (!date) return 'N/A';
-    
-    // Firestoreのタイムスタンプか確認
-    let dateObj;
-    if (date.toDate && typeof date.toDate === 'function') {
-      dateObj = date.toDate();
-    } else if (date instanceof Date) {
-      dateObj = date;
-    } else {
-      try {
-        dateObj = new Date(date);
-      } catch {
-        return 'N/A';
-      }
-    }
-    
-    return dateObj.toLocaleDateString('ja-JP', { 
-      year: 'numeric', 
-      month: '2-digit', 
-      day: '2-digit' 
-    });
-  };
+
 
   // 金額フォーマット関数
   const formatCurrency = (amount) => {
@@ -47,149 +16,218 @@ const PayslipPreview = ({ payslipData, showDetailedInfo = true }) => {
     }).format(amount);
   };
 
-  // 項目を種類ごとに分類
-  const incomeItems = [];
-  const deductionItems = [];
-  const otherItems = [];
-  
-  if (payslipData.items) {
-    Object.entries(payslipData.items).forEach(([id, item]) => {
-      if (item.type === 'income') {
-        incomeItems.push({ id, ...item });
-      } else if (item.type === 'deduction') {
-        deductionItems.push({ id, ...item });
-      } else {
-        otherItems.push({ id, ...item });
-      }
-    });
-  }
-  
-  // 各項目を名前順でソート
-  incomeItems.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-  deductionItems.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-  otherItems.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+  // 日付フォーマット関数
+  const formatDate = (date) => {
+    if (!date) return 'N/A';
+    if (date.toDate) return date.toDate().toLocaleDateString('ja-JP');
+    return new Date(date).toLocaleDateString('ja-JP');
+  };
+
+  // セクションタイトルのスタイル
+  const getSectionStyle = (sectionType) => {
+    const baseStyle = "text-white text-center py-2 font-medium";
+    switch (sectionType) {
+      case 'attendance':
+        return `${baseStyle} bg-green-500`;
+      case 'income':
+        return `${baseStyle} bg-blue-500`;
+      case 'deduction':
+        return `${baseStyle} bg-yellow-500`;
+      case 'total':
+        return `${baseStyle} bg-red-500`;
+      default:
+        return `${baseStyle} bg-gray-500`;
+    }
+  };
+
+  // セクション名の取得
+  const getSectionTitle = (sectionType) => {
+    switch (sectionType) {
+      case 'attendance': return '勤怠';
+      case 'income': return '支給';
+      case 'deduction': return '控除';
+      case 'total': return '合計';
+      default: return '';
+    }
+  };
+
+
 
   return (
-    <div className="bg-white border border-gray-300 rounded-lg shadow-sm overflow-hidden">
+    <div className="bg-white border rounded-lg overflow-hidden" style={{ minHeight: '600px' }}>
       {/* ヘッダー部分 */}
-      <div className="bg-blue-50 p-4 border-b border-gray-300">
-        <h2 className="text-xl font-semibold text-center mb-2">給与明細</h2>
-        <p className="text-center text-gray-600">
-          支払日: {formatDate(payslipData.paymentDate)}
-        </p>
+      <div className="text-center bg-gray-100 p-4">
+        <h1 className="text-lg font-bold text-gray-800">給与明細</h1>
       </div>
-      
+
       {/* 基本情報 */}
-      {showDetailedInfo && (
-        <div className="p-4 border-b border-gray-200 bg-gray-50">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-gray-600">従業員ID:</p>
-              <p className="font-medium">{payslipData.employeeId || '-'}</p>
-            </div>
-            {payslipData.departmentCode && (
-              <div>
-                <p className="text-sm text-gray-600">部門:</p>
-                <p className="font-medium">{payslipData.departmentCode}</p>
+      <div className="p-4 border-b">
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <span className="text-gray-600">対象年月:</span>
+            <span className="ml-2 font-medium">
+              {payslipData?.paymentDate ? 
+                new Date(payslipData.paymentDate).toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit' }) :
+                'N/A'
+              }
+            </span>
+          </div>
+          <div className="text-right">
+            <span className="text-gray-600">会社名:</span>
+                            <span className="ml-2 font-medium">{payslipData.companyName || 'N/A'}</span>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4 text-sm mt-2">
+          <div>
+            <span className="text-gray-600">社員名:</span>
+            <span className="ml-2 font-medium">{payslipData?.employeeName || 'N/A'}</span>
+          </div>
+          <div className="text-right">
+            <span className="text-gray-600">部署名:</span>
+                            <span className="ml-2 font-medium">{payslipData?.departmentName || 'N/A'}</span>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4 text-sm mt-2">
+          <div>
+            <span className="text-gray-600">社員コード:</span>
+            <span className="ml-2 font-medium">{payslipData?.employeeId || 'N/A'}</span>
+          </div>
+          <div className="text-right">
+            <span className="text-gray-600">従業員番号:</span>
+            <span className="ml-2 font-medium">{payslipData?.employeeId || 'N/A'}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 4セクション表示 */}
+      <div className="grid grid-cols-4 gap-0 border-b">
+        {/* 勤怠セクション */}
+        <div className="border-r">
+          <div className={getSectionStyle('attendance')}>
+            勤怠
+          </div>
+          <div className="p-2">
+            {payslipData.attendanceItems && payslipData.attendanceItems.length > 0 ? (
+              payslipData.attendanceItems.map((item, index) => (
+                <div key={index} className="flex justify-between text-xs py-1 border-b border-gray-100 last:border-b-0">
+                  <span>{item.name}</span>
+                  <span>{item.value}</span>
+                </div>
+              ))
+            ) : (
+              <div className="text-xs text-gray-500 text-center py-2">
+                データなし
               </div>
             )}
           </div>
         </div>
-      )}
-      
-      {/* 給与サマリー */}
-      <div className="p-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold mb-2">給与サマリー</h3>
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-blue-50 p-3 rounded">
-            <p className="text-sm text-gray-600">支給合計</p>
-            <p className="text-lg font-semibold text-blue-700">
-              {formatCurrency(payslipData.totalIncome)}
-            </p>
+
+        {/* 支給セクション */}
+        <div className="border-r">
+          <div className={getSectionStyle('income')}>
+            支給
           </div>
-          <div className="bg-red-50 p-3 rounded">
-            <p className="text-sm text-gray-600">控除合計</p>
-            <p className="text-lg font-semibold text-red-700">
-              {formatCurrency(payslipData.totalDeduction)}
-            </p>
+          <div className="p-2">
+            {payslipData.incomeItems && payslipData.incomeItems.length > 0 ? (
+              payslipData.incomeItems.map((item, index) => (
+                <div key={index} className="flex justify-between text-xs py-1 border-b border-gray-100 last:border-b-0">
+                  <span>{item.name}</span>
+                  <span className="text-right">{formatCurrency(item.value)}</span>
+                </div>
+              ))
+            ) : (
+              <div className="text-xs text-gray-500 text-center py-2">
+                データなし
+              </div>
+            )}
           </div>
-          <div className="bg-green-50 p-3 rounded">
-            <p className="text-sm text-gray-600">差引支給額</p>
-            <p className="text-lg font-semibold text-green-700">
-              {formatCurrency(payslipData.netAmount)}
-            </p>
+        </div>
+
+        {/* 控除セクション */}
+        <div className="border-r">
+          <div className={getSectionStyle('deduction')}>
+            控除
+          </div>
+          <div className="p-2">
+            {payslipData.deductionItems && payslipData.deductionItems.length > 0 ? (
+              payslipData.deductionItems.map((item, index) => (
+                <div key={index} className="flex justify-between text-xs py-1 border-b border-gray-100 last:border-b-0">
+                  <span>{item.name}</span>
+                  <span className="text-right">{formatCurrency(item.value)}</span>
+                </div>
+              ))
+            ) : (
+              <div className="text-xs text-gray-500 text-center py-2">
+                データなし
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 合計セクション */}
+        <div>
+          <div className={getSectionStyle('total')}>
+            合計
+          </div>
+          <div className="p-2">
+            {/* アップロードされたデータをそのまま表示 */}
+            {payslipData.totalIncome !== undefined && (
+              <div className="flex justify-between text-xs py-1 border-b border-gray-100">
+                <span>支給額合計</span>
+                <span className="text-right">{formatCurrency(payslipData.totalIncome)}</span>
+              </div>
+            )}
+            {payslipData.totalDeduction !== undefined && (
+              <div className="flex justify-between text-xs py-1 border-b border-gray-100">
+                <span>控除額合計</span>
+                <span className="text-right">{formatCurrency(payslipData.totalDeduction)}</span>
+              </div>
+            )}
+            {payslipData.netAmount !== undefined && (
+              <div className="flex justify-between text-xs py-1 border-b border-gray-100">
+                <span>差引支給額</span>
+                <span className="text-right font-bold text-red-600">{formatCurrency(payslipData.netAmount)}</span>
+              </div>
+            )}
+            {/* その他項目も表示 */}
+            {payslipData.otherItems && payslipData.otherItems.length > 0 && payslipData.otherItems.map((item, index) => (
+              <div key={index} className="flex justify-between text-xs py-1 border-b border-gray-100 last:border-b-0">
+                <span>{item.name}</span>
+                <span className="text-right">{formatCurrency(item.value)}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
-      
-      {/* 項目詳細 */}
-      <div className="p-4">
-        {/* 支給項目 */}
-        {incomeItems.length > 0 && (
-          <div className="mb-4">
-            <h4 className="text-md font-semibold mb-2 pb-1 border-b border-gray-200">支給項目</h4>
-            <div className="space-y-1">
-              {incomeItems.map(item => (
-                <div key={item.id} className="flex justify-between items-center">
-                  <span className="text-gray-800">{item.name}</span>
-                  <span className="font-medium">
-                    {typeof item.value === 'number' 
-                      ? formatCurrency(item.value) 
-                      : item.value}
-                  </span>
-                </div>
-              ))}
+
+      {/* 詳細情報表示（オプション） */}
+      {showDetailedInfo && (
+        <div className="p-4 bg-gray-50 text-xs">
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <span className="text-gray-600">支給額合計:</span>
+              <span className="ml-2 font-medium">{formatCurrency(payslipData.totalIncome)}</span>
+            </div>
+            <div>
+              <span className="text-gray-600">控除額合計:</span>
+              <span className="ml-2 font-medium">{formatCurrency(payslipData.totalDeduction)}</span>
+            </div>
+            <div>
+              <span className="text-gray-600">差引支給額:</span>
+              <span className="ml-2 font-bold text-red-600">{formatCurrency(payslipData.netAmount)}</span>
             </div>
           </div>
-        )}
-        
-        {/* 控除項目 */}
-        {deductionItems.length > 0 && (
-          <div className="mb-4">
-            <h4 className="text-md font-semibold mb-2 pb-1 border-b border-gray-200">控除項目</h4>
-            <div className="space-y-1">
-              {deductionItems.map(item => (
-                <div key={item.id} className="flex justify-between items-center">
-                  <span className="text-gray-800">{item.name}</span>
-                  <span className="font-medium">
-                    {typeof item.value === 'number' 
-                      ? formatCurrency(item.value) 
-                      : item.value}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        
-        {/* その他項目 */}
-        {otherItems.length > 0 && (
-          <div className="mb-4">
-            <h4 className="text-md font-semibold mb-2 pb-1 border-b border-gray-200">その他項目</h4>
-            <div className="space-y-1">
-              {otherItems.map(item => (
-                <div key={item.id} className="flex justify-between items-center">
-                  <span className="text-gray-800">{item.name}</span>
-                  <span className="font-medium">
-                    {typeof item.value === 'number' 
-                      ? formatCurrency(item.value) 
-                      : item.value}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-      
+        </div>
+      )}
+
       {/* フッター */}
-      <div className="p-3 border-t border-gray-200 bg-gray-50 text-center">
-        <p className="text-xs text-gray-500">
-          発行日: {new Date().toLocaleDateString('ja-JP')}
-        </p>
+      <div className="text-center p-2 text-xs text-gray-500">
+        印刷プレビュー
       </div>
     </div>
   );
-};
+}
 
 export default PayslipPreview;

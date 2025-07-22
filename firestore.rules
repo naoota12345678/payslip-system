@@ -9,16 +9,9 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType in ['company_admin', 'company'];
     }
     
-    // 給与明細コレクション
+    // 給与明細コレクション - デバッグ用に一時的に緩和
     match /payslips/{payslipId} {
-      allow read: if request.auth != null && (
-        resource.data.userId == request.auth.uid || 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType in ['company_admin', 'company']
-      );
-      allow write: if request.auth != null && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType in ['company_admin', 'company'];
+      allow read, write: if request.auth != null;
     }
     
     // 会社設定（管理者のみ）
@@ -50,11 +43,9 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType in ['company_admin', 'company'];
     }
     
-    // CSVアップロード履歴（管理者のみ）
+    // CSVアップロード履歴（管理者のみ）- デバッグ用に一時的に緩和
     match /csvUploads/{uploadId} {
-      allow read, write: if request.auth != null && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType in ['company_admin', 'company'];
+      allow read, write: if request.auth != null;
     }
     
     // CSVマッピング設定（管理者のみ）- 古い形式

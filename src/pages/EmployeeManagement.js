@@ -104,7 +104,7 @@ function EmployeeManagement() {
       
       <div className="flex justify-end mb-6">
         <Link 
-          to="/admin/register-employee" 
+          to="/admin/employees/new" 
           className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
         >
           新規従業員登録
@@ -168,11 +168,15 @@ function EmployeeManagement() {
               </tr>
             ) : (
               employees.map(employee => (
-                <tr key={employee.id}>
+                <tr 
+                  key={employee.id} 
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => window.location.href = `/admin/employees/${employee.id}`}
+                >
                   <td className="px-6 py-4 whitespace-nowrap">
                     {employee.employeeId || '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
                     {employee.name || '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -184,7 +188,22 @@ function EmployeeManagement() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     {employee.position || '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <td 
+                    className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Link
+                      to={`/admin/employees/${employee.id}`}
+                      className="text-blue-600 hover:text-blue-800 mr-3"
+                    >
+                      詳細
+                    </Link>
+                    <Link
+                      to={`/admin/employees/${employee.id}/edit`}
+                      className="text-green-600 hover:text-green-800 mr-3"
+                    >
+                      編集
+                    </Link>
                     <button
                       onClick={() => deleteEmployee(employee.id)}
                       className="text-red-600 hover:text-red-800"

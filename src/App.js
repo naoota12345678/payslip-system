@@ -28,10 +28,13 @@ import UserForm from './pages/UserForm';
 
 // 従業員管理関連
 import EmployeeManagement from './pages/EmployeeManagement';
+import EmployeeDetail from './pages/EmployeeDetail';
+import EmployeeForm from './pages/EmployeeForm';
 import EmployeeRegister from './pages/EmployeeRegister';
 
 // 給与管理関連
 import CsvUpload from './pages/CsvUpload';
+import SimpleCSVUpload from './pages/SimpleCSVUpload';
 import CsvMapping from './pages/CsvMapping';
 import PayrollItemSettings from './pages/PayrollItemSettings';
 
@@ -39,6 +42,12 @@ import PayrollItemSettings from './pages/PayrollItemSettings';
 import PayslipList from './pages/PayslipList';
 import PayslipDetail from './pages/PayslipDetail';
 import PayslipPrint from './pages/PayslipPrint';
+
+// 賞与明細関連
+import BonusPayslipList from './pages/BonusPayslipList';
+import BonusPayslipDetail from './pages/BonusPayslipDetail';
+import BonusPayslipPrint from './pages/BonusPayslipPrint';
+import BonusCSVUpload from './pages/BonusCSVUpload';
 
 // システム設定関連
 import CompanySettings from './pages/CompanySettings';
@@ -88,10 +97,16 @@ function App() {
               
               {/* 従業員管理 */}
               <Route path="employees" element={<EmployeeManagement />} />
+              <Route path="employees/new" element={<EmployeeForm />} />
+              <Route path="employees/:employeeId" element={<EmployeeDetail />} />
+              <Route path="employees/:employeeId/edit" element={<EmployeeForm />} />
               <Route path="register-employee" element={<EmployeeRegister />} />
               
+              {/* 部門管理 */}
+              <Route path="departments" element={<DepartmentSettings />} />
+              
               {/* 給与データ管理 */}
-              <Route path="upload" element={<CsvUpload />} />
+              <Route path="upload" element={<SimpleCSVUpload />} />
               <Route path="settings/csv-mapping" element={<CsvMapping />} />
               <Route path="settings/payroll-items" element={<PayrollItemSettings />} />
               
@@ -99,6 +114,12 @@ function App() {
               <Route path="payslips" element={<PayslipList />} />
               <Route path="payslips/:payslipId" element={<PayslipDetail />} />
               <Route path="payslips/:payslipId/print" element={<PayslipPrint />} />
+              
+              {/* 賞与明細管理 */}
+              <Route path="bonus-upload" element={<BonusCSVUpload />} />
+              <Route path="bonus-payslips" element={<BonusPayslipList />} />
+              <Route path="bonus-payslips/:payslipId" element={<BonusPayslipDetail />} />
+              <Route path="bonus-payslips/:payslipId/print" element={<BonusPayslipPrint />} />
               
               {/* システム設定 */}
               <Route path="settings" element={<CompanySettings />} />
@@ -116,6 +137,11 @@ function App() {
               <Route path="payslips" element={<PayslipList />} />
               <Route path="payslips/:payslipId" element={<PayslipDetail />} />
               <Route path="payslips/:payslipId/print" element={<PayslipPrint />} />
+              
+              {/* 賞与明細閲覧 */}
+              <Route path="bonus-payslips" element={<BonusPayslipList />} />
+              <Route path="bonus-payslips/:payslipId" element={<BonusPayslipDetail />} />
+              <Route path="bonus-payslips/:payslipId/print" element={<BonusPayslipPrint />} />
             </Route>
           </Route>
           

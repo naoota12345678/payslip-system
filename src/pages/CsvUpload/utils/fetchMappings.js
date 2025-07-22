@@ -57,23 +57,21 @@ const generatePayrollItemsFromMapping = (mappingData, debugMode = false) => {
       });
     }
     
-    // 項目コード項目を追加
-    if (mappingData.itemCodeItems && Array.isArray(mappingData.itemCodeItems)) {
-      mappingData.itemCodeItems.forEach((item, index) => {
+    // 合計項目を追加
+    if (mappingData.totalItems && Array.isArray(mappingData.totalItems)) {
+      mappingData.totalItems.forEach((item, index) => {
         if (item.headerName && item.itemName) {
-          // 項目コードのタイプを推定（または設定から取得）
-          const itemType = item.type || 'income'; // デフォルトは支給項目
           items.push({
-            id: item.id || `itemcode_${index}`,
+            id: item.id || `total_${index}`,
             name: item.itemName,
-            type: itemType,
+            type: 'total',
             csvColumn: item.headerName,
             isVisible: item.isVisible !== false
           });
         }
       });
     }
-    
+
     if (debugMode) {
       console.log('[Debug] CSVマッピングから生成された給与項目:', items);
     }
@@ -102,70 +100,70 @@ export const fetchCompanyMappings = async (db, companyId, items = [], debugMode 
       console.log('[Debug] CSVマッピング設定から給与項目を取得開始');
     }
 
-    // 新しい形式のマッピングを確認 (csvMapping)
-    const mappingDoc = await getDoc(doc(db, "csvMapping", companyId));
-    if (mappingDoc.exists() && mappingDoc.data().csvMapping) {
-      const mappingData = mappingDoc.data().csvMapping;
+    // csvMappings コレクションから直接データを取得（推奨形式）
+    const mappingDoc = await getDoc(doc(db, "csvMappings", companyId));
+    if (mappingDoc.exists()) {
+      const mappingData = mappingDoc.data();
       
-      if (debugMode) {
-        console.log('[Debug] CSVマッピング設定を発見:', mappingData);
-      }
+      console.log('[強制Debug] csvMappingsから設定を発見:', mappingData);
+      console.log('[強制Debug] データ構造確認:', {
+        hasIncomeItems: !!(mappingData.incomeItems && Array.isArray(mappingData.incomeItems)),
+        incomeItemsLength: mappingData.incomeItems ? mappingData.incomeItems.length : 0,
+        hasDeductionItems: !!(mappingData.deductionItems && Array.isArray(mappingData.deductionItems)),
+        deductionItemsLength: mappingData.deductionItems ? mappingData.deductionItems.length : 0,
+        hasAttendanceItems: !!(mappingData.attendanceItems && Array.isArray(mappingData.attendanceItems)),
+        attendanceItemsLength: mappingData.attendanceItems ? mappingData.attendanceItems.length : 0
+      });
       
-      // CSVマッピング設定から給与項目を生成
-      generatedItems = generatePayrollItemsFromMapping(mappingData, debugMode);
+      // Firestoreの既存データ構造を直接使用（簡素化）
+      const categories = ['incomeItems', 'deductionItems', 'attendanceItems', 'totalItems'];
+      
+      categories.forEach(category => {
+        if (mappingData[category] && Array.isArray(mappingData[category])) {
+          console.log(`[強制Debug] ${category}を処理中:`, mappingData[category]);
+          mappingData[category].forEach((item, index) => {
+            console.log(`[強制Debug] ${category}[${index}]:`, item);
+            if (item.headerName && item.itemName && item.isVisible !== false) {
+              const categoryType = category.replace('Items', ''); // incomeItems -> income
+              const newItem = {
+                id: item.id || `${categoryType}_${index}`,
+                name: item.itemName,
+                type: categoryType === 'income' ? 'income' : 
+                      categoryType === 'deduction' ? 'deduction' : 
+                      categoryType === 'attendance' ? 'attendance' : 'total',
+                csvColumn: item.headerName,
+                isVisible: true
+              };
+              console.log(`[強制Debug] 生成された項目:`, newItem);
+              generatedItems.push(newItem);
+            } else {
+              console.log(`[強制Debug] スキップされた項目 (条件不一致):`, {
+                hasHeaderName: !!item.headerName,
+                hasItemName: !!item.itemName,
+                isVisible: item.isVisible
+              });
+            }
+          });
+        } else {
+          console.log(`[強制Debug] ${category}が見つからないかArray型ではありません`);
+        }
+      });
+      
       mappingsFound = true;
       
     } else if (debugMode) {
-      console.log('[Debug] CSVマッピング設定が見つかりません');
-    }
-    
-    // 新しい形式のマッピングも確認 (csvMappings)
-    if (!mappingsFound) {
-      const newMappingDoc = await getDoc(doc(db, "csvMappings", companyId));
-      if (newMappingDoc.exists() && newMappingDoc.data().mappings) {
-        const mappings = newMappingDoc.data().mappings;
-        
-        if (debugMode) {
-          console.log('[Debug] 新形式のマッピング設定を発見:', mappings);
-        }
-        
-        // 新形式のマッピングから給与項目を生成
-        Object.entries(mappings).forEach(([itemId, headerName]) => {
-          // IDからタイプを推定
-          let itemType = 'income'; // デフォルト
-          let itemName = headerName; // デフォルトは同じ名前
-          
-          if (itemId.startsWith('income_')) {
-            itemType = 'income';
-          } else if (itemId.startsWith('deduction_')) {
-            itemType = 'deduction';
-          } else if (itemId.startsWith('attendance_')) {
-            itemType = 'attendance';
-          }
-          
-          generatedItems.push({
-            id: itemId,
-            name: itemName,
-            type: itemType,
-            csvColumn: headerName,
-            isVisible: true
-          });
-        });
-        
-        mappingsFound = true;
-      }
+      console.log('[Debug] csvMappings設定が見つかりません');
     }
     
     // マッピングの有無を確認
     const hasMappings = generatedItems.length > 0;
     
-    if (debugMode) {
-      console.log('[Debug] 生成された給与項目:', {
-        itemsCount: generatedItems.length,
-        hasMappings: hasMappings,
-        items: generatedItems.map(item => ({ id: item.id, name: item.name, type: item.type, csvColumn: item.csvColumn }))
-      });
-    }
+    console.log('[強制Debug] 最終結果:', {
+      itemsCount: generatedItems.length,
+      hasMappings: hasMappings,
+      mappingsFound: mappingsFound,
+      items: generatedItems.map(item => ({ id: item.id, name: item.name, type: item.type, csvColumn: item.csvColumn }))
+    });
     
     return {
       items: generatedItems,

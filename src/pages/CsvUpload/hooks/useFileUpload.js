@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { storage, db, functions } from '../../../firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { parseCSVHeaders } from '../utils/fileHelpers';
 import { buildColumnMappings, buildUploadInfo } from '../utils/csvProcessor';
@@ -222,20 +222,33 @@ const useFileUpload = (userDetails, currentUser) => {
               setUploadId(uploadRef.id); // アップロードIDを状態に保存
               setUploadProgress(PROGRESS_STAGES.DATA_PROCESSING);
               
-              // Cloud Functionsを呼び出してCSV処理
-              const processCSV = httpsCallable(functions, 'processCSV');
-              
-              // 送信パラメータを構築
-              const processData = {
-                uploadId: uploadRef.id,
-                fileUrl: downloadURL,
-                companyId: userDetails.companyId,
-                updateEmployeeInfo,
-                registerNewEmployees,
-                employeeIdColumn,
-                departmentCodeColumn,
-                columnMappings
-              };
+                          // CSVマッピング設定を取得
+            let mappingConfig = null;
+            try {
+              const mappingDoc = await getDoc(doc(db, 'csvMappings', userDetails.companyId));
+              if (mappingDoc.exists()) {
+                mappingConfig = mappingDoc.data();
+                console.log('[Debug] CSVマッピング設定を取得:', mappingConfig);
+              }
+            } catch (mappingError) {
+              console.warn('[Warning] CSVマッピング設定の取得に失敗:', mappingError);
+            }
+
+            // Cloud Functionsを呼び出してCSV処理
+            const processCSV = httpsCallable(functions, 'processCSV');
+            
+            // 送信パラメータを構築
+            const processData = {
+              uploadId: uploadRef.id,
+              fileUrl: downloadURL,
+              companyId: userDetails.companyId,
+              updateEmployeeInfo,
+              registerNewEmployees,
+              employeeIdColumn,
+              departmentCodeColumn,
+              columnMappings,
+              mappingConfig: mappingConfig // CSVマッピング設定を追加
+            };
               
               // 各パラメータを個別に検証（デバッグ用）
               console.log('[強制Debug] Cloud Functionに送信するデータ:', processData);

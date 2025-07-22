@@ -17,26 +17,38 @@ const HeaderInputPanel = ({
   handleHeadersParse,
   handleKyMapping,
   handleRowBasedMapping,
-  systemColumns
+  handleDirectSave,  // 新しく追加
+  saving            // 新しく追加
 }) => {
-  // 入力データがある場合は対応するモードを自動選択
-  useEffect(() => {
-    if (rowBasedInput && rowBasedInput.trim() !== '') {
-      setRowMappingMode(true);
-      setKyMappingMode(false);
-    } else if (kyItemInput && kyItemInput.trim() !== '') {
-      setKyMappingMode(true);
-      setRowMappingMode(false);
-    } else if (headerInput && headerInput.trim() !== '') {
-      setKyMappingMode(false);
-      setRowMappingMode(false);
-    }
-  }, [rowBasedInput, kyItemInput, headerInput, setKyMappingMode, setRowMappingMode]);
+  
+  try {
+    // 🔍 デバッグ：現在の状態をログ出力
+    console.log('=== HeaderInputPanel デバッグ ===');
+    console.log('kyMappingMode:', kyMappingMode);
+    console.log('rowMappingMode:', rowMappingMode);
+    console.log('シンプル保存ボタン表示条件:', !kyMappingMode && rowMappingMode);
+    console.log('handleDirectSave関数:', typeof handleDirectSave);
+    console.log('saving状態:', saving);
+    
+    // ⚠️ 自動実行を無効化：保存されたデータがあっても自動でマッピング処理は実行しない
+    // ユーザーが明示的にボタンを押した時のみ実行するため、この useEffect は削除
+    // 
+    // useEffect(() => {
+    //   if (rowBasedInput && rowBasedInput.trim() !== '') {
+    //     setRowMappingMode(true);
+    //     setKyMappingMode(false);
+    //   } else if (kyItemInput && kyItemInput.trim() !== '') {
+    //     setKyMappingMode(true);
+    //     setRowMappingMode(false);
+    //   } else if (headerInput && headerInput.trim() !== '') {
+    //     setKyMappingMode(false);
+    //     setRowMappingMode(false);
+    //   }
+    // }, [rowBasedInput, kyItemInput, headerInput, setKyMappingMode, setRowMappingMode]);
 
-  return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
-      <div className="p-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">CSVヘッダーの一括入力</h2>
+    return (
+      <div className="bg-white shadow rounded-lg p-6 mb-6">
+        <h2 className="text-xl font-semibold mb-4">CSVヘッダーの一括入力</h2>
         
         <div className="flex space-x-2 mb-4">
           <button
@@ -131,16 +143,12 @@ const HeaderInputPanel = ({
                         <th className="py-1 text-left">対応する列</th>
                       </tr>
                     </thead>
-                    <tbody>
-                      {systemColumns.slice(0, 10).map((col, idx) => (
-                        <tr key={idx}>
-                          <td className="py-1 pr-4">{`順番${idx + 1}`}</td>
-                          <td className="py-1">{col}</td>
+                                          <tbody>
+                        {/* サンプル項目の表示（汎用化） */}
+                        <tr>
+                          <td className="py-1 pr-4">例）</td>
+                          <td className="py-1">従業員コード, 氏名, 基本給, 残業手当 等</td>
                         </tr>
-                      ))}
-                      <tr>
-                        <td colSpan="2" className="py-1 text-center">…その他約{systemColumns.length - 10}項目</td>
-                      </tr>
                     </tbody>
                   </table>
                 </div>
@@ -172,56 +180,78 @@ const HeaderInputPanel = ({
               </label>
               <textarea
                 id="rowBasedInput"
-                rows="5"
+                rows="4"
                 value={rowBasedInput}
                 onChange={(e) => setRowBasedInput(e.target.value)}
                 className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                placeholder="例:
-識別コード※ 部門コード 部門名 従業員コード※ 従業員氏名 ...
-KY01 KY02 KY03 A01 A02 ..."
+                placeholder="健康保険 厚生年金 出勤日数 基本給&#10;KY22_0 KY22_1 KY11_0 KY21_0"
               ></textarea>
               <p className="mt-1 text-xs text-gray-500">
-                エクセルから、1行目（ヘッダー行）と2行目（項目コード行）を一緒にコピーして貼り付けてください。
-                同じ列にある項目同士が自動的にマッピングされます。
+                <strong>1行目：</strong>項目名（画面で表示される名前）<br/>
+                <strong>2行目：</strong>項目コード（システム内で使用される識別子）<br/>
+                <strong>🎯 新しいシンプルシステム：</strong>複雑な処理を排除して直接マッピング
               </p>
               
               <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
-                <h3 className="text-sm font-medium text-blue-700 mb-2">行ベースマッピングの使い方</h3>
-                <p className="text-xs text-blue-600">
-                  1. エクセルなどで、1行目がヘッダー行（識別コードなど）、2行目が項目コード（KY01、A01など）になっているデータを選択<br />
-                  2. 2行全体を選択してコピー<br />
-                  3. 上のテキストエリアに貼り付け<br />
-                  4. 「行ベースマッピングを実行」ボタンをクリック
-                </p>
-                <div className="mt-2 text-xs text-blue-700">
-                  マッピング例：<br />
-                  ヘッダー行：識別コード※ 部門コード 部門名<br />
-                  項目行　　：KY01 A02 ITEM03<br />
-                  ↓<br />
-                  「識別コード※」と「KY01」がマッピング<br />
-                  「部門コード」と「A02」がマッピング<br />
-                  「部門名」と「ITEM03」がマッピング<br />
-                  <br />
+                <h3 className="text-sm font-medium text-blue-700 mb-2">📋 行ベースマッピングの使い方</h3>
+                
+                <div className="text-xs text-blue-600 mb-3">
+                  <strong>🎯 新しいシンプルシステム：</strong><br/>
+                  1. エクセルで、1行目=項目名（健康保険、基本給など）、2行目=項目コード（KY22_0、KY21_0など）を準備<br/>
+                  2. 2行を選択してコピー<br/>
+                  3. 上のテキストエリアに貼り付け<br/>
+                  4. 「行ベースマッピングを実行」ボタンをクリック<br/>
+                  <strong>⚡ 複雑な処理を排除して直接マッピング作成</strong>
+                </div>
+                
+                <div className="mt-2 text-xs text-blue-700 bg-blue-100 p-2 rounded">
+                  <strong>✨ シンプルマッピング例：</strong><br/>
+                  🔸 健康保険 → KY22_0 (健康保険が項目名、KY22_0が項目コード)<br/>
+                  🔸 基本給 → KY21_0 (基本給が項目名、KY21_0が項目コード)<br/>
+                  🔸 出勤日数 → KY11_0 (出勤日数が項目名、KY11_0が項目コード)<br/>
+                  <strong>⚡ 複雑な処理なし！直接的にマッピング</strong>
+                </div>
+                
+                <div className="mt-2 text-xs text-blue-600">
                   <strong>対応する項目コード形式：</strong><br />
-                  KY01、A01、ITEM01、CODE01、NUM01 など
+                  KY01、A01、ITEM01、CODE01、NUM01、KY11_0、KY21_0、KY22_0 など
                 </div>
               </div>
             </div>
             
-            <div className="flex justify-end">
+            <div className="flex justify-end space-x-2">
               <button
                 type="button"
                 onClick={() => handleRowBasedMapping(rowBasedInput.split('\n').filter(row => row.trim().length > 0))}
-                className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
               >
                 行ベースマッピングを実行
+              </button>
+              <button
+                type="button"
+                onClick={handleDirectSave}
+                disabled={saving}
+                className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:bg-gray-400"
+              >
+                {saving ? '保存中...' : '🎯 シンプル保存'}
               </button>
             </div>
           </>
         )}
       </div>
-    </div>
-  );
+    );
+  } catch (error) {
+    console.error("HeaderInputPanel component error:", error);
+    return (
+      <div className="bg-red-100 border border-red-200 text-red-800 px-4 py-3 rounded relative mb-4" role="alert">
+        <strong className="font-bold">Error!</strong>
+        <span className="block sm:inline"> An error occurred while rendering the Header Input Panel.</span>
+        <span className="absolute top-0 bottom-0 right-0 px-4 py-3">
+          <svg className="fill-current h-6 w-6 text-red-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.03a1.2 1.2 0 0 1 1.697 1.697l-2.758 3.15 2.759 3.152z"/></svg>
+        </span>
+      </div>
+    );
+  }
 };
 
 export default HeaderInputPanel;

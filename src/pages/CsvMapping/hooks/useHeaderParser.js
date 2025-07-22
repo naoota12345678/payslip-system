@@ -3,7 +3,9 @@
 
 import { useState, useEffect } from 'react';
 import { parseHeaders, parseKyItems, parseRowBasedMapping } from '../utils/csvParser';
-import { autoMapRequiredFields, generateKyMapping, generateRowBasedMapping } from '../utils/mappingHelpers';
+// import { generateKyMapping, generateRowBasedMapping, createSimpleDirectMapping } from '../utils/mappingHelpers';
+// import { autoMapRequiredFields, generateKyMapping, generateRowBasedMapping, createSimpleDirectMapping } from '../utils/mappingHelpers';
+import { processSimpleTextInput } from '../utils/simpleMapping';
 import { TABS } from '../constants';
 
 /**
@@ -35,50 +37,23 @@ export const useHeaderParser = (
       console.log('=== useHeaderParser初期化処理 ===');
       console.log('初期マッピング設定から情報を復元します:', initialMapping);
       
-      let headersToRestore = [];
+      // ⚠️ ヘッダーの自動復元を完全停止
+      // ユーザーが行マッピングを実行した時のみヘッダーが設定される
+      console.log('⚠️ ヘッダーの自動復元を停止 - 手動実行時のみ設定');
       
-      // 1. 保存されたヘッダー情報が保存されている場合は復元
-      if (initialMapping.parsedHeaders && initialMapping.parsedHeaders.length > 0) {
-        console.log('保存されたヘッダー情報を復元:', initialMapping.parsedHeaders);
-        headersToRestore = initialMapping.parsedHeaders;
-      }
-      // 2. itemCodeItemsから復元（新しい形式）
-      else if (initialMapping.itemCodeItems && initialMapping.itemCodeItems.length > 0) {
-        console.log('itemCodeItemsからヘッダー情報を再構築:', initialMapping.itemCodeItems.length, '個');
-        headersToRestore = initialMapping.itemCodeItems
-          .map(item => item.headerName)
-          .filter(Boolean);
-        console.log('itemCodeItemsから復元されたヘッダー:', headersToRestore);
-      }
-      // 3. KY項目からヘッダーを再構築（旧形式）
-      else if (initialMapping.kyItems && initialMapping.kyItems.length > 0) {
-        console.log('KY項目からヘッダー情報を再構築:', initialMapping.kyItems.length, '個');
-        headersToRestore = initialMapping.kyItems
-          .map(item => item.headerName)
-          .filter(Boolean);
-        console.log('KY項目から復元されたヘッダー:', headersToRestore);
-      }
-      // 4. 他のカテゴリからの復元
-      else {
-        const allItems = [
-          ...(initialMapping.incomeItems || []),
-          ...(initialMapping.deductionItems || []),
-          ...(initialMapping.attendanceItems || [])
-        ];
-        if (allItems.length > 0) {
-          console.log('その他の項目からヘッダー情報を再構築:', allItems.length, '個');
-          headersToRestore = allItems
-            .map(item => item.headerName)
-            .filter(Boolean);
-          console.log('その他項目から復元されたヘッダー:', headersToRestore);
-        }
-      }
+      // let headersToRestore = [];
+      // if (initialMapping.parsedHeaders && initialMapping.parsedHeaders.length > 0) {
+      //   console.log('✅ 明示的に保存されたヘッダー情報を復元:', initialMapping.parsedHeaders);
+      //   headersToRestore = initialMapping.parsedHeaders;
+      // } else {
+      //   console.log('⚠️ 明示的に保存されたヘッダーが見つかりません - 自動復元はスキップ');
+      // }
       
-      // ヘッダーを設定
-      if (headersToRestore.length > 0) {
-        console.log('useHeaderParser: parsedHeadersを設定:', headersToRestore);
-        setParsedHeaders(headersToRestore);
-      }
+      // // ヘッダーを設定
+      // if (headersToRestore.length > 0) {
+      //   console.log('useHeaderParser: parsedHeadersを設定:', headersToRestore);
+      //   setParsedHeaders(headersToRestore);
+      // }
       
       // 行ベースマッピングの入力データがある場合は復元
       if (initialMapping.rowBasedInput) {
@@ -121,7 +96,9 @@ export const useHeaderParser = (
       
       // 必須項目の自動マッピングを試みる
       setMappingConfig(prev => {
-        const updated = autoMapRequiredFields(headers, prev);
+        // TODO: autoMapRequiredFields関数を実装する必要があります
+        // const updated = autoMapRequiredFields(headers, prev);
+        const updated = prev; // 一時的に変更なしで対応
         // ヘッダー情報も保存
         return {
           ...updated,
@@ -154,19 +131,21 @@ export const useHeaderParser = (
       
       console.log(`${kyItems.length}個のKY項目を検出しました:`, kyItems);
       
-      // マッピング設定を生成
-      const newMappingConfig = generateKyMapping(kyItems);
-      // 入力情報も保存
-      newMappingConfig.parsedHeaders = kyItems;
-      newMappingConfig.kyItemInput = kyItemInput;
-      
-      // 生成した設定を適用
-      setMappingConfig(newMappingConfig);
-      setParsedHeaders(kyItems); // KY項目をヘッダーとして設定
-      
-      setSuccess(`${kyItems.length}個のKY項目をマッピングしました。必要に応じて調整してください。`);
-      setKyMappingMode(false); // 入力パネルを閉じる
-      setActiveTab(TABS.KY); // KY項目タブを開く
+      // KY項目とマッピング設定を更新
+      // const newMappingConfig = generateKyMapping(kyItems);
+      // TODO: generateKyMapping関数を実装する必要があります
+      console.log('KY項目が解析されました:', kyItems);
+      setError('');
+      setSuccess(`✅ KY項目の解析完了！\n項目数: ${kyItems.length}`);
+
+      // マッピング設定を更新
+      setMappingConfig(prev => ({
+        ...prev,
+        // KY項目を一時的に保存
+        kyItems: kyItems,
+        parsedHeaders: parsedHeaders,
+        headerInput: headerInput
+      }));
       
     } catch (err) {
       console.error('KY項目マッピングエラー:', err);
@@ -174,64 +153,46 @@ export const useHeaderParser = (
     }
   };
 
-  // 行ベースのマッピング（ヘッダー行とKY項目行）
+  // 行ベースのマッピング（項目名行と項目コード行）- シンプル版
   const handleRowBasedMapping = (inputRows) => {
-    if (!inputRows || inputRows.length < 2) {
-      setError('少なくとも2行（ヘッダー行とデータ行）が必要です');
-      return;
-    }
-
+    console.log('🎯 新しいシンプル行マッピング開始');
+    console.log('入力データ:', inputRows);
+    
     try {
-      // データ形式のデバッグ
-      console.log('行ベースマッピング入力:', inputRows);
+      // 文字列として結合
+      const textInput = Array.isArray(inputRows) ? inputRows.join('\n') : inputRows;
+      console.log('結合されたテキスト:', textInput);
       
-      // 入力文字列をのまま保存（状態復元用）
-      const originalInput = Array.isArray(inputRows) ? inputRows.join('\n') : inputRows;
+      // シンプルマッピングで処理
+      const newMappingConfig = processSimpleTextInput(textInput);
       
-      // 行を解析
-      const { headers, kyItems } = parseRowBasedMapping(inputRows);
-
-      if (headers.length === 0 || kyItems.length === 0) {
-        setError('有効なヘッダーまたはKY項目が見つかりませんでした');
-        return;
-      }
-
-      console.log('解析されたヘッダー:', headers);
-      console.log('解析されたKY項目:', kyItems);
+      // 項目コードをヘッダーとして設定
+      const allItemCodes = newMappingConfig.itemCodeItems.map(item => item.headerName);
+      console.log('設定する項目コード:', allItemCodes);
       
-      // マッピング設定を生成
-      const newMappingConfig = generateRowBasedMapping(headers, kyItems);
-      // ヘッダー情報と元の入力も保存
-      newMappingConfig.parsedHeaders = headers;
-      newMappingConfig.rowBasedInput = originalInput;
+      // 成功メッセージ
+      const stats = {
+        total: newMappingConfig.itemCodeItems.length,
+        income: newMappingConfig.incomeItems.length,
+        deduction: newMappingConfig.deductionItems.length,
+        attendance: newMappingConfig.attendanceItems.length,
+        summary: newMappingConfig.summaryItems.length
+      };
       
-      // 項目コードアイテムが存在する場合のみ、KY項目としても設定
-      if (newMappingConfig.itemCodeItems && newMappingConfig.itemCodeItems.length > 0) {
-        newMappingConfig.kyItems = newMappingConfig.itemCodeItems.map((item, index) => ({
-          ...item,
-          // KY項目のマッピング情報を確実に保存
-          matchedHeader: headers[index] || '',
-          index
-        }));
-      } else {
-        newMappingConfig.kyItems = [];
-      }
-      
-      // デバッグログ
-      console.log('生成されたマッピング設定:', newMappingConfig);
-      
-      // 生成した設定を適用
+      // 設定を適用
       setMappingConfig(newMappingConfig);
-      setParsedHeaders(headers); // ヘッダーを設定
-
-      setSuccess(`${headers.length}個のヘッダーと${kyItems.length}個のKY項目を列単位でマッピングしました。必要に応じて調整してください。`);
-      setRowBasedInput(originalInput); // 元の入力を保存（状態復元用）
-      setRowMappingMode(false); // 入力パネルを閉じる
-      setActiveTab(TABS.KY); // KY項目タブを開く
-
+      setParsedHeaders(allItemCodes);
+      setRowMappingMode(false);
+      
+      const successMessage = `✅ シンプルマッピング完了！\n合計: ${stats.total}項目\n支給: ${stats.income}、控除: ${stats.deduction}、勤怠: ${stats.attendance}、合計: ${stats.summary}`;
+      setSuccess(successMessage);
+      setActiveTab(TABS.KY);
+      
+      console.log('🎉 シンプルマッピング成功');
+      
     } catch (err) {
-      console.error('行ベースマッピングエラー:', err);
-      setError('行ベースマッピングの処理に失敗しました。ヘッダー行とデータ行が正しく入力されているか確認してください。');
+      console.error('❌ シンプルマッピングエラー:', err);
+      setError(`マッピングに失敗しました: ${err.message}`);
     }
   };
 

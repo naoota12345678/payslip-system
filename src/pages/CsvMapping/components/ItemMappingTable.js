@@ -101,8 +101,15 @@ const ItemMappingTable = ({
                     type="text"
                     value={item.itemName || ''}
                     onChange={(e) => onUpdateItemName(category, index, e.target.value)}
+                    placeholder={`${item.headerName}の表示名を入力`}
                     className="block w-full py-1 px-2 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
+                    title="この項目の画面上での表示名を入力してください（例：出勤日数、基本給、社会保険料など）"
                   />
+                  {(!item.itemName || item.itemName.trim() === '') && (
+                    <p className="text-xs text-red-500 mt-1">
+                      ⚠️ 表示名を入力してください
+                    </p>
+                  )}
                 </td>
                 <td className="px-6 py-2 whitespace-nowrap text-sm">
                   <input

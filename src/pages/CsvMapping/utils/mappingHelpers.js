@@ -6,347 +6,105 @@ import {
   incomeKeywords, 
   deductionKeywords, 
   attendanceKeywords,
-  systemColumns
+  CATEGORY_NAMES
 } from '../constants';
 
-/**
- * CSVヘッダーから必須項目の自動マッピングを生成
- * @param {Array} headers - CSVヘッダー配列
- * @param {Object} currentMapping - 現在のマッピング設定
- * @returns {Object} 更新されたマッピング設定
- */
-export const autoMapRequiredFields = (headers, currentMapping) => {
-  const newMapping = { ...currentMapping };
-  
-  // 主要フィールドの自動マッピング
-  for (const [field, possibleNames] of Object.entries(mainFieldKeys)) {
-    for (const name of possibleNames) {
-      const index = headers.findIndex(h => h.includes(name));
-      if (index !== -1) {
-        newMapping.mainFields[field] = {
-          columnIndex: index,
-          headerName: headers[index]
-        };
-        break;
-      }
-    }
-  }
-  
-  // 所得項目、控除項目、勤怠項目、項目コードの自動検出
-  const existingIncomeItems = new Set(newMapping.incomeItems.map(item => item.headerName));
-  const existingDeductionItems = new Set(newMapping.deductionItems.map(item => item.headerName));
-  const existingAttendanceItems = new Set(newMapping.attendanceItems.map(item => item.headerName));
-  const existingItemCodeItems = new Set(newMapping.itemCodeItems ? newMapping.itemCodeItems.map(item => item.headerName) : []);
 
-  // 項目コードを自動検出（KY項目以外も含む）
-  const itemCodePattern = /^[A-Z]{1,5}[0-9]{1,3}(_[0-9]+)?$/; // KY01, A01, ITEM01, CODE01, KY11_0などのパターン
-  
-  for (const header of headers) {
-    if (existingItemCodeItems.has(header)) continue;
-    
-          // 項目コードの自動検出
-      if (itemCodePattern.test(header)) {
-        const itemId = generateDeterministicId('itemCode', header, headers.indexOf(header));
-        newMapping.itemCodeItems = newMapping.itemCodeItems || [];
-        newMapping.itemCodeItems.push({
-          columnIndex: headers.indexOf(header),
-          headerName: header,
-          itemName: '', // 項目コードの場合は空文字列でユーザーが手動で入力
-          isVisible: true,
-          id: itemId
-        });
-        continue;
-      }
-    
-    // 従来の項目分類
-    if (incomeKeywords.some(keyword => header.includes(keyword))) {
-      if (!existingIncomeItems.has(header)) {
-        const itemId = generateDeterministicId('income', header, headers.indexOf(header));
-        // 項目コードの場合は空文字列、そうでなければheaderNameを設定
-        const isItemCode = /^[A-Z]{1,5}[0-9]{1,3}(_[0-9]+)?$/.test(header);
-        newMapping.incomeItems.push({
-          columnIndex: headers.indexOf(header),
-          headerName: header,
-          itemName: isItemCode ? '' : header,
-          isVisible: true,
-          id: itemId
-        });
-      }
-    }
-    else if (deductionKeywords.some(keyword => header.includes(keyword))) {
-      if (!existingDeductionItems.has(header)) {
-        const itemId = generateDeterministicId('deduction', header, headers.indexOf(header));
-        // 項目コードの場合は空文字列、そうでなければheaderNameを設定
-        const isItemCode = /^[A-Z]{1,5}[0-9]{1,3}(_[0-9]+)?$/.test(header);
-        newMapping.deductionItems.push({
-          columnIndex: headers.indexOf(header),
-          headerName: header,
-          itemName: isItemCode ? '' : header,
-          isVisible: true,
-          id: itemId
-        });
-      }
-    }
-    else if (attendanceKeywords.some(keyword => header.includes(keyword))) {
-      if (!existingAttendanceItems.has(header)) {
-        const itemId = generateDeterministicId('attendance', header, headers.indexOf(header));
-        // 項目コードの場合は空文字列、そうでなければheaderNameを設定
-        const isItemCode = /^[A-Z]{1,5}[0-9]{1,3}(_[0-9]+)?$/.test(header);
-        newMapping.attendanceItems.push({
-          columnIndex: headers.indexOf(header),
-          headerName: header,
-          itemName: isItemCode ? '' : header,
-          isVisible: true,
-          id: itemId
-        });
-      }
-    }
-  }
-  
-  return newMapping;
-};
 
 /**
- * KY項目と給与システム列のマッピングを生成
- * @param {Array} kyItems - KY項目の配列
- * @returns {Object} 生成されたマッピング設定
+ * 2行入力から直接マッピングを作成（シンプル版）
+ * @param {string} line1 - 1行目：項目名（例：健康保険 厚生年金）
+ * @param {string} line2 - 2行目：項目コード（例：KY22_0 KY22_1）
+ * @returns {Object} 完成したマッピング設定
  */
-export const generateKyMapping = (kyItems) => {
-  // マッピング設定を生成
-  const mappings = [];
-  const minLength = Math.min(kyItems.length, systemColumns.length);
+export const createDirectMappingFromTwoLines = (line1, line2) => {
+  console.log('=== シンプルマッピング開始 ===');
+  console.log('項目名行:', line1);
+  console.log('項目コード行:', line2);
   
-  // KY項目と対応する列の一括マッピング
-  for (let i = 0; i < minLength; i++) {
-    mappings.push({
-      kyItem: kyItems[i],
-      systemColumn: systemColumns[i],
-      columnIndex: i
-    });
-  }
+  // 行を分割
+  const itemNames = line1.split(/[\s\t,]+/).filter(Boolean);
+  const itemCodes = line2.split(/[\s\t,]+/).filter(Boolean);
   
-  // 組み立てたマッピングから設定を生成
-  const newMappingConfig = {
+  console.log('分割された項目名:', itemNames);
+  console.log('分割された項目コード:', itemCodes);
+  
+  // 基本構造を作成
+  const mappingConfig = {
     mainFields: {},
     incomeItems: [],
     deductionItems: [],
     attendanceItems: [],
-    kyItems: [] // 全てのKY項目の設定を保存
+    itemCodeItems: [],
+    kyItems: [],
+    summaryItems: []
   };
   
-  // 主要フィールドの設定を生成
-  for (const [fieldKey, possibleNames] of Object.entries(mainFieldKeys)) {
-    for (const mapping of mappings) {
-      if (possibleNames.some(name => mapping.systemColumn.includes(name))) {
-        newMappingConfig.mainFields[fieldKey] = {
-          columnIndex: mapping.columnIndex,
-          headerName: mapping.systemColumn,
-          kyItem: mapping.kyItem
-        };
-        break;
-      }
+  // 項目を1つずつ処理
+  const maxLength = Math.max(itemNames.length, itemCodes.length);
+  
+  for (let i = 0; i < maxLength; i++) {
+    const itemName = itemNames[i] || '';
+    const itemCode = itemCodes[i] || '';
+    
+    if (!itemCode) continue; // 項目コードがない場合はスキップ
+    
+    console.log(`[${i}] ${itemName} → ${itemCode}`);
+    
+    // 基本項目データ
+    const itemData = {
+      columnIndex: i,
+      headerName: itemCode,
+      itemName: itemName,
+      itemCode: itemCode,
+      isVisible: true,
+      id: `item_${i}_${itemCode.replace(/[^a-zA-Z0-9]/g, '_')}`
+    };
+    
+    // 必ず項目コードリストに追加
+    mappingConfig.itemCodeItems.push(itemData);
+    
+    // 主要フィールドの判定
+    if (itemCode === 'KY03' || itemName.includes('従業員')) {
+      mappingConfig.mainFields.employeeCode = {
+        columnIndex: i,
+        headerName: itemCode,
+        itemName: itemName
+      };
+    } else if (itemCode === 'KY02' || itemName.includes('部門')) {
+      mappingConfig.mainFields.departmentCode = {
+        columnIndex: i,
+        headerName: itemCode,
+        itemName: itemName
+      };
+    }
+    
+    // カテゴリ分類（キーワードベース）
+    if (itemName.includes('控除') || itemName.includes('保険') || itemName.includes('税') || 
+        itemCode.includes('22') || itemCode.includes('23')) {
+      mappingConfig.deductionItems.push({...itemData, isVisible: false});
+      console.log(`→ 控除項目: ${itemName}`);
+    } else if (itemName.includes('給') || itemName.includes('手当') || itemName.includes('支給') ||
+               itemCode.includes('21')) {
+      mappingConfig.incomeItems.push({...itemData, isVisible: false});
+      console.log(`→ 支給項目: ${itemName}`);
+    } else if (itemName.includes('日数') || itemName.includes('時間') || itemName.includes('出勤') ||
+               itemCode.includes('11') || itemCode.includes('12')) {
+      mappingConfig.attendanceItems.push({...itemData, isVisible: false});
+      console.log(`→ 勤怠項目: ${itemName}`);
+    } else if (itemName.includes('合計') || itemName.includes('総額') || itemName.includes('差引')) {
+      mappingConfig.summaryItems.push({...itemData, isVisible: true});
+      console.log(`→ 合計項目: ${itemName}`);
     }
   }
   
-  // 組み立てたマッピングを分類
-  mappings.forEach(mapping => {
-    // 主要フィールドとして既に分類済みの項目はスキップ
-    const isMainField = Object.values(newMappingConfig.mainFields).some(
-      field => field.columnIndex === mapping.columnIndex
-    );
-    
-    if (isMainField) return;
-    
-    // KY項目を全て保存
-    newMappingConfig.kyItems.push({
-      columnIndex: mapping.columnIndex,
-      headerName: mapping.kyItem,
-      itemName: mapping.systemColumn,
-      kyItem: mapping.kyItem,
-      isVisible: true,
-      id: generateDeterministicId('ky', mapping.kyItem, mapping.columnIndex) // 決定論的なID属性を追加
-    });
-    
-    // カテゴリにも分類
-    const item = {
-      columnIndex: mapping.columnIndex,
-      headerName: mapping.kyItem,  // KY項目名をヘッダー名として保存
-      itemName: mapping.systemColumn, // システム列名を表示名として保存
-      kyItem: mapping.kyItem,
-      isVisible: true,
-      id: generateDeterministicId(
-        incomeKeywords.some(keyword => mapping.systemColumn.includes(keyword)) ? 'income' :
-        deductionKeywords.some(keyword => mapping.systemColumn.includes(keyword)) ? 'deduction' :
-        attendanceKeywords.some(keyword => mapping.systemColumn.includes(keyword)) ? 'attendance' : 'other',
-        mapping.kyItem,
-        mapping.columnIndex
-      ) // 決定論的なID属性を追加
-    };
-    
-    if (incomeKeywords.some(keyword => mapping.systemColumn.includes(keyword))) {
-      newMappingConfig.incomeItems.push(item);
-    }
-    else if (deductionKeywords.some(keyword => mapping.systemColumn.includes(keyword))) {
-      newMappingConfig.deductionItems.push(item);
-    }
-    else if (attendanceKeywords.some(keyword => mapping.systemColumn.includes(keyword))) {
-      newMappingConfig.attendanceItems.push(item);
-    }
-  });
+  console.log('=== シンプルマッピング完了 ===');
+  console.log('控除項目数:', mappingConfig.deductionItems.length);
+  console.log('支給項目数:', mappingConfig.incomeItems.length);
+  console.log('勤怠項目数:', mappingConfig.attendanceItems.length);
+  console.log('項目コード数:', mappingConfig.itemCodeItems.length);
   
-  return newMappingConfig;
-};
-
-/**
- * 行ベースのマッピング（ヘッダー行とKY項目行）から設定を生成
- * @param {Array} headers - ヘッダー配列
- * @param {Array} kyItems - KY項目配列
- * @returns {Object} 生成されたマッピング設定
- */
-export const generateRowBasedMapping = (headers, kyItems) => {
-  console.log('=== generateRowBasedMapping デバッグ開始 ===');
-  console.log('入力ヘッダー:', headers);
-  console.log('入力KY項目:', kyItems);
-
-  // マッピング設定を生成
-  const mappings = [];
-  const minLength = Math.min(headers.length, kyItems.length);
-  
-  // ヘッダーとKY項目を列ごとに紐づけ
-  for (let i = 0; i < minLength; i++) {
-    mappings.push({
-      headerName: headers[i],
-      kyItem: kyItems[i],
-      columnIndex: i
-    });
-  }
-
-  console.log('生成されたマッピング:', mappings);
-  
-  // 新しいマッピング設定
-  const newMappingConfig = {
-    mainFields: {},
-    incomeItems: [],
-    deductionItems: [],
-    attendanceItems: [],
-    itemCodeItems: [], // 全ての項目コードの設定を保存
-    kyItems: [] // 旧形式との互換性のため
-  };
-  
-  // 主要フィールドのマッピング
-  for (const [fieldKey, possibleNames] of Object.entries(mainFieldKeys)) {
-    for (const mapping of mappings) {
-      if (possibleNames.some(name => mapping.headerName.includes(name))) {
-        newMappingConfig.mainFields[fieldKey] = {
-          columnIndex: mapping.columnIndex,
-          headerName: mapping.kyItem,      // 項目コードをヘッダー名として保存
-          itemName: mapping.headerName,    // 日本語項目名を表示名として保存
-          itemCode: mapping.kyItem         // 項目コードを保存
-        };
-        console.log(`主要フィールド ${fieldKey} をマッピング:`, newMappingConfig.mainFields[fieldKey]);
-        break;
-      }
-    }
-  }
-  
-  // 各項目を適切なカテゴリに分類
-  mappings.forEach(mapping => {
-    // 主要フィールドとして既に分類済みの項目はスキップ
-    const isMainField = Object.values(newMappingConfig.mainFields).some(
-      field => field.columnIndex === mapping.columnIndex
-    );
-    
-    if (isMainField) {
-      console.log(`列 ${mapping.columnIndex} は主要フィールドとして分類済み、スキップ`);
-      return;
-    }
-    
-    // 決定論的なIDを生成
-    const categoryName = incomeKeywords.some(keyword => mapping.headerName.includes(keyword)) ? 'income' :
-                       deductionKeywords.some(keyword => mapping.headerName.includes(keyword)) ? 'deduction' :
-                       attendanceKeywords.some(keyword => mapping.headerName.includes(keyword)) ? 'attendance' : 'other';
-    const itemId = generateDeterministicId(categoryName, mapping.kyItem, mapping.columnIndex);
-    
-    console.log(`列 ${mapping.columnIndex} (${mapping.headerName}) をカテゴリ ${categoryName} に分類`);
-    
-    // 項目データを作成
-    const itemCodeData = {
-      columnIndex: mapping.columnIndex,
-      headerName: mapping.kyItem,      // 項目コードをヘッダー名として保存
-      itemName: mapping.headerName,    // 日本語項目名を表示名として保存
-      itemCode: mapping.kyItem,        // 項目コードを保存
-      isVisible: true,
-      id: generateDeterministicId('itemCode', mapping.kyItem, mapping.columnIndex) // 決定論的なID属性を追加
-    };
-    
-    console.log('項目コードデータ:', itemCodeData);
-    
-    // 項目コードとして保存
-    newMappingConfig.itemCodeItems.push(itemCodeData);
-    
-    // 旧形式との互換性のため、kyItemsにも同じデータを保存
-    newMappingConfig.kyItems.push({
-      ...itemCodeData,
-      kyItem: mapping.kyItem, // 旧形式のプロパティ名も保存
-      matchedHeader: mapping.headerName
-    });
-    
-    // カテゴリ分類は項目コードと重複を避けるため、個別のIDを使用
-    const categorizedItem = {
-      columnIndex: mapping.columnIndex,
-      headerName: mapping.kyItem,      // 項目コードをヘッダー名として保存
-      itemName: mapping.headerName,    // 日本語項目名を表示名として保存
-      itemCode: mapping.kyItem,        // 項目コードを保存
-      isVisible: true,
-      id: itemId // 異なるID属性を追加
-    };
-    
-    // ヘッダー名に基づいてカテゴリ分類（但し、項目コードタブで既に管理されているので、デフォルトではvisibleをfalseに）
-    if (incomeKeywords.some(keyword => mapping.headerName.includes(keyword))) {
-      console.log('支給項目に追加:', categorizedItem);
-      newMappingConfig.incomeItems.push({...categorizedItem, isVisible: false});
-    }
-    else if (deductionKeywords.some(keyword => mapping.headerName.includes(keyword))) {
-      console.log('控除項目に追加:', categorizedItem);
-      newMappingConfig.deductionItems.push({...categorizedItem, isVisible: false});
-    }
-    else if (attendanceKeywords.some(keyword => mapping.headerName.includes(keyword))) {
-      console.log('勤怠項目に追加:', categorizedItem);
-      newMappingConfig.attendanceItems.push({...categorizedItem, isVisible: false});
-    }
-  });
-  
-  console.log('=== 最終的なマッピング設定 ===');
-  console.log('項目コード数:', newMappingConfig.itemCodeItems.length);
-  console.log('項目コード:', newMappingConfig.itemCodeItems);
-  console.log('旧形式KY項目数:', newMappingConfig.kyItems.length);
-  console.log('旧形式KY項目:', newMappingConfig.kyItems);
-  console.log('=== generateRowBasedMapping デバッグ終了 ===');
-  
-  return newMappingConfig;
-};
-
-/**
- * 主要フィールドのマッピングを更新
- * @param {string} field - フィールド名
- * @param {number} columnIndex - 選択された列インデックス
- * @param {Array} parsedHeaders - 解析済みヘッダー配列
- * @param {Object} currentMapping - 現在のマッピング設定
- * @returns {Object} 更新されたマッピング設定
- */
-export const updateMainFieldMapping = (field, columnIndex, parsedHeaders, currentMapping) => {
-  const index = parseInt(columnIndex);
-  
-  return {
-    ...currentMapping,
-    mainFields: {
-      ...currentMapping.mainFields,
-      [field]: {
-        columnIndex: index,
-        headerName: index >= 0 ? parsedHeaders[index] : ''
-      }
-    }
-  };
+  return mappingConfig;
 };
 
 /**
@@ -383,7 +141,7 @@ export const addItemToCategory = (category, headerName, parsedHeaders, currentMa
   const newItem = {
     columnIndex,
     headerName,
-    itemName: isItemCode ? '' : headerName,
+    itemName: '', // ユーザーが手動で項目名を入力する
     isVisible: category !== 'kyItems', // KY項目以外はデフォルトで表示
     id: itemId // ID属性を追加
   };
@@ -451,8 +209,8 @@ export const updateItemName = (category, index, itemName, currentMapping) => {
 };
 
 /**
- * CsvUpload形式からCsvMapping形式へのデータ変換（逆変換）
- * @param {Object} newFormat - CsvUpload形式のデータ
+ * csvMappings形式からCsvMapping形式へのデータ変換（逆変換）
+ * @param {Object} newFormat - csvMappings形式のデータ
  * @param {Object} initialMapping - 初期マッピング設定
  * @returns {Object} CsvMapping形式のデータ
  */
@@ -461,107 +219,34 @@ export const convertFromNewFormat = (newFormat, initialMapping) => {
   console.log('新しい形式のデータ:', newFormat);
   console.log('初期マッピング:', initialMapping);
   
-  // 基本設定を初期値から作成
+  // 新形式では既にカテゴリ配列形式で保存されているので、そのまま使用
   const oldFormat = {
     ...initialMapping,
-    mainFields: { ...initialMapping.mainFields },
-    incomeItems: [],
-    deductionItems: [],
-    attendanceItems: [],
-    kyItems: [],
-    itemCodeItems: []
+    // カテゴリ配列をそのまま使用
+    attendanceItems: newFormat.attendanceItems || [],
+    deductionItems: newFormat.deductionItems || [],
+    incomeItems: newFormat.incomeItems || [],
+    itemCodeItems: newFormat.itemCodeItems || [],
+    kyItems: newFormat.kyItems || [],
+    
+    // 合計項目配列
+    totalItems: newFormat.summaryItems || newFormat.totalItems || [],
+    summaryItems: newFormat.summaryItems || newFormat.totalItems || [],
+    
+    // 主要フィールド
+    mainFields: newFormat.mainFields || initialMapping.mainFields,
+    
+    // ヘッダー情報
+    parsedHeaders: newFormat.parsedHeaders || [],
+    headerInput: newFormat.headerInput || '',
+    rowBasedInput: newFormat.rowBasedInput || '',
+    kyItemInput: newFormat.kyItemInput || '',
+    
+    // シンプルマッピング
+    simpleMapping: newFormat.simpleMapping || {}
   };
   
-  // mappingsが存在する場合、各項目を復元
-  if (newFormat.mappings) {
-    const mappings = newFormat.mappings;
-    console.log('mappingsオブジェクト:', mappings);
-    
-    // 各IDから項目を復元
-    for (const [id, headerName] of Object.entries(mappings)) {
-      // IDからカテゴリを判定
-      const parts = id.split('_');
-      const category = parts[0];
-      
-      console.log(`項目 ${id} を処理中:`, { id, headerName, category });
-      
-      // headerNameから項目名を推定（日本語名かコードかを判定）
-      const isCode = /^[A-Z]{1,5}[0-9]{1,3}(_[0-9]+)?$/.test(headerName);
-      
-      const item = {
-        id: id,
-        headerName: headerName,
-        itemName: isCode ? '' : headerName, // 項目コードの場合は空文字列、そうでなければheaderNameを設定
-        columnIndex: -1, // 実際のCSVでの列番号は再設定が必要
-        isVisible: true
-      };
-      
-      // 項目コードの場合は、適切な名前を設定
-      if (isCode) {
-        // headerNameは項目コード、itemNameは日本語名（後で設定）
-        item.itemCode = headerName;
-      }
-      
-      console.log(`項目 ${id} (${headerName}) をカテゴリ ${category} に復元:`, item);
-      
-      // カテゴリ別に項目を追加
-      switch (category) {
-        case 'income':
-          oldFormat.incomeItems.push(item);
-          break;
-        case 'deduction':
-          oldFormat.deductionItems.push(item);
-          break;
-        case 'attendance':
-          oldFormat.attendanceItems.push(item);
-          break;
-        case 'ky':
-          oldFormat.kyItems.push(item);
-          break;
-        case 'itemCode':
-          oldFormat.itemCodeItems.push(item);
-          break;
-        default:
-          console.warn('不明なカテゴリ:', category);
-      }
-    }
-  }
-  
-  // 従業員マッピング情報を復元
-  if (newFormat.employeeMapping) {
-    const employeeMapping = newFormat.employeeMapping;
-    console.log('従業員マッピング情報を復元:', employeeMapping);
-    
-    if (employeeMapping.employeeIdColumn) {
-      oldFormat.mainFields.employeeCode = {
-        columnIndex: -1,
-        headerName: employeeMapping.employeeIdColumn
-      };
-    }
-    
-    if (employeeMapping.departmentCodeColumn) {
-      oldFormat.mainFields.departmentCode = {
-        columnIndex: -1,
-        headerName: employeeMapping.departmentCodeColumn
-      };
-    }
-  }
-  
-  // 追加情報があれば復元（新しい形式で保存されている場合）
-  if (newFormat.parsedHeaders) {
-    console.log('parsedHeadersを復元:', newFormat.parsedHeaders);
-    oldFormat.parsedHeaders = newFormat.parsedHeaders;
-  }
-  
-  if (newFormat.headerInput) {
-    console.log('headerInputを復元:', newFormat.headerInput);
-    oldFormat.headerInput = newFormat.headerInput;
-  }
-  
-  if (newFormat.rowBasedInput) {
-    console.log('rowBasedInputを復元:', newFormat.rowBasedInput);
-    oldFormat.rowBasedInput = newFormat.rowBasedInput;
-  }
+  console.log('復元されたデータ:', oldFormat);
   
   // parsedHeadersがない場合、項目からヘッダーリストを生成
   if (!oldFormat.parsedHeaders || oldFormat.parsedHeaders.length === 0) {
@@ -597,19 +282,27 @@ export const convertFromNewFormat = (newFormat, initialMapping) => {
  * @returns {string|null} エラーメッセージ（エラーがない場合はnull）
  */
 export const validateMappingConfig = (mappingConfig) => {
-  // 必須フィールドの検証
-  if (!mappingConfig.mainFields?.identificationCode || mappingConfig.mainFields.identificationCode.columnIndex === -1) {
-    return '識別コードのマッピングは必須です';
+  // 基本的なデータ構造チェック
+  if (!mappingConfig || typeof mappingConfig !== 'object') {
+    return 'マッピング設定が無効です';
   }
   
-  if (!mappingConfig.mainFields?.employeeCode || mappingConfig.mainFields.employeeCode.columnIndex === -1) {
-    return '従業員コードのマッピングは必須です';
-  }
+  // itemNameとheaderNameの重複をチェック
+  const allCategories = [
+    ...(mappingConfig.incomeItems || []),
+    ...(mappingConfig.deductionItems || []),
+    ...(mappingConfig.attendanceItems || []),
+    ...(mappingConfig.itemCodeItems || []),
+    ...(mappingConfig.kyItems || [])
+  ];
   
-  // 重複チェック
-  const duplicateCheck = checkForDuplicateMappings(mappingConfig);
-  if (duplicateCheck) {
-    return duplicateCheck;
+  const duplicateItems = allCategories.filter(item => 
+    item.itemName && item.headerName && item.itemName === item.headerName
+  );
+  
+  if (duplicateItems.length > 0) {
+    console.error('❌ itemNameとheaderNameが同じ項目を検出:', duplicateItems);
+    return `データ整合性エラー: ${duplicateItems.length}個の項目でitemNameとheaderNameが同じ値になっています。これは設定上の問題です。`;
   }
   
   return null;
@@ -654,56 +347,70 @@ export const checkForDuplicateMappings = (mappingConfig) => {
 };
 
 /**
- * CsvMapping形式からCsvUpload形式へのデータ変換
+ * CsvMapping形式からcsvMappings保存形式へのデータ変換
  * @param {Object} oldMapping - CsvMapping形式のデータ
- * @returns {Object} CsvUpload形式のデータ
+ * @returns {Object} csvMappings保存形式のデータ
  */
 export const convertToNewFormat = (oldMapping) => {
-  const newFormat = {};
+  console.log('=== convertToNewFormat デバッグ開始 ===');
+  console.log('入力データ:', oldMapping);
   
-  // 項目のIDとヘッダー名のマッピングを作成
-  if (oldMapping.incomeItems) {
-    oldMapping.incomeItems.forEach(item => {
-      if (item.id && item.headerName) {
-        newFormat[item.id] = item.headerName;
-      }
-    });
+  // 入力データの安全性確認
+  if (!oldMapping || typeof oldMapping !== 'object') {
+    console.error('convertToNewFormat: 無効な入力データ', oldMapping);
+    return {
+      attendanceItems: [],
+      deductionItems: [],
+      incomeItems: [],
+      itemCodeItems: [],
+      kyItems: [],
+      summaryItems: [],
+      mainFields: {},
+      parsedHeaders: [],
+      headerInput: '',
+      rowBasedInput: '',
+      kyItemInput: '',
+      simpleMapping: {},
+      version: 'simple_v1',
+      updatedAt: new Date(),
+      updatedBy: ''
+    };
   }
   
-  if (oldMapping.deductionItems) {
-    oldMapping.deductionItems.forEach(item => {
-      if (item.id && item.headerName) {
-        newFormat[item.id] = item.headerName;
-      }
-    });
-  }
-  
-  if (oldMapping.attendanceItems) {
-    oldMapping.attendanceItems.forEach(item => {
-      if (item.id && item.headerName) {
-        newFormat[item.id] = item.headerName;
-      }
-    });
-  }
-  
-  if (oldMapping.kyItems) {
-    oldMapping.kyItems.forEach(item => {
-      if (item.id && item.headerName) {
-        newFormat[item.id] = item.headerName;
-      }
-    });
-  }
-  
-  // 従業員マッピング情報を抽出
-  const employeeMapping = {
-    employeeIdColumn: oldMapping.mainFields?.employeeCode?.headerName || '',
-    departmentCodeColumn: oldMapping.mainFields?.departmentCode?.headerName || ''
+  // 直接カテゴリ別配列形式で保存
+  const newFormat = {
+    // カテゴリ別項目配列をそのまま保存
+    attendanceItems: oldMapping.attendanceItems || [],
+    deductionItems: oldMapping.deductionItems || [],
+    incomeItems: oldMapping.incomeItems || [],
+    itemCodeItems: oldMapping.itemCodeItems || [],
+    kyItems: oldMapping.kyItems || [],
+    
+    // 合計項目配列（totalItemsまたはsummaryItemsから）
+    summaryItems: oldMapping.totalItems || oldMapping.summaryItems || [],
+    
+    // 主要フィールド
+    mainFields: oldMapping.mainFields || {},
+    
+    // ヘッダー情報
+    parsedHeaders: oldMapping.parsedHeaders || [],
+    headerInput: oldMapping.headerInput || '',
+    rowBasedInput: oldMapping.rowBasedInput || '',
+    kyItemInput: oldMapping.kyItemInput || '',
+    
+    // シンプルマッピング（互換性のため）
+    simpleMapping: oldMapping.simpleMapping || {},
+    
+    // バージョン情報
+    version: 'simple_v1',
+    updatedAt: new Date(),
+    updatedBy: ''
   };
   
-  return {
-    mappings: newFormat,
-    employeeMapping: employeeMapping
-  };
+  console.log('変換結果:', newFormat);
+  console.log('=== convertToNewFormat デバッグ終了 ===');
+  
+  return newFormat;
 };
 
 /**
@@ -714,13 +421,19 @@ export const debugMappingFormats = (mapping) => {
   console.log('=== デバッグ：マッピング形式 ===');
   console.log('元のマッピング形式:', mapping);
   
-  const newFormat = convertToNewFormat(mapping);
-  console.log('新形式に変換:', newFormat);
+  // 入力データの安全性確認
+  if (!mapping || typeof mapping !== 'object') {
+    console.error('debugMappingFormats: 無効な入力データ', mapping);
+    return;
+  }
   
-  // 主要フィールドの変換検証
+  const newFormat = convertToNewFormat(mapping);
+  console.log('csvMappings形式に変換:', newFormat);
+  
+  // カテゴリ別項目数の表示
   console.log('主要フィールド:');
-  for (const [key, value] of Object.entries(mapping.mainFields)) {
-    console.log(`  ${key}: ${value.headerName}`);
+  for (const [key, value] of Object.entries(mapping.mainFields || {})) {
+    console.log(`  ${key}: ${value?.headerName || 'N/A'}`);
   }
   
   // 項目IDの検証
@@ -739,7 +452,7 @@ export const debugMappingFormats = (mapping) => {
   }
   
   console.log('項目数:', categoryCounts);
-  console.log('新形式のマッピング数:', Object.keys(newFormat.mappings).length);
+  console.log('カテゴリ配列形式への変換完了');
   
   return newFormat;
 };
@@ -800,18 +513,11 @@ export const moveItemBetweenCategories = (fromCategory, itemIndex, toCategory, c
  * @returns {Array} 移動可能なカテゴリのオプション配列
  */
 export const getCategoryMoveOptions = (currentCategory) => {
-  const categoryMap = {
-    'incomeItems': { name: '支給項目', key: 'incomeItems' },
-    'deductionItems': { name: '控除項目', key: 'deductionItems' },
-    'attendanceItems': { name: '勤怠項目', key: 'attendanceItems' },
-    'itemCodeItems': { name: '項目コード', key: 'itemCodeItems' }
-  };
-  
-  return Object.entries(categoryMap)
+  return Object.entries(CATEGORY_NAMES)
     .filter(([key]) => key !== currentCategory)
-    .map(([key, info]) => ({
+    .map(([key, name]) => ({
       value: key,
-      label: `${info.name}に移動`
+      label: `${name}に移動`
     }));
 };
 
@@ -821,12 +527,5 @@ export const getCategoryMoveOptions = (currentCategory) => {
  * @returns {string} 日本語表示名
  */
 export const getCategoryDisplayName = (category) => {
-  const categoryMap = {
-    'incomeItems': '支給項目',
-    'deductionItems': '控除項目',
-    'attendanceItems': '勤怠項目',
-    'itemCodeItems': '項目コード'
-  };
-  
-  return categoryMap[category] || category;
+  return CATEGORY_NAMES[category] || category;
 };

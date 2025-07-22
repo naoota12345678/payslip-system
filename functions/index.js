@@ -271,8 +271,19 @@ exports.processCSV = functions.https.onCall(async (data, context) => {
   const companyId = actualData ? actualData.companyId : null;
   const updateEmployeeInfo = actualData ? actualData.updateEmployeeInfo : false;
   const registerNewEmployees = actualData ? actualData.registerNewEmployees : false;
-  const employeeIdColumn = actualData ? actualData.employeeIdColumn : null;
-  const departmentCodeColumn = actualData ? actualData.departmentCodeColumn : null;
+      // CSVマッピング設定から従業員IDと部門コードのヘッダー名を取得
+    let employeeIdColumn = null;
+    let departmentCodeColumn = null;
+    
+    if (actualData && actualData.mappingConfig) {
+      const mapping = actualData.mappingConfig;
+      if (mapping.mainFields) {
+        employeeIdColumn = mapping.mainFields.employeeCode?.headerName || null;
+        departmentCodeColumn = mapping.mainFields.departmentCode?.headerName || null;
+      }
+    }
+    
+    console.log(`[DEBUG] 従業員IDカラム: ${employeeIdColumn}, 部門コードカラム: ${departmentCodeColumn}`);
   const columnMappings = actualData ? actualData.columnMappings : {};
   
   // パラメータ検証（一時的に無効化してテスト）

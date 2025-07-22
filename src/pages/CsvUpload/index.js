@@ -26,6 +26,7 @@ function CsvUpload() {
   const [mappingWarning, setMappingWarning] = useState(false);
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [showSystemDebug, setShowSystemDebug] = useState(false);
+  const [savingMapping, setSavingMapping] = useState(false);
 
   // カスタムフックを使用
   const {
@@ -271,6 +272,74 @@ function CsvUpload() {
     }
   };
 
+  // マッピング設定を保存
+  const handleSaveMapping = async () => {
+    if (!userDetails?.companyId) {
+      setError('会社情報が取得できません');
+      return;
+    }
+
+    try {
+      setSavingMapping(true);
+      setError('');
+
+      // 現在の給与項目設定をマッピング形式に変換
+      const mappingData = {
+        incomeItems: payrollItems.filter(item => item.type === 'income').map(item => ({
+          columnIndex: -1,
+          headerName: item.csvColumn || '',
+          itemName: item.name,
+          isVisible: true,
+          id: item.id
+        })),
+        deductionItems: payrollItems.filter(item => item.type === 'deduction').map(item => ({
+          columnIndex: -1,
+          headerName: item.csvColumn || '',
+          itemName: item.name,
+          isVisible: true,
+          id: item.id
+        })),
+        attendanceItems: payrollItems.filter(item => item.type === 'attendance').map(item => ({
+          columnIndex: -1,
+          headerName: item.csvColumn || '',
+          itemName: item.name,
+          isVisible: true,
+          id: item.id
+        })),
+        totalItems: [],
+        itemCodeItems: [],
+        mainFields: {
+          identificationCode: { columnIndex: -1, headerName: '' },
+          employeeCode: { columnIndex: -1, headerName: '' },
+          employeeName: { columnIndex: -1, headerName: '' },
+          departmentCode: { columnIndex: -1, headerName: '' },
+          departmentName: { columnIndex: -1, headerName: '' },
+          basicSalary: { columnIndex: -1, headerName: '' },
+          totalIncome: { columnIndex: -1, headerName: '' },
+          totalDeduction: { columnIndex: -1, headerName: '' },
+          netAmount: { columnIndex: -1, headerName: '' },
+          paymentDate: { columnIndex: -1, headerName: '' }
+        },
+        updatedAt: new Date()
+      };
+
+      // Firestoreに保存
+      await setDoc(doc(db, 'csvMappings', userDetails.companyId), mappingData);
+
+      alert('マッピング設定を保存しました');
+
+      if (debugMode) {
+        console.log('[Debug] マッピング設定保存完了:', mappingData);
+      }
+
+    } catch (err) {
+      console.error('マッピング設定保存エラー:', err);
+      setError('マッピング設定の保存中にエラーが発生しました: ' + err.message);
+    } finally {
+      setSavingMapping(false);
+    }
+  };
+
   // システムデバッグの切り替え（5回クリックで有効化）
   const [clickCount, setClickCount] = useState(0);
   const handleSystemDebugClick = () => {
@@ -424,6 +493,8 @@ function CsvUpload() {
           payrollItems={payrollItems}
           refreshSettings={refreshSettings}
           onCategoryChange={handleCategoryChange}
+          onSaveMapping={handleSaveMapping}
+          isSaving={savingMapping}
         />
       )}
     </div>

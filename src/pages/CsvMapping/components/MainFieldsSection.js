@@ -25,6 +25,31 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
   const safeDepartmentName = safeMainFields.departmentName || { columnIndex: -1, headerName: '' };
   const safeParsedHeaders = parsedHeaders || [];
   
+  // 記号（headerName）から対応するindexを取得するヘルパー関数
+  const getIndexForItemCode = (itemCode) => {
+    if (!itemCode) return -1;
+    
+    // 全ての項目から検索
+    const allItems = [
+      ...(mappingConfig?.incomeItems || []),
+      ...(mappingConfig?.deductionItems || []),
+      ...(mappingConfig?.attendanceItems || []),
+      ...(mappingConfig?.itemCodeItems || []),
+      ...(mappingConfig?.kyItems || [])
+    ];
+    
+    // itemName（記号）で検索して、そのheaderName（日本語）を取得
+    const matchedItem = allItems.find(item => item.itemName === itemCode);
+    if (matchedItem && matchedItem.headerName) {
+      // 日本語項目名からparsedHeadersでのindexを取得
+      const index = parsedHeaders.indexOf(matchedItem.headerName);
+      console.log(`🔍 記号「${itemCode}」→ 日本語「${matchedItem.headerName}」→ index: ${index}`);
+      return index;
+    }
+    
+    return -1;
+  };
+  
   console.log('🔍 基本情報マッピング詳細デバッグ:');
   console.log('- employeeCode詳細:', safeEmployeeCode);
   console.log('- employeeCode.columnIndex:', safeEmployeeCode.columnIndex);
@@ -32,6 +57,19 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
   console.log('- parsedHeaders[safeEmployeeCode.columnIndex]:', parsedHeaders?.[safeEmployeeCode.columnIndex]);
   console.log('- safeParsedHeaders長さ:', safeParsedHeaders.length);
   console.log('- mappingConfig全体:', mappingConfig);
+  
+  // 🔍 追加デバッグ: parsedHeadersの全内容を確認
+  console.log('🔍 parsedHeaders全内容:', parsedHeaders);
+  console.log('🔍 mappingConfigの項目サンプル:');
+  if (mappingConfig?.itemCodeItems?.length > 0) {
+    console.log('- itemCodeItems[0]:', mappingConfig.itemCodeItems[0]);
+  }
+  if (mappingConfig?.incomeItems?.length > 0) {
+    console.log('- incomeItems[0]:', mappingConfig.incomeItems[0]);
+  }
+  if (mappingConfig?.deductionItems?.length > 0) {
+    console.log('- deductionItems[0]:', mappingConfig.deductionItems[0]);
+  }
   
   // ヘッダー名から対応する項目名を取得するヘルパー関数
   const getItemNameForHeader = (headerName) => {
@@ -44,27 +82,18 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
       ...(mappingConfig?.kyItems || [])
     ];
     
-    // デバッグ: 実際のデータ構造を確認
     console.log('🔍 getItemNameForHeader デバッグ:');
-    console.log('検索対象headerName（記号）:', headerName);
-    console.log('利用可能な項目サンプル（最初の3つ）:');
-    allItems.slice(0, 3).forEach((item, index) => {
-      console.log(`  [${index}] headerName="${item.headerName}"（日本語）, itemName="${item.itemName}"（記号）`);
-    });
+    console.log('検索対象headerName（日本語）:', headerName);
     
-    // 記号（headerName）に対応する項目を itemName で検索
-    const matchedItem = allItems.find(item => item.itemName === headerName);
+    // 日本語項目名（headerName）で検索して、対応する記号（itemName）を返す
+    const matchedItem = allItems.find(item => item.headerName === headerName);
     
-    console.log('マッチした項目:', matchedItem);
-    
-    if (matchedItem && matchedItem.headerName && matchedItem.headerName.trim() !== '') {
-      // 日本語項目名（headerName）を記号（itemName）と一緒に表示
-      const result = `${matchedItem.headerName} (${matchedItem.itemName})`;
-      console.log(`✅ 表示結果: ${result}`);
-      return result;
+    if (matchedItem && matchedItem.itemName) {
+      console.log(`✅ 日本語「${headerName}」→ 記号「${matchedItem.itemName}」`);
+      return matchedItem.itemName;  // 記号を返す
     }
     
-    console.log(`⚠️ マッチなし、元のヘッダー名（記号）を返す: ${headerName}`);
+    console.log(`⚠️ マッチなし、元のヘッダー名を返す: ${headerName}`);
     return headerName;
   };
   
@@ -77,7 +106,7 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
             識別コード
           </label>
           <select
-            value={safeIdentificationCode.columnIndex}
+            value={getIndexForItemCode(safeIdentificationCode.headerName)}
             onChange={(e) => updateMainFieldMapping('identificationCode', e.target.value)}
             className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           >
@@ -93,7 +122,7 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
             従業員コード
           </label>
           <select
-            value={safeEmployeeCode.columnIndex}
+            value={getIndexForItemCode(safeEmployeeCode.headerName)}
             onChange={(e) => updateMainFieldMapping('employeeCode', e.target.value)}
             className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           >
@@ -109,7 +138,7 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
             従業員氏名
           </label>
           <select
-            value={safeMainFields.employeeName?.columnIndex ?? -1}
+            value={getIndexForItemCode(safeMainFields.employeeName?.headerName)}
             onChange={(e) => updateMainFieldMapping('employeeName', e.target.value)}
             className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           >
@@ -125,7 +154,7 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
             部門コード
           </label>
           <select
-            value={safeDepartmentCode.columnIndex}
+            value={getIndexForItemCode(safeDepartmentCode.headerName)}
             onChange={(e) => updateMainFieldMapping('departmentCode', e.target.value)}
             className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           >
@@ -141,7 +170,7 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
             部門名
           </label>
           <select
-            value={safeDepartmentName.columnIndex}
+            value={getIndexForItemCode(safeDepartmentName.headerName)}
             onChange={(e) => updateMainFieldMapping('departmentName', e.target.value)}
             className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           >
@@ -157,7 +186,7 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
             基本給
           </label>
           <select
-            value={safeMainFields.basicSalary?.columnIndex ?? -1}
+            value={getIndexForItemCode(safeMainFields.basicSalary?.headerName)}
             onChange={(e) => updateMainFieldMapping('basicSalary', e.target.value)}
             className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           >
@@ -173,7 +202,7 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
             総支給額
           </label>
           <select
-            value={safeMainFields.totalIncome?.columnIndex ?? -1}
+            value={getIndexForItemCode(safeMainFields.totalIncome?.headerName)}
             onChange={(e) => updateMainFieldMapping('totalIncome', e.target.value)}
             className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           >
@@ -189,7 +218,7 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
             総控除額
           </label>
           <select
-            value={safeMainFields.totalDeduction?.columnIndex ?? -1}
+            value={getIndexForItemCode(safeMainFields.totalDeduction?.headerName)}
             onChange={(e) => updateMainFieldMapping('totalDeduction', e.target.value)}
             className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           >
@@ -205,7 +234,7 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
             差引支給額
           </label>
           <select
-            value={safeMainFields.netAmount?.columnIndex ?? -1}
+            value={getIndexForItemCode(safeMainFields.netAmount?.headerName)}
             onChange={(e) => updateMainFieldMapping('netAmount', e.target.value)}
             className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           >
@@ -221,7 +250,7 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
             支払日
           </label>
           <select
-            value={safeMainFields.paymentDate?.columnIndex ?? -1}
+            value={getIndexForItemCode(safeMainFields.paymentDate?.headerName)}
             onChange={(e) => updateMainFieldMapping('paymentDate', e.target.value)}
             className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           >
