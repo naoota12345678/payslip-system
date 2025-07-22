@@ -172,7 +172,7 @@ function CsvMapping() {
     }
   }, [debouncedMappingConfig, userDetails, loading, saving]);
   
-  // 主要フィールドのマッピングを更新するハンドラ
+  // 主要フィールドのマッピングを更新するハンドラ（シンプル版）
   const handleUpdateMainFieldMapping = useCallback((field, columnIndex) => {
     setMappingConfig(prev => {
       const updated = { ...prev };
@@ -181,39 +181,26 @@ function CsvMapping() {
       }
       
       const index = parseInt(columnIndex);
+      
       if (index >= 0 && parsedHeaders[index]) {
-        // 選択されたindexに対応する実際のヘッダー名（日本語）を取得
-        const selectedHeaderName = parsedHeaders[index];
-        
-        // そのヘッダー名に対応する記号（itemName）を検索
-        const allItems = [
-          ...(prev.incomeItems || []),
-          ...(prev.deductionItems || []),
-          ...(prev.attendanceItems || []),
-          ...(prev.itemCodeItems || []),
-          ...(prev.kyItems || [])
-        ];
-        
-        const matchedItem = allItems.find(item => item.headerName === selectedHeaderName);
-        const itemCode = matchedItem?.itemName || selectedHeaderName;
-        
-        console.log(`🔧 基本項目マッピング更新: ${field}`, {
-          selectedIndex: index,
-          selectedHeaderName: selectedHeaderName,
-          matchedItem: matchedItem,
-          itemCode: itemCode
-        });
-        
+        // シンプルに columnIndex と headerName のみ保存
         updated.mainFields[field] = {
           columnIndex: index,
-          headerName: itemCode,  // 記号を保存
-          itemName: selectedHeaderName  // 日本語も保存
+          headerName: parsedHeaders[index]
         };
+        
+        console.log(`✅ 基本項目マッピング更新: ${field}`, {
+          columnIndex: index,
+          headerName: parsedHeaders[index]
+        });
       } else {
+        // 選択解除
         updated.mainFields[field] = {
           columnIndex: -1,
           headerName: ''
         };
+        
+        console.log(`❌ 基本項目マッピング解除: ${field}`);
       }
       
       return updated;
