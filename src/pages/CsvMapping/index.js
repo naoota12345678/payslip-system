@@ -172,40 +172,66 @@ function CsvMapping() {
     }
   }, [debouncedMappingConfig, userDetails, loading, saving]);
   
-  // 主要フィールドのマッピングを更新するハンドラ（シンプル版）
-  const handleUpdateMainFieldMapping = useCallback((field, columnIndex) => {
+  // 基本項目マッピング更新ハンドラー
+  const handleUpdateMainFieldMapping = useCallback((field, selectedHeaderName) => {
     setMappingConfig(prev => {
       const updated = { ...prev };
       if (!updated.mainFields) {
         updated.mainFields = {};
       }
       
-      const index = parseInt(columnIndex);
-      
-      if (index >= 0 && parsedHeaders[index]) {
-        // シンプルに columnIndex と headerName のみ保存
-        updated.mainFields[field] = {
-          columnIndex: index,
-          headerName: parsedHeaders[index]
-        };
+      if (selectedHeaderName && selectedHeaderName.trim()) {
+        const allItems = [
+          ...(updated.incomeItems || []),
+          ...(updated.deductionItems || []),
+          ...(updated.attendanceItems || []),
+          ...(updated.itemCodeItems || []),
+          ...(updated.kyItems || [])
+        ];
         
-        console.log(`✅ 基本項目マッピング更新: ${field}`, {
-          columnIndex: index,
-          headerName: parsedHeaders[index]
+        // 🔧 データ構造の修正：headerNameが日本語の場合は記号と交換
+        const fixedItems = allItems.map(item => {
+          if (item.headerName && item.itemName && 
+              !item.headerName.startsWith('KY') && item.itemName.startsWith('KY')) {
+            return {
+              ...item,
+              headerName: item.itemName,  // 記号をheaderNameに
+              itemName: item.headerName   // 日本語をitemNameに
+            };
+          }
+          return item;
         });
+        
+        // headerName（記号）で検索して、対応するアイテムを見つける
+        const matchedItem = fixedItems.find(item => item.headerName === selectedHeaderName);
+        
+        if (matchedItem) {
+          updated.mainFields[field] = {
+            columnIndex: matchedItem.columnIndex,
+            headerName: selectedHeaderName, // 記号を保存
+            itemName: matchedItem.itemName  // 日本語名を保存
+          };
+          
+          console.log(`✅ 基本項目マッピング更新: ${field}`, {
+            headerName: selectedHeaderName,
+            itemName: matchedItem.itemName,
+            columnIndex: matchedItem.columnIndex
+          });
+        } else {
+          console.warn(`⚠️ 記号が見つからない: ${selectedHeaderName}`);
+        }
       } else {
-        // 選択解除
         updated.mainFields[field] = {
           columnIndex: -1,
-          headerName: ''
+          headerName: '',
+          itemName: ''
         };
-        
         console.log(`❌ 基本項目マッピング解除: ${field}`);
       }
       
       return updated;
     });
-  }, [parsedHeaders]);
+  }, []);
   
   // 項目の表示名を更新するハンドラ
   const handleUpdateItemName = useCallback((category, index, itemName) => {
@@ -696,8 +722,19 @@ function CsvMapping() {
       console.log('✅ Firebase保存完了');
       setSuccess(`✅ シンプル保存完了！\n項目数: ${firebaseData.itemCodeItems.length}\n控除: ${firebaseData.deductionItems.length}\n支給: ${firebaseData.incomeItems.length}\n勤怠: ${firebaseData.attendanceItems.length}`);
       
-      // 画面の状態も更新
-      setMappingConfig(firebaseData);
+      // 🔧 既存のmainFieldsを保持してマージ
+      setMappingConfig(prev => {
+        const merged = {
+          ...firebaseData,
+          // 既存のmainFieldsを保持
+          mainFields: prev.mainFields || firebaseData.mainFields || {}
+        };
+        
+        console.log('🔧 マージされたmappingConfig:', merged);
+        console.log('🔧 保持されたmainFields:', merged.mainFields);
+        
+        return merged;
+      });
       
     } catch (error) {
       console.error('❌ 保存エラー:', error);
@@ -806,7 +843,7 @@ function CsvMapping() {
               handleJsonImport={handleJsonImport}
             />
             
-            <MainFieldsSection 
+            <MainFieldsSection
               mappingConfig={mappingConfig}
               updateMainFieldMapping={handleUpdateMainFieldMapping}
               parsedHeaders={parsedHeaders}
