@@ -126,14 +126,10 @@ export const createDirectFirebaseData = (line1, line2) => {
         console.log(`🆔 識別コード設定: ${japaneseName} → ${symbol}`);
       }
       
-      // キーワードで分類（シンプル）
-      if (japaneseName.includes('保険') || japaneseName.includes('税')) {
-        firebaseData.deductionItems.push({...data, isVisible: false});
-      } else if (japaneseName.includes('給') || japaneseName.includes('手当')) {
-        firebaseData.incomeItems.push({...data, isVisible: false});
-      } else if (japaneseName.includes('日数') || japaneseName.includes('時間')) {
-        firebaseData.attendanceItems.push({...data, isVisible: false});
-      }
+      // ハードコーディングされた自動分類を削除
+      // ユーザーがCSVマッピング設定で手動で項目を各カテゴリに移動させる方式に変更
+      console.log(`📋 項目をitemCodeItemsに追加: ${symbol} → ${japaneseName}`);
+      // 自動分類は行わず、すべてitemCodeItemsに保存（ユーザーが後で分類を調整）
     }
   }
   

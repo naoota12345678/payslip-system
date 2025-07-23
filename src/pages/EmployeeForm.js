@@ -25,7 +25,7 @@ function EmployeeForm() {
     gender: '',
     birthDate: '',
     hireDate: '',
-    departmentId: ''
+    departmentCode: ''
   });
   
   // UI状態
@@ -86,7 +86,7 @@ function EmployeeForm() {
           return;
         }
         
-        // フォームに値をセット
+        // フォームに値をセット（部門変換は後で実行）
         setEmployeeData({
           employeeId: data.employeeId || '',
           name: data.name || '',
@@ -98,7 +98,9 @@ function EmployeeForm() {
           gender: data.gender ? String(data.gender) : '',
           birthDate: data.birthDate || '',
           hireDate: data.hireDate || '',
-          departmentId: data.departmentId || ''
+          departmentCode: data.departmentCode || '', // 初期値として設定
+          // 部門変換用の情報を保持
+          _originalDepartmentId: data.departmentId || ''
         });
         
         setInitialLoading(false);
@@ -111,6 +113,22 @@ function EmployeeForm() {
     
     fetchEmployeeData();
   }, [isEditMode, employeeId, userDetails]);
+
+  // 部門データ読み込み後の部門変換処理
+  useEffect(() => {
+    if (departments.length > 0 && employeeData._originalDepartmentId && !employeeData.departmentCode) {
+      // departmentIdが設定されているが、departmentCodeが設定されていない場合の変換
+      const matchingDept = departments.find(dept => dept.id === employeeData._originalDepartmentId);
+      if (matchingDept) {
+        console.log('部門ID→部門コード変換:', employeeData._originalDepartmentId, '→', matchingDept.code);
+        setEmployeeData(prev => ({
+          ...prev,
+          departmentCode: matchingDept.code || '',
+          _originalDepartmentId: '' // 変換完了後にクリア
+        }));
+      }
+    }
+  }, [departments, employeeData._originalDepartmentId, employeeData.departmentCode]);
   
   // フォーム送信ハンドラ
   const handleSubmit = async (e) => {
@@ -126,10 +144,11 @@ function EmployeeForm() {
       setError('');
       setLoading(true);
       
-      // 保存用データを準備
+      // 保存用データを準備（_originalDepartmentIdを除外）
+      const { _originalDepartmentId, ...cleanEmployeeData } = employeeData;
       const saveData = {
-        ...employeeData,
-        gender: employeeData.gender ? parseInt(employeeData.gender) : null,
+        ...cleanEmployeeData,
+        gender: cleanEmployeeData.gender ? parseInt(cleanEmployeeData.gender) : null,
         companyId: userDetails.companyId,
         updatedAt: new Date()
       };
@@ -141,8 +160,25 @@ function EmployeeForm() {
       } else {
         // 新規従業員の作成
         saveData.createdAt = new Date();
+        saveData.status = 'preparation'; // ステータス: 準備中
+        saveData.isFirstLogin = true; // 初回ログインフラグ
+        
+        // 仮パスワードを生成（8文字の英数字）
+        const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-2).toUpperCase();
+        saveData.tempPassword = tempPassword; // 仮パスワードをFirestoreに保存
+        
+        console.log('🔧 新規従業員作成:', {
+          email: saveData.email,
+          name: saveData.name,
+          status: 'preparation'
+        });
+        
         const employeeDoc = doc(collection(db, 'employees'));
         await setDoc(employeeDoc, saveData);
+        
+        // 成功メッセージ（パスワードは表示しない）
+        alert(`従業員を登録しました。\n\n従業員詳細画面から「招待メール送信」を行ってください。`);
+        
         navigate('/admin/employees');
       }
     } catch (err) {
@@ -282,19 +318,19 @@ function EmployeeForm() {
               <h3 className="text-lg font-medium text-gray-900 border-b pb-2">職務情報</h3>
               
               <div>
-                <label htmlFor="departmentId" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="departmentCode" className="block text-sm font-medium text-gray-700">
                   部門
                 </label>
                 <select
-                  id="departmentId"
-                  value={employeeData.departmentId}
-                  onChange={(e) => handleInputChange('departmentId', e.target.value)}
+                  id="departmentCode"
+                  value={employeeData.departmentCode}
+                  onChange={(e) => handleInputChange('departmentCode', e.target.value)}
                   className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 >
                   <option value="">-- 部門を選択 --</option>
                   {departments.map((dept) => (
-                    <option key={dept.id} value={dept.id}>
-                      {dept.name}
+                    <option key={dept.id} value={dept.code}>
+                      {dept.name} ({dept.code})
                     </option>
                   ))}
                 </select>

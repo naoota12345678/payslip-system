@@ -13,16 +13,18 @@ function PayslipList() {
   const [selectedPaymentDate, setSelectedPaymentDate] = useState(null);
   const [groupedPayslips, setGroupedPayslips] = useState({});
   const [employees, setEmployees] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [deleting, setDeleting] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  // 従業員情報を取得
+    // 従業員情報と部門情報を取得
   useEffect(() => {
-    const fetchEmployees = async () => {
+    const fetchEmployeesAndDepartments = async () => {
       if (!userDetails?.companyId) return;
       
       try {
+        // 従業員データを取得
         const employeesQuery = query(
           collection(db, "employees"),
           where("companyId", "==", userDetails.companyId)
@@ -36,17 +38,38 @@ function PayslipList() {
           employeesList.push({
             id: doc.id,
             employeeId: data.employeeId,
-            name: data.name
+            name: data.name,
+            departmentCode: data.departmentCode
           });
         });
         
         setEmployees(employeesList);
+
+        // 部門データを取得
+        const departmentsQuery = query(
+          collection(db, "departments"),
+          where("companyId", "==", userDetails.companyId)
+        );
+        
+        const departmentsSnapshot = await getDocs(departmentsQuery);
+        const departmentsList = [];
+        
+        departmentsSnapshot.forEach((doc) => {
+          const data = doc.data();
+          departmentsList.push({
+            id: doc.id,
+            code: data.code,
+            name: data.name
+          });
+        });
+        
+        setDepartments(departmentsList);
       } catch (err) {
-        console.error("従業員データの取得エラー:", err);
+        console.error("従業員・部門データの取得エラー:", err);
       }
     };
-
-    fetchEmployees();
+    
+    fetchEmployeesAndDepartments();
   }, [userDetails]);
 
   useEffect(() => {
@@ -192,21 +215,21 @@ function PayslipList() {
                console.log('- 従業員番号:', data['従業員番号']);
                console.log('- employeeCode:', data.employeeCode);
                
-               // usersコレクションの従業員ID設定状況を確認
-               console.log('👥 usersコレクションの従業員ID設定確認を開始...');
+               // employeesコレクションの従業員ID設定状況を確認
+               console.log('👥 employeesコレクションの従業員ID設定確認を開始...');
                try {
-                 const usersSnapshot = await getDocs(query(
-                   collection(db, "users"),
+                 const employeesSnapshot = await getDocs(query(
+                   collection(db, "employees"),
                    where("companyId", "==", userDetails.companyId)
                  ));
                  
-                 console.log(`👥 会社のユーザー数: ${usersSnapshot.docs.length}`);
-                 usersSnapshot.docs.forEach((userDoc, index) => {
-                   const userData = userDoc.data();
-                   console.log(`👤 ユーザー${index + 1}: {id: ${userDoc.id}, employeeId: ${userData.employeeId}, name: ${userData.displayName || userData.email}}`);
+                 console.log(`👥 会社の従業員数: ${employeesSnapshot.docs.length}`);
+                 employeesSnapshot.docs.forEach((empDoc, index) => {
+                   const empData = empDoc.data();
+                   console.log(`👤 従業員${index + 1}: {id: ${empDoc.id}, employeeId: ${empData.employeeId}, name: ${empData.name}}`);
                  });
-               } catch (usersError) {
-                 console.error('👥 usersコレクション確認エラー:', usersError);
+               } catch (employeesError) {
+                 console.error('👥 employeesコレクション確認エラー:', employeesError);
                }
              }
           } catch (debugErr) {
@@ -264,6 +287,16 @@ function PayslipList() {
     if (!employeeId) return 'N/A';
     const employee = employees.find(emp => emp.employeeId === employeeId);
     return employee ? employee.name : 'N/A';
+  };
+
+  // 従業員IDから部門名を取得する関数
+  const getDepartmentName = (employeeId) => {
+    if (!employeeId) return '';
+    const employee = employees.find(emp => emp.employeeId === employeeId);
+    if (!employee || !employee.departmentCode) return '';
+    
+    const department = departments.find(dept => dept.code === employee.departmentCode);
+    return department ? department.name : '';
   };
 
   // 削除確認ダイアログを開く
@@ -430,7 +463,7 @@ function PayslipList() {
                         {getEmployeeName(payslip.employeeId)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {payslip.departmentCode || 'N/A'}
+                        {getDepartmentName(payslip.employeeId)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         {formatCurrency(payslip.totalIncome)}

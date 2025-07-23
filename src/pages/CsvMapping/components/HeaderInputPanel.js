@@ -219,21 +219,13 @@ const HeaderInputPanel = ({
               </div>
             </div>
             
-            <div className="flex justify-end space-x-2">
+            <div className="flex justify-end">
               <button
                 type="button"
                 onClick={() => handleRowBasedMapping(rowBasedInput.split('\n').filter(row => row.trim().length > 0))}
                 className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
               >
                 行ベースマッピングを実行
-              </button>
-              <button
-                type="button"
-                onClick={handleDirectSave}
-                disabled={saving}
-                className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:bg-gray-400"
-              >
-                {saving ? '保存中...' : '🎯 シンプル保存'}
               </button>
             </div>
           </>

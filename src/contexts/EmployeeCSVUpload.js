@@ -156,11 +156,11 @@ function EmployeeCSVUpload({ companyId, onSuccess, onError }) {
         updatedAt: new Date()
       };
       
-      // 部門コードが設定されていれば部門IDに変換
+      // 部門コードが設定されていれば保存
       if (departmentCodeIndex !== -1 && values[departmentCodeIndex]) {
         const deptCode = values[departmentCodeIndex];
         if (departmentMap[deptCode]) {
-          employee.departmentId = departmentMap[deptCode];
+          employee.departmentCode = deptCode;
         }
       }
       

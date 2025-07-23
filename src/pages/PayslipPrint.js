@@ -48,7 +48,8 @@ function PayslipPrint() {
         
         // アクセス権のチェック（管理者または自分の給与明細のみ閲覧可能）
         const isAdmin = userDetails?.role === 'admin';
-        const isOwner = payslipData.userId === currentUser.uid;
+        const isOwner = payslipData.employeeId === userDetails.employeeId && 
+                       payslipData.companyId === userDetails.companyId;
         
         if (!isAdmin && !isOwner) {
           setError("この給与明細を閲覧する権限がありません");

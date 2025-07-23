@@ -10,7 +10,8 @@ function CompanySettings() {
     name: '',
     address: '',
     phone: '',
-    taxId: ''
+    taxId: '',
+    companyNumber: ''
   });
   const [departments, setDepartments] = useState([]);
   const [newDepartment, setNewDepartment] = useState({ 
@@ -76,6 +77,37 @@ function CompanySettings() {
     }
   }, [userDetails]);
 
+  // 会社番号自動生成関数
+  const generateCompanyNumber = async () => {
+    try {
+      // 既存の会社番号を取得して最大値を確認
+      const companiesSnapshot = await getDocs(collection(db, "companies"));
+      const existingNumbers = [];
+      
+      companiesSnapshot.docs.forEach(doc => {
+        const data = doc.data();
+        if (data.companyNumber) {
+          // COMP0001 形式から数値部分を抽出
+          const match = data.companyNumber.match(/^COMP(\d{4})$/);
+          if (match) {
+            existingNumbers.push(parseInt(match[1]));
+          }
+        }
+      });
+      
+      // 次の番号を決定（最大値+1、または1から開始）
+      const nextNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
+      
+      // 4桁でゼロパディング
+      return `COMP${nextNumber.toString().padStart(4, '0')}`;
+    } catch (error) {
+      console.error('会社番号生成エラー:', error);
+      // エラーの場合はランダムな番号を生成
+      const randomNum = Math.floor(Math.random() * 9000) + 1000;
+      return `COMP${randomNum}`;
+    }
+  };
+
   // 会社情報を保存
   const saveCompanyInfo = async () => {
     try {
@@ -90,15 +122,31 @@ function CompanySettings() {
         setError("会社名を入力してください");
         return;
       }
+
+      // 会社番号が未設定の場合は自動生成
+      let updatedCompanyInfo = { ...companyInfo };
+      if (!companyInfo.companyNumber) {
+        console.log('🔧 会社番号を自動生成中...');
+        const newCompanyNumber = await generateCompanyNumber();
+        updatedCompanyInfo.companyNumber = newCompanyNumber;
+        
+        // UIも更新
+        setCompanyInfo(prev => ({
+          ...prev,
+          companyNumber: newCompanyNumber
+        }));
+        
+        console.log('✅ 会社番号生成完了:', newCompanyNumber);
+      }
       
       const companyDocRef = doc(db, "companies", companyId);
       
       await updateDoc(companyDocRef, {
-        ...companyInfo,
+        ...updatedCompanyInfo,
         updatedAt: new Date()
       });
       
-      setSuccess("会社情報を保存しました");
+      setSuccess("会社情報を保存しました" + (updatedCompanyInfo.companyNumber !== companyInfo.companyNumber ? ` (会社番号: ${updatedCompanyInfo.companyNumber})` : ""));
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
       console.error("会社情報保存エラー:", error);
@@ -224,6 +272,21 @@ function CompanySettings() {
                 onChange={(e) => setCompanyInfo({...companyInfo, name: e.target.value})}
                 className="w-full border rounded-md px-3 py-2"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                会社番号
+              </label>
+              <input
+                type="text"
+                value={companyInfo.companyNumber || '未設定（保存時に自動生成）'}
+                readOnly
+                className="w-full bg-gray-100 border rounded-md px-3 py-2 text-gray-600 cursor-not-allowed"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                会社番号は保存時に自動生成されます（例: COMP0001）
+              </p>
             </div>
             
             <div>

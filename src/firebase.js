@@ -15,7 +15,10 @@ import {
   collection,
   addDoc,
   doc,
-  setDoc
+  setDoc,
+  query,
+  where,
+  getDocs
 } from "firebase/firestore";
 import { getStorage, connectStorageEmulator } from "firebase/storage";
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
@@ -93,18 +96,25 @@ async function createTestUserIfNeeded() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       console.log("テストユーザーが作成されました:", userCredential.user.uid);
       
-      // Firestoreにユーザー情報を追加 - userTypeを修正
+      // Firestoreにテスト従業員情報を追加（統合版）
       try {
-        await setDoc(doc(db, "users", userCredential.user.uid), {
+        await setDoc(doc(collection(db, "employees")), {
+          uid: userCredential.user.uid,
           email: email,
-          userType: "company_admin",  // companyからcompany_adminに変更
+          name: "テストユーザー",
+          employeeId: "TEST001",
+          position: "テスト管理者",
+          userType: "company_admin",
+          role: "admin",
           companyId: "temp_id",
-          displayName: "テストユーザー",
+          departmentCode: "",
+          phone: "",
+          isActive: true,
           createdAt: new Date()
         });
-        console.log("ユーザー情報をFirestoreに保存しました");
+        console.log("テスト従業員情報をFirestoreに保存しました");
       } catch (firestoreError) {
-        console.error("Firestoreへのユーザー保存エラー:", firestoreError);
+        console.error("Firestoreへのテスト従業員保存エラー:", firestoreError);
       }
       
       return userCredential.user;
@@ -116,18 +126,25 @@ async function createTestUserIfNeeded() {
           const signInResult = await signInWithEmailAndPassword(auth, email, password);
           console.log("既存ユーザーでサインインしました:", signInResult.user.uid);
           
-          // 既存ユーザーのuserTypeを更新（必要な場合）
+          // 既存テスト従業員の権限を更新（必要な場合）
           try {
-            await setDoc(doc(db, "users", signInResult.user.uid), {
-              email: email,
-              userType: "company_admin",  // userTypeを更新
-              companyId: "temp_id",
-              displayName: "テストユーザー",
-              createdAt: new Date()
-            }, { merge: true });
-            console.log("既存ユーザーの権限を更新しました");
+            const existingEmployeeQuery = query(
+              collection(db, "employees"),
+              where('uid', '==', signInResult.user.uid)
+            );
+            const existingSnapshot = await getDocs(existingEmployeeQuery);
+            
+            if (!existingSnapshot.empty) {
+              const employeeDocRef = doc(db, "employees", existingSnapshot.docs[0].id);
+              await setDoc(employeeDocRef, {
+                userType: "company_admin",
+                role: "admin",
+                updatedAt: new Date()
+              }, { merge: true });
+              console.log("既存テスト従業員の権限を更新しました");
+            }
           } catch (updateError) {
-            console.error("ユーザー権限更新エラー:", updateError);
+            console.error("テスト従業員権限更新エラー:", updateError);
           }
           
           return signInResult.user;

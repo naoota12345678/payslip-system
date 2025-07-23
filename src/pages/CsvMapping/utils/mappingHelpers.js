@@ -37,7 +37,7 @@ export const createDirectMappingFromTwoLines = (line1, line2) => {
     attendanceItems: [],
     itemCodeItems: [],
     kyItems: [],
-    summaryItems: []
+    totalItems: []
   };
   
   // 項目を1つずつ処理
@@ -55,7 +55,7 @@ export const createDirectMappingFromTwoLines = (line1, line2) => {
     const itemData = {
       columnIndex: i,
       headerName: itemCode,
-      itemName: itemName,
+              itemName: itemName,
       itemCode: itemCode,
       isVisible: true,
       id: `item_${i}_${itemCode.replace(/[^a-zA-Z0-9]/g, '_')}`
@@ -93,7 +93,7 @@ export const createDirectMappingFromTwoLines = (line1, line2) => {
       mappingConfig.attendanceItems.push({...itemData, isVisible: false});
       console.log(`→ 勤怠項目: ${itemName}`);
     } else if (itemName.includes('合計') || itemName.includes('総額') || itemName.includes('差引')) {
-      mappingConfig.summaryItems.push({...itemData, isVisible: true});
+      mappingConfig.totalItems.push({...itemData, isVisible: true});
       console.log(`→ 合計項目: ${itemName}`);
     }
   }
@@ -230,15 +230,14 @@ export const convertFromNewFormat = (newFormat, initialMapping) => {
     kyItems: newFormat.kyItems || [],
     
     // 合計項目配列
-    totalItems: newFormat.summaryItems || newFormat.totalItems || [],
-    summaryItems: newFormat.summaryItems || newFormat.totalItems || [],
+    totalItems: newFormat.totalItems || newFormat.summaryItems || [], // 新旧両方に対応
     
     // 主要フィールド
     mainFields: newFormat.mainFields || initialMapping.mainFields,
     
-    // ヘッダー情報
+    // ヘッダー情報（一時的なUI状態は復元しない）
     parsedHeaders: newFormat.parsedHeaders || [],
-    headerInput: newFormat.headerInput || '',
+    // headerInput: newFormat.headerInput || '',  // UI状態のため復元不要
     rowBasedInput: newFormat.rowBasedInput || '',
     kyItemInput: newFormat.kyItemInput || '',
     
@@ -363,9 +362,9 @@ export const convertToNewFormat = (oldMapping) => {
       attendanceItems: [],
       deductionItems: [],
       incomeItems: [],
-      itemCodeItems: [],
-      kyItems: [],
-      summaryItems: [],
+          itemCodeItems: [],
+    kyItems: [],
+    totalItems: [],
       mainFields: {},
       parsedHeaders: [],
       headerInput: '',
@@ -387,15 +386,15 @@ export const convertToNewFormat = (oldMapping) => {
     itemCodeItems: oldMapping.itemCodeItems || [],
     kyItems: oldMapping.kyItems || [],
     
-    // 合計項目配列（totalItemsまたはsummaryItemsから）
-    summaryItems: oldMapping.totalItems || oldMapping.summaryItems || [],
+    // 合計項目配列
+    totalItems: oldMapping.totalItems || oldMapping.summaryItems || [], // 新旧両方に対応
     
     // 主要フィールド
     mainFields: oldMapping.mainFields || {},
     
-    // ヘッダー情報
+    // ヘッダー情報（一時的なUI状態は保存しない）
     parsedHeaders: oldMapping.parsedHeaders || [],
-    headerInput: oldMapping.headerInput || '',
+    // headerInput: oldMapping.headerInput || '',  // UI状態のため保存不要
     rowBasedInput: oldMapping.rowBasedInput || '',
     kyItemInput: oldMapping.kyItemInput || '',
     

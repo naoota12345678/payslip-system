@@ -1,8 +1,9 @@
 // src/pages/EmployeeDetail.js
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { db } from '../firebase';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { db, auth } from '../firebase';
+import { doc, getDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useAuth } from '../contexts/AuthContext';
 
 function EmployeeDetail() {
@@ -13,6 +14,7 @@ function EmployeeDetail() {
   const [department, setDepartment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [inviteLoading, setInviteLoading] = useState(false);
 
   useEffect(() => {
     const fetchEmployee = async () => {
@@ -46,8 +48,20 @@ function EmployeeDetail() {
 
         setEmployee({ id: employeeDoc.id, ...employeeData });
 
-        // 部門情報を取得
-        if (employeeData.departmentId) {
+        // 部門情報を取得（departmentCodeベース）
+        if (employeeData.departmentCode) {
+          // 部門コードから部門情報を検索
+          const departmentsQuery = query(
+            collection(db, 'departments'),
+            where('companyId', '==', userDetails.companyId),
+            where('code', '==', employeeData.departmentCode)
+          );
+          const departmentsSnapshot = await getDocs(departmentsQuery);
+          if (!departmentsSnapshot.empty) {
+            setDepartment(departmentsSnapshot.docs[0].data());
+          }
+        } else if (employeeData.departmentId) {
+          // 旧形式（departmentId）の後方互換性
           const departmentDoc = await getDoc(doc(db, 'departments', employeeData.departmentId));
           if (departmentDoc.exists()) {
             setDepartment(departmentDoc.data());
@@ -70,6 +84,92 @@ function EmployeeDetail() {
     if (!date) return 'N/A';
     if (date.toDate) return date.toDate().toLocaleDateString('ja-JP');
     return new Date(date).toLocaleDateString('ja-JP');
+  };
+
+  // ステータス表示用関数
+  const getStatusDisplay = (status) => {
+    switch (status) {
+      case 'preparation':
+        return { text: '準備中', color: 'bg-gray-100 text-gray-800', description: '招待メール未送信' };
+      case 'invited':
+        return { text: '招待送信済み', color: 'bg-blue-100 text-blue-800', description: '初回ログイン待ち' };
+      case 'auth_created':
+        return { text: 'ログイン可能', color: 'bg-yellow-100 text-yellow-800', description: 'パスワード変更待ち' };
+      case 'active':
+        return { text: 'アクティブ', color: 'bg-green-100 text-green-800', description: '利用開始済み' };
+      default:
+        return { text: '不明', color: 'bg-gray-100 text-gray-800', description: '' };
+    }
+  };
+
+  // 招待メール送信処理
+  const handleSendInvitation = async () => {
+    if (!employee || !employee.email || !employee.tempPassword) {
+      alert('従業員情報が不完全です。');
+      return;
+    }
+
+    try {
+      setInviteLoading(true);
+      
+      console.log('🔧 招待メール送信処理開始:', {
+        email: employee.email,
+        name: employee.name,
+        status: employee.status
+      });
+
+      // Firebase Authenticationユーザーを作成
+      const userCredential = await createUserWithEmailAndPassword(auth, employee.email, employee.tempPassword);
+      const user = userCredential.user;
+      
+      console.log('✅ Firebase Authユーザー作成完了:', user.uid);
+
+      // Firestoreでステータスを更新
+      await updateDoc(doc(db, 'employees', employeeId), {
+        uid: user.uid,
+        status: 'auth_created',
+        invitedAt: new Date(),
+        updatedAt: new Date()
+      });
+
+      // 従業員データを更新
+      setEmployee(prev => ({
+        ...prev,
+        uid: user.uid,
+        status: 'auth_created',
+        invitedAt: new Date()
+      }));
+
+      alert(`招待処理が完了しました！\n\n✅ Firebase Authenticationユーザーを作成\n✅ 従業員ステータスを「ログイン可能」に更新\n\n【次のステップ】\n従業員に以下をお伝えください：\n• ログインページ: ${window.location.origin}/employee/login\n• 初回ログイン用のパスワードは別途お知らせします\n\n※実際の招待メール送信機能は今後実装予定です`);
+      
+    } catch (error) {
+      console.error('❌ 招待メール送信エラー:', error);
+      
+      let errorMessage = '招待の送信に失敗しました';
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'このメールアドレスは既に使用されています';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'パスワードが弱すぎます';
+      }
+      
+      alert(errorMessage + '\n\nエラー: ' + (error.message || '不明なエラー'));
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
+  // 再送信処理
+  const handleResendInvitation = () => {
+    if (!employee) return;
+    
+    const message = `【従業員ログイン情報】\nメールアドレス: ${employee.email}\n仮パスワード: ${employee.tempPassword}\n\nログインページ: ${window.location.origin}/employee/login\n\nこの情報を従業員にお伝えください。`;
+    
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(message);
+      alert('ログイン情報をクリップボードにコピーしました。\n従業員にお伝えください。');
+    } else {
+      alert(message);
+    }
   };
 
   if (loading) {
@@ -222,6 +322,17 @@ function EmployeeDetail() {
           <h3 className="text-lg font-medium mb-4">システム情報</h3>
           <div className="space-y-3">
             <div className="flex">
+              <span className="text-gray-500 w-32">ステータス:</span>
+              <div className="flex items-center space-x-2">
+                <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusDisplay(employee.status || 'preparation').color}`}>
+                  {getStatusDisplay(employee.status || 'preparation').text}
+                </span>
+                <span className="text-sm text-gray-500">
+                  {getStatusDisplay(employee.status || 'preparation').description}
+                </span>
+              </div>
+            </div>
+            <div className="flex">
               <span className="text-gray-500 w-32">登録日:</span>
               <span className="font-medium">{formatDate(employee.createdAt)}</span>
             </div>
@@ -229,6 +340,52 @@ function EmployeeDetail() {
               <span className="text-gray-500 w-32">最終更新:</span>
               <span className="font-medium">{formatDate(employee.updatedAt)}</span>
             </div>
+            {employee.invitedAt && (
+              <div className="flex">
+                <span className="text-gray-500 w-32">招待送信日:</span>
+                <span className="font-medium">{formatDate(employee.invitedAt)}</span>
+              </div>
+            )}
+          </div>
+          
+          {/* 招待ボタンセクション */}
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            {employee.status === 'preparation' && (
+              <div className="space-y-2">
+                <button
+                  onClick={handleSendInvitation}
+                  disabled={inviteLoading}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {inviteLoading ? '送信中...' : '🚀 招待メール送信'}
+                </button>
+                <p className="text-sm text-gray-500">
+                  従業員がログイン可能になり、ログイン情報が表示されます
+                </p>
+              </div>
+            )}
+            
+            {(employee.status === 'auth_created' || employee.status === 'invited') && (
+              <div className="space-y-2">
+                <button
+                  onClick={handleResendInvitation}
+                  className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700"
+                >
+                  📋 ログイン情報をコピー
+                </button>
+                <p className="text-sm text-gray-500">
+                  従業員にログイン情報を再度お伝えできます
+                </p>
+              </div>
+            )}
+            
+            {employee.status === 'active' && (
+              <div className="space-y-2">
+                <span className="inline-flex items-center px-3 py-2 rounded-md bg-green-50 text-green-800">
+                  ✅ 従業員は既にシステムを利用開始しています
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>

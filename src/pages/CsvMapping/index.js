@@ -146,18 +146,8 @@ function CsvMapping() {
           ...(updated.kyItems || [])
         ];
         
-        // 🔧 データ構造の修正：headerNameが日本語の場合は記号と交換
-        const fixedItems = allItems.map(item => {
-          if (item.headerName && item.itemName && 
-              !item.headerName.startsWith('KY') && item.itemName.startsWith('KY')) {
-            return {
-              ...item,
-              headerName: item.itemName,  // 記号をheaderNameに
-              itemName: item.headerName   // 日本語をitemNameに
-            };
-          }
-          return item;
-        });
+        // データ構造はそのまま使用（自動修正は行わない）
+        const fixedItems = allItems;
         
         // headerName（記号）で検索して、対応するアイテムを見つける
         const matchedItem = fixedItems.find(item => item.headerName === selectedHeaderName);
@@ -232,6 +222,11 @@ function CsvMapping() {
   
   // KY項目のヘッダー名と表示名を修正するハンドラ
   const handleFixKyItemsMapping = useCallback(() => {
+    // 自動修正処理を無効化（データの入れ替えを防ぐ）
+    console.log('⚠️ KY項目の自動修正処理は無効化されています');
+    setSuccess('KY項目の自動修正処理はスキップされました。');
+    return;
+    
     setMappingConfig(prev => {
       const fixed = { ...prev };
       
@@ -278,6 +273,11 @@ function CsvMapping() {
 
   // 項目コードのヘッダー名と表示名を修正するハンドラ
   const handleFixItemCodeMapping = useCallback(() => {
+    // 自動修正処理を無効化（データの入れ替えを防ぐ）
+    console.log('⚠️ 自動修正処理は無効化されています');
+    setSuccess('自動修正処理はスキップされました。');
+    return;
+    
     setMappingConfig(prev => {
       const fixed = { ...prev };
       
@@ -434,9 +434,22 @@ function CsvMapping() {
 
   // シンプルな保存ハンドラー
   const handleSave = async () => {
-    const success = await saveMapping();
-    if (success) {
-      setSuccess('設定を保存しました。他のページに移動しても設定が保持されます。');
+    console.log('🔥 handleSave が呼ばれました');
+    console.log('🔥 保存前のmappingConfig:', mappingConfig);
+    console.log('🔥 mappingConfig.itemCodeItems の最初の3個:');
+    (mappingConfig.itemCodeItems || []).slice(0, 3).forEach((item, index) => {
+      console.log(`  [${index}] headerName="${item.headerName}", itemName="${item.itemName}"`);
+    });
+    
+    try {
+      const success = await saveMapping();
+      console.log('🔥 saveMapping の結果:', success);
+      if (success) {
+        setSuccess('設定を保存しました。他のページに移動しても設定が保持されます。');
+      }
+    } catch (error) {
+      console.error('🔥 handleSave でエラー:', error);
+      setError('保存中にエラーが発生しました: ' + error.message);
     }
   };
   
@@ -586,11 +599,18 @@ function CsvMapping() {
           <h2 className="text-xl font-semibold text-gray-900">CSVマッピング設定</h2>
           <div className="flex space-x-2">
             <button
+              onClick={handleSave}
+              disabled={saving}
+              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400 text-sm"
+            >
+              {saving ? '保存中...' : '💾 設定を保存'}
+            </button>
+            <button
               onClick={processRowBasedMapping}
               disabled={saving || !rowBasedInput.trim()}
               className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:bg-gray-400 text-sm"
             >
-              {saving ? '保存中...' : '🎯 シンプル保存'}
+              {saving ? '作成中...' : '🎯 新規作成'}
             </button>
           </div>
         </div>

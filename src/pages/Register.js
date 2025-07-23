@@ -2,7 +2,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, collection } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, getAuth } from 'firebase/auth';
 import { db } from '../firebase';
 
 function Register() {
@@ -14,6 +15,7 @@ function Register() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { signup } = useAuth();
+  const auth = getAuth();
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -35,24 +37,27 @@ function Register() {
       setError('');
       setLoading(true);
       
-      // Firestoreにユーザー情報を保存する形でサインアップ
-      const userCredential = await signup(email, password, 'company_admin', null);
+      // 1. まずFirebase Authでユーザー作成
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       
-      // 追加でFirestoreにユーザー情報を更新（管理者として）
-      await setDoc(doc(db, 'users', user.uid), {
+      // 2. employeesコレクションにユーザー情報を保存
+      await setDoc(doc(collection(db, 'employees')), {
+        uid: user.uid,
         email: email,
+        name: companyName,
+        employeeId: `ADMIN_${Date.now()}`,
+        position: '管理者',
         userType: 'company_admin',
         role: 'admin',
-        companyId: user.uid, // 初期は自身のUIDを使用
-        companyName: companyName,
-        displayName: companyName,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        isActive: true
+        companyId: user.uid,
+        isActive: true,
+        phone: '',
+        departmentCode: '',
+        createdAt: new Date()
       });
 
-      // 会社情報を作成
+      // 3. 会社情報を作成
       await setDoc(doc(db, 'companies', user.uid), {
         name: companyName,
         ownerId: user.uid,

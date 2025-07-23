@@ -56,11 +56,11 @@ export const createMappingFromInput = (line1, line2) => {
   
   // 動的マッピングデータ作成（KYコード分類あり）
   const mappingData = {
-    incomeItems: [],
-    deductionItems: [],
-    attendanceItems: [],
-    summaryItems: [],
-    itemCodeItems: [],
+      incomeItems: [],
+  deductionItems: [],
+  attendanceItems: [],
+  totalItems: [], // summaryItems → totalItems
+  itemCodeItems: [],
     mainFields: {},
     parsedHeaders: headerNames.slice(), // 2行目をヘッダーとして使用
     headerInput: line1,
@@ -101,14 +101,14 @@ export const loadMappingFromFirestore = (firestoreData) => {
   
   if (!firestoreData) {
     return {
-      mappingConfig: {
-        incomeItems: [],
-        deductionItems: [],
-        attendanceItems: [],
-        summaryItems: [],
-        itemCodeItems: [],
-        mainFields: {}
-      },
+          mappingConfig: {
+      incomeItems: [],
+      deductionItems: [],
+      attendanceItems: [],
+      totalItems: [], // summaryItems → totalItems
+      itemCodeItems: [],
+      mainFields: {}
+    },
       parsedHeaders: [],
       headerInput: '',
       rowBasedInput: ''
@@ -121,7 +121,7 @@ export const loadMappingFromFirestore = (firestoreData) => {
       incomeItems: firestoreData.incomeItems || [],
       deductionItems: firestoreData.deductionItems || [],
       attendanceItems: firestoreData.attendanceItems || [],
-      summaryItems: firestoreData.summaryItems || [],
+      totalItems: firestoreData.totalItems || firestoreData.summaryItems || [], // 新旧両方に対応
       itemCodeItems: firestoreData.itemCodeItems || [],
       mainFields: firestoreData.mainFields || {}
     },
@@ -147,7 +147,7 @@ export const prepareMappingForSave = (uiData) => {
     incomeItems: uiData.mappingConfig?.incomeItems || [],
     deductionItems: uiData.mappingConfig?.deductionItems || [],
     attendanceItems: uiData.mappingConfig?.attendanceItems || [],
-    summaryItems: uiData.mappingConfig?.summaryItems || [],
+    totalItems: uiData.mappingConfig?.totalItems || [], // summaryItems → totalItems に修正
     itemCodeItems: uiData.mappingConfig?.itemCodeItems || [],
     mainFields: uiData.mappingConfig?.mainFields || {},
     parsedHeaders: uiData.parsedHeaders || [],

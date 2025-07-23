@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 
 function InitialSetup() {
@@ -16,8 +16,12 @@ function InitialSetup() {
     // 既にセットアップ済みかチェック
     const checkSetup = async () => {
       if (currentUser) {
-        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-        if (userDoc.exists()) {
+        const employeeQuery = query(
+          collection(db, 'employees'),
+          where('uid', '==', currentUser.uid)
+        );
+        const employeeSnapshot = await getDocs(employeeQuery);
+        if (!employeeSnapshot.empty) {
           navigate('/');
         }
       }
@@ -37,15 +41,20 @@ function InitialSetup() {
       setLoading(true);
       setError('');
 
-      // ユーザー情報を作成
-      await setDoc(doc(db, 'users', currentUser.uid), {
+      // 従業員情報を作成（統合版）
+      await setDoc(doc(collection(db, 'employees')), {
+        uid: currentUser.uid,
         email: currentUser.email,
-        userType: 'company',
+        name: companyName,
+        employeeId: `ADMIN_${currentUser.uid.substring(0, 8)}`,
+        position: '管理者',
+        userType: 'company_admin',
+        role: 'admin',
         companyId: currentUser.uid,
-        companyName: companyName,
-        displayName: companyName,
-        createdAt: new Date(),
-        isActive: true
+        departmentCode: '',
+        phone: '',
+        isActive: true,
+        createdAt: new Date()
       });
 
       // 会社情報を作成

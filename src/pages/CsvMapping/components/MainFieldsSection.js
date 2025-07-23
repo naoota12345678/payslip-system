@@ -17,22 +17,10 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
   
   console.log('🔥 MainFieldsSection: allItemsの最初の3個:', allItems.slice(0, 3));
   
-  // 🔧 データ構造の修正：headerNameが日本語の場合は記号と交換
-  const fixedItems = allItems.map(item => {
-    // headerNameが日本語（記号ではない）場合は、headerNameとitemNameを交換
-    if (item.headerName && item.itemName && 
-        !item.headerName.startsWith('KY') && item.itemName.startsWith('KY')) {
-      console.log(`🔧 データ修正: ${item.headerName} ↔ ${item.itemName}`);
-      return {
-        ...item,
-        headerName: item.itemName,  // 記号をheaderNameに
-        itemName: item.headerName   // 日本語をitemNameに
-      };
-    }
-    return item;
-  });
+  // データ構造はそのまま使用（自動修正は行わない）
+  const fixedItems = allItems;
   
-  console.log('🔧 修正後のアイテム（最初の3個）:', fixedItems.slice(0, 3));
+  console.log('🔧 アイテムをそのまま使用（最初の3個）:', fixedItems.slice(0, 3));
   
   // 記号（headerName）を表示するように変更
   const availableSymbols = fixedItems.map(item => item.headerName).filter(s => s && s.trim());

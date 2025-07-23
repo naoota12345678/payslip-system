@@ -84,8 +84,12 @@ function PayslipPreview({ payslipData, showDetailedInfo = false }) {
             <span className="ml-2 font-medium">{payslipData?.employeeName || 'N/A'}</span>
           </div>
           <div className="text-right">
-            <span className="text-gray-600">部署名:</span>
-                            <span className="ml-2 font-medium">{payslipData?.departmentName || 'N/A'}</span>
+            {payslipData?.departmentName && (
+              <>
+                <span className="text-gray-600">部署名:</span>
+                <span className="ml-2 font-medium">{payslipData.departmentName}</span>
+              </>
+            )}
           </div>
         </div>
         
@@ -95,8 +99,7 @@ function PayslipPreview({ payslipData, showDetailedInfo = false }) {
             <span className="ml-2 font-medium">{payslipData?.employeeId || 'N/A'}</span>
           </div>
           <div className="text-right">
-            <span className="text-gray-600">従業員番号:</span>
-            <span className="ml-2 font-medium">{payslipData?.employeeId || 'N/A'}</span>
+            {/* 右側の従業員番号を削除（重複のため） */}
           </div>
         </div>
       </div>
@@ -134,7 +137,7 @@ function PayslipPreview({ payslipData, showDetailedInfo = false }) {
               payslipData.incomeItems.map((item, index) => (
                 <div key={index} className="flex justify-between text-xs py-1 border-b border-gray-100 last:border-b-0">
                   <span>{item.name}</span>
-                  <span className="text-right">{formatCurrency(item.value)}</span>
+                  <span className="text-right">{item.value}</span>
                 </div>
               ))
             ) : (
@@ -155,7 +158,7 @@ function PayslipPreview({ payslipData, showDetailedInfo = false }) {
               payslipData.deductionItems.map((item, index) => (
                 <div key={index} className="flex justify-between text-xs py-1 border-b border-gray-100 last:border-b-0">
                   <span>{item.name}</span>
-                  <span className="text-right">{formatCurrency(item.value)}</span>
+                  <span className="text-right">{item.value}</span>
                 </div>
               ))
             ) : (
@@ -172,55 +175,24 @@ function PayslipPreview({ payslipData, showDetailedInfo = false }) {
             合計
           </div>
           <div className="p-2">
-            {/* アップロードされたデータをそのまま表示 */}
-            {payslipData.totalIncome !== undefined && (
-              <div className="flex justify-between text-xs py-1 border-b border-gray-100">
-                <span>支給額合計</span>
-                <span className="text-right">{formatCurrency(payslipData.totalIncome)}</span>
+            {/* CSVの合計データをそのまま表示 */}
+            {payslipData.otherItems && payslipData.otherItems.length > 0 ? (
+              payslipData.otherItems.map((item, index) => (
+                <div key={index} className="flex justify-between text-xs py-1 border-b border-gray-100 last:border-b-0">
+                  <span>{item.name}</span>
+                  <span className="text-right">{item.value}</span>
+                </div>
+              ))
+            ) : (
+              <div className="text-xs text-gray-500 text-center py-2">
+                データなし
               </div>
             )}
-            {payslipData.totalDeduction !== undefined && (
-              <div className="flex justify-between text-xs py-1 border-b border-gray-100">
-                <span>控除額合計</span>
-                <span className="text-right">{formatCurrency(payslipData.totalDeduction)}</span>
-              </div>
-            )}
-            {payslipData.netAmount !== undefined && (
-              <div className="flex justify-between text-xs py-1 border-b border-gray-100">
-                <span>差引支給額</span>
-                <span className="text-right font-bold text-red-600">{formatCurrency(payslipData.netAmount)}</span>
-              </div>
-            )}
-            {/* その他項目も表示 */}
-            {payslipData.otherItems && payslipData.otherItems.length > 0 && payslipData.otherItems.map((item, index) => (
-              <div key={index} className="flex justify-between text-xs py-1 border-b border-gray-100 last:border-b-0">
-                <span>{item.name}</span>
-                <span className="text-right">{formatCurrency(item.value)}</span>
-              </div>
-            ))}
           </div>
         </div>
       </div>
 
-      {/* 詳細情報表示（オプション） */}
-      {showDetailedInfo && (
-        <div className="p-4 bg-gray-50 text-xs">
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <span className="text-gray-600">支給額合計:</span>
-              <span className="ml-2 font-medium">{formatCurrency(payslipData.totalIncome)}</span>
-            </div>
-            <div>
-              <span className="text-gray-600">控除額合計:</span>
-              <span className="ml-2 font-medium">{formatCurrency(payslipData.totalDeduction)}</span>
-            </div>
-            <div>
-              <span className="text-gray-600">差引支給額:</span>
-              <span className="ml-2 font-bold text-red-600">{formatCurrency(payslipData.netAmount)}</span>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 詳細情報表示は合計項目が重複するため削除 */}
 
       {/* フッター */}
       <div className="text-center p-2 text-xs text-gray-500">

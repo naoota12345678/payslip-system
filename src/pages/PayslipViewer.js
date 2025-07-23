@@ -19,10 +19,11 @@ function PayslipViewer() {
       try {
         setLoading(true);
         
-        // ユーザーIDに基づいて給与明細を取得
+        // 従業員IDに基づいて給与明細を取得
         const payslipsQuery = query(
           collection(db, 'payslips'),
-          where('userId', '==', currentUser.uid),
+          where('employeeId', '==', userDetails.employeeId),
+          where('companyId', '==', userDetails.companyId),
           orderBy('paymentDate', 'desc')
         );
         

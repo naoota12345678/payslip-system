@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
 function Profile() {
   const { currentUser, userDetails, logout, fetchUserDetails } = useAuth();
@@ -42,14 +42,22 @@ function Profile() {
       setMessage('');
       setLoading(true);
       
-      // ユーザー情報をFirestoreで更新
-      const userRef = doc(db, 'users', currentUser.uid);
-      await updateDoc(userRef, {
-        displayName,
-        phone,
-        position,
-        updatedAt: new Date()
-      });
+      // 従業員情報をFirestoreで更新
+      const employeeQuery = query(
+        collection(db, 'employees'),
+        where('uid', '==', currentUser.uid)
+      );
+      
+      const employeeSnapshot = await getDocs(employeeQuery);
+      if (!employeeSnapshot.empty) {
+        const employeeDocRef = doc(db, 'employees', employeeSnapshot.docs[0].id);
+        await updateDoc(employeeDocRef, {
+          name: displayName,
+          phone,
+          position,
+          updatedAt: new Date()
+        });
+      }
       
       // ユーザー詳細を再取得
       await fetchUserDetails(currentUser);

@@ -22,15 +22,15 @@ import AdminDashboard from './pages/AdminDashboard';
 
 // ユーザー管理関連
 import Profile from './pages/Profile';
-import UserList from './pages/UserList';
-import UserDetail from './pages/UserDetail';
-import UserForm from './pages/UserForm';
 
 // 従業員管理関連
 import EmployeeManagement from './pages/EmployeeManagement';
 import EmployeeDetail from './pages/EmployeeDetail';
 import EmployeeForm from './pages/EmployeeForm';
 import EmployeeRegister from './pages/EmployeeRegister';
+import EmployeeLogin from './pages/EmployeeLogin';
+import EmployeeForgotPassword from './pages/EmployeeForgotPassword';
+import EmployeeChangePassword from './pages/EmployeeChangePassword';
 
 // 給与管理関連
 import CsvUpload from './pages/CsvUpload';
@@ -89,11 +89,7 @@ function App() {
               <Route path="dashboard" element={<AdminDashboard />} />
               <Route path="profile" element={<Profile />} />
               
-              {/* ユーザー管理 */}
-              <Route path="users" element={<UserList />} />
-              <Route path="users/new" element={<UserForm />} />
-              <Route path="users/:userId" element={<UserDetail />} />
-              <Route path="users/:userId/edit" element={<UserForm />} />
+
               
               {/* 従業員管理 */}
               <Route path="employees" element={<EmployeeManagement />} />
@@ -128,10 +124,15 @@ function App() {
               <Route path="settings/backup" element={<DataBackup />} />
             </Route>
             
-            {/* 従業員専用機能 */}
+            {/* 従業員ログイン（認証前） */}
+            <Route path="/employee/login" element={<EmployeeLogin />} />
+            <Route path="/employee/forgot-password" element={<EmployeeForgotPassword />} />
+            
+            {/* 従業員専用機能（認証後） */}
             <Route path="/employee" element={<PrivateRoute />}>
               <Route path="dashboard" element={<EmployeeDashboard />} />
               <Route path="profile" element={<Profile />} />
+              <Route path="change-password" element={<EmployeeChangePassword />} />
               
               {/* 給与明細閲覧 */}
               <Route path="payslips" element={<PayslipList />} />
@@ -177,7 +178,7 @@ function HomePage() {
           </Link>
           
           <Link 
-            to="/employee"
+            to="/employee/login"
             className="w-full bg-green-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center"
           >
             <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">

@@ -72,10 +72,11 @@ export const useMappingConfig = (userDetails) => {
             //   convertedData.parsedHeaders = csvData.parsedHeaders;
             // }
             
-            if (csvData.headerInput) {
-              console.log('保存されたheaderInputを復元:', csvData.headerInput);
-              convertedData.headerInput = csvData.headerInput;
-            }
+            // headerInputは一時的なUI状態のため復元しない
+            // if (csvData.headerInput) {
+            //   console.log('保存されたheaderInputを復元:', csvData.headerInput);
+            //   convertedData.headerInput = csvData.headerInput;
+            // }
             if (csvData.rowBasedInput) {
               console.log('保存されたrowBasedInputを復元:', csvData.rowBasedInput);
               convertedData.rowBasedInput = csvData.rowBasedInput;
@@ -265,9 +266,9 @@ export const useMappingConfig = (userDetails) => {
       batch.set(doc(db, 'csvSettings', userDetails.companyId), {
         employeeIdColumn: employeeIdColumn,
         departmentCodeColumn: departmentCodeColumn,
-        // ⚠️ parsedHeadersの保存を停止（ヘッダー固定化を防ぐ）
-        // parsedHeaders: configToSave.parsedHeaders || [],
-        headerInput: configToSave.headerInput || '',
+        // ⚠️ 一時的なUI状態は保存しない（不要なデータの削減）
+        // headerInput: configToSave.headerInput || '',  // UI状態のため保存不要
+        // parsedHeaders: configToSave.parsedHeaders || [],  // ヘッダー固定化を防ぐ
         rowBasedInput: configToSave.rowBasedInput || '',
         // 項目情報も保存して復元時に使用
         itemCodeItems: configToSave.itemCodeItems || [],

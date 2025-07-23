@@ -28,7 +28,8 @@ function EmployeeDashboard() {
         // 自分の給与明細のみ取得（最新5件）
         const q = query(
           collection(db, "payslips"),
-          where("userId", "==", currentUser.uid),
+          where("employeeId", "==", userDetails.employeeId),
+          where("companyId", "==", userDetails.companyId),
           orderBy("paymentDate", "desc"),
           limit(5)
         );
@@ -70,7 +71,8 @@ function EmployeeDashboard() {
         
         const yearlyQuery = query(
           collection(db, "payslips"),
-          where("userId", "==", currentUser.uid),
+          where("employeeId", "==", userDetails.employeeId),
+          where("companyId", "==", userDetails.companyId),
           where("paymentDate", ">=", Timestamp.fromDate(oneYearAgo)),
           orderBy("paymentDate", "desc")
         );

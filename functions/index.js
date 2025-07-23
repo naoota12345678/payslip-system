@@ -4,9 +4,134 @@ const admin = require('firebase-admin');
 const fetch = require('node-fetch');
 const csv = require('csv-parser');
 const { PassThrough } = require('stream');
+const sgMail = require('@sendgrid/mail');
 
 admin.initializeApp();
 const db = admin.firestore();
+
+// SendGrid設定
+sgMail.setApiKey(functions.config().sendgrid?.key || process.env.SENDGRID_API_KEY);
+
+// メール送信関数
+const sendEmail = async (to, subject, htmlContent, textContent = null) => {
+  try {
+    const msg = {
+      to: to,
+      from: functions.config().sendgrid?.from_email || 'noreply@kyuyoprint.web.app',
+      subject: subject,
+      text: textContent || htmlContent.replace(/<[^>]*>/g, ''), // HTMLタグを除去してテキスト版作成
+      html: htmlContent,
+    };
+
+    console.log(`📧 メール送信試行: ${to} - ${subject}`);
+    await sgMail.send(msg);
+    console.log(`✅ メール送信成功: ${to}`);
+    return { success: true };
+  } catch (error) {
+    console.error(`❌ メール送信エラー: ${to}`, error);
+    if (error.response) {
+      console.error('SendGrid Error Response:', error.response.body);
+    }
+    return { success: false, error: error.message };
+  }
+};
+
+// 招待メールテンプレート
+const createInvitationEmailContent = (employeeName, tempPassword, loginUrl) => {
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    .container { max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif; }
+    .header { background-color: #4A90E2; color: white; padding: 20px; text-align: center; }
+    .content { padding: 30px; background-color: #ffffff; }
+    .login-info { background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
+    .button { display: inline-block; background-color: #4A90E2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 10px 0; }
+    .footer { background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>給与明細システム ログイン情報</h1>
+    </div>
+    <div class="content">
+      <h2>${employeeName} 様</h2>
+      <p>給与明細システムへのアクセス権が付与されました。</p>
+      
+      <div class="login-info">
+        <h3>ログイン情報</h3>
+        <p><strong>ログインページ:</strong><br>
+        <a href="${loginUrl}" class="button">給与明細システムにログイン</a></p>
+        
+        <p><strong>初回ログイン用パスワード:</strong><br>
+        <code style="background: #e9ecef; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${tempPassword}</code></p>
+      </div>
+      
+      <h3>ログイン手順</h3>
+      <ol>
+        <li>上記のログインページにアクセス</li>
+        <li>メールアドレスと初回ログイン用パスワードでログイン</li>
+        <li>初回ログイン時に新しいパスワードを設定</li>
+        <li>以降は新しいパスワードでログイン</li>
+      </ol>
+      
+      <p><strong>注意:</strong> 初回ログイン用パスワードは一度きりの使用です。必ず新しいパスワードに変更してください。</p>
+    </div>
+    <div class="footer">
+      <p>このメールに心当たりがない場合は、システム管理者にお問い合わせください。</p>
+    </div>
+  </div>
+</body>
+</html>`;
+};
+
+// 給与明細通知メールテンプレート
+const createPayslipNotificationContent = (employeeName, paymentDate, loginUrl) => {
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    .container { max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif; }
+    .header { background-color: #28a745; color: white; padding: 20px; text-align: center; }
+    .content { padding: 30px; background-color: #ffffff; }
+    .payslip-info { background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
+    .button { display: inline-block; background-color: #28a745; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 10px 0; }
+    .footer { background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>給与明細のお知らせ</h1>
+    </div>
+    <div class="content">
+      <h2>${employeeName} 様</h2>
+      <p>${paymentDate}の給与明細をご確認いただけます。</p>
+      
+      <div class="payslip-info">
+        <h3>給与明細確認</h3>
+        <p>下記のボタンをクリックして給与明細システムにログインし、明細をご確認ください。</p>
+        <a href="${loginUrl}" class="button">給与明細を確認する</a>
+      </div>
+      
+      <p><strong>注意事項:</strong></p>
+      <ul>
+        <li>給与明細は機密情報です。第三者に開示しないでください。</li>
+        <li>内容に関するご質問は人事部までお問い合わせください。</li>
+      </ul>
+    </div>
+    <div class="footer">
+      <p>このメールに心当たりがない場合は、システム管理者にお問い合わせください。</p>
+    </div>
+  </div>
+</body>
+</html>`;
+};
 
 // タイムスタンプ生成用のヘルパー関数
 const getServerTimestamp = () => {
@@ -510,6 +635,186 @@ exports.testSimpleCSV = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError(
       'internal',
       'テスト中にエラーが発生しました: ' + error.message
+    );
+  }
+});
+
+// 招待メール送信Function
+exports.sendInvitationEmail = functions.firestore
+  .document('employees/{employeeId}')
+  .onUpdate(async (change, context) => {
+    const newData = change.after.data();
+    const oldData = change.before.data();
+    const employeeId = context.params.employeeId;
+    
+    try {
+      // statusが 'preparation' → 'auth_created' に変更された場合のみ招待メール送信
+      if (oldData.status === 'preparation' && newData.status === 'auth_created') {
+        console.log(`📧 招待メール送信処理開始: ${employeeId}`);
+        
+        if (!newData.email || !newData.tempPassword || !newData.name) {
+          console.error('招待メール送信に必要な情報が不足:', {
+            email: !!newData.email,
+            tempPassword: !!newData.tempPassword,
+            name: !!newData.name
+          });
+          return;
+        }
+        
+        const loginUrl = 'https://kyuyoprint.web.app/employee/login';
+        const htmlContent = createInvitationEmailContent(newData.name, newData.tempPassword, loginUrl);
+        const subject = '【給与明細システム】ログイン情報のお知らせ';
+        
+        const result = await sendEmail(newData.email, subject, htmlContent);
+        
+        if (result.success) {
+          // メール送信成功をFirestoreに記録
+          await change.after.ref.update({
+            invitationEmailSent: true,
+            invitationEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
+            lastEmailResult: 'success'
+          });
+          console.log(`✅ 招待メール送信完了: ${newData.email}`);
+        } else {
+          // メール送信失敗をFirestoreに記録
+          await change.after.ref.update({
+            invitationEmailSent: false,
+            lastEmailResult: 'failed',
+            lastEmailError: result.error
+          });
+          console.error(`❌ 招待メール送信失敗: ${newData.email}`, result.error);
+        }
+      }
+    } catch (error) {
+      console.error('招待メール送信Function エラー:', error);
+      
+      // エラーをFirestoreに記録
+      try {
+        await change.after.ref.update({
+          lastEmailResult: 'error',
+          lastEmailError: error.message
+        });
+      } catch (updateError) {
+        console.error('エラー記録失敗:', updateError);
+      }
+    }
+  });
+
+// 給与明細通知メール送信Function
+exports.sendPayslipNotifications = functions.https.onCall(async (data, context) => {
+  try {
+    console.log('📧 給与明細通知メール一括送信開始');
+    
+    const { uploadId, paymentDate } = data;
+    
+    if (!uploadId || !paymentDate) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'uploadId と paymentDate は必須です'
+      );
+    }
+    
+    // 該当する給与明細データを取得
+    const payslipsSnapshot = await admin.firestore()
+      .collection('payslips')
+      .where('uploadId', '==', uploadId)
+      .get();
+      
+    if (payslipsSnapshot.empty) {
+      throw new functions.https.HttpsError(
+        'not-found',
+        '指定されたuploadIdの給与明細が見つかりません'
+      );
+    }
+    
+    const loginUrl = 'https://kyuyoprint.web.app/employee/login';
+    const results = [];
+    let successCount = 0;
+    let failCount = 0;
+    
+    console.log(`📧 ${payslipsSnapshot.size}件の給与明細通知メールを送信します`);
+    
+    // 各従業員にメール送信
+    for (const payslipDoc of payslipsSnapshot.docs) {
+      const payslipData = payslipDoc.data();
+      
+      try {
+        // 従業員情報を取得
+        const employeeSnapshot = await admin.firestore()
+          .collection('employees')
+          .where('employeeId', '==', payslipData.employeeId)
+          .where('companyId', '==', payslipData.companyId)
+          .get();
+          
+        if (employeeSnapshot.empty) {
+          console.warn(`従業員が見つかりません: ${payslipData.employeeId}`);
+          failCount++;
+          continue;
+        }
+        
+        const employeeData = employeeSnapshot.docs[0].data();
+        
+        if (!employeeData.email) {
+          console.warn(`メールアドレスが設定されていません: ${payslipData.employeeId}`);
+          failCount++;
+          continue;
+        }
+        
+        // メール送信
+        const htmlContent = createPayslipNotificationContent(
+          employeeData.name || payslipData.employeeId,
+          paymentDate,
+          loginUrl
+        );
+        const subject = `【給与明細】${paymentDate}の給与明細のお知らせ`;
+        
+        const result = await sendEmail(employeeData.email, subject, htmlContent);
+        
+        if (result.success) {
+          successCount++;
+          console.log(`✅ 給与明細通知メール送信成功: ${employeeData.email}`);
+        } else {
+          failCount++;
+          console.error(`❌ 給与明細通知メール送信失敗: ${employeeData.email}`, result.error);
+        }
+        
+        results.push({
+          employeeId: payslipData.employeeId,
+          email: employeeData.email,
+          success: result.success,
+          error: result.error || null
+        });
+        
+        // API制限を避けるため少し待機
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+      } catch (employeeError) {
+        console.error(`従業員処理エラー: ${payslipData.employeeId}`, employeeError);
+        failCount++;
+        results.push({
+          employeeId: payslipData.employeeId,
+          email: null,
+          success: false,
+          error: employeeError.message
+        });
+      }
+    }
+    
+    console.log(`📧 給与明細通知メール一括送信完了: 成功 ${successCount}件、失敗 ${failCount}件`);
+    
+    return {
+      success: true,
+      totalCount: payslipsSnapshot.size,
+      successCount,
+      failCount,
+      results
+    };
+    
+  } catch (error) {
+    console.error('給与明細通知メール一括送信エラー:', error);
+    throw new functions.https.HttpsError(
+      'internal',
+      '給与明細通知メール送信中にエラーが発生しました: ' + error.message
     );
   }
 });

@@ -88,10 +88,34 @@ function EmployeeManagement() {
     }
   };
 
-  // 部門名を取得
-  const getDepartmentName = (departmentId) => {
-    const department = departments.find(dept => dept.id === departmentId);
-    return department ? department.name : '-';
+  // 部門名を取得（departmentCodeベース）
+  const getDepartmentName = (departmentCode, departmentId = null) => {
+    if (departmentCode) {
+      // 新形式：部門コードから検索
+      const department = departments.find(dept => dept.code === departmentCode);
+      return department ? department.name : '-';
+    } else if (departmentId) {
+      // 旧形式：部門IDから検索（後方互換性）
+      const department = departments.find(dept => dept.id === departmentId);
+      return department ? department.name : '-';
+    }
+    return '-';
+  };
+
+  // ステータス表示用関数
+  const getStatusDisplay = (status) => {
+    switch (status) {
+      case 'preparation':
+        return { text: '準備中', color: 'bg-gray-100 text-gray-800' };
+      case 'invited':
+        return { text: '招待済み', color: 'bg-blue-100 text-blue-800' };
+      case 'auth_created':
+        return { text: 'ログイン可能', color: 'bg-yellow-100 text-yellow-800' };
+      case 'active':
+        return { text: 'アクティブ', color: 'bg-green-100 text-green-800' };
+      default:
+        return { text: '準備中', color: 'bg-gray-100 text-gray-800' };
+    }
   };
 
   if (loading) {
@@ -152,7 +176,7 @@ function EmployeeManagement() {
                 部門
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                役職
+                ステータス
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 操作
@@ -183,10 +207,12 @@ function EmployeeManagement() {
                     {employee.email || '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {employee.departmentId ? getDepartmentName(employee.departmentId) : '-'}
+                    {getDepartmentName(employee.departmentCode, employee.departmentId)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {employee.position || '-'}
+                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusDisplay(employee.status || 'preparation').color}`}>
+                      {getStatusDisplay(employee.status || 'preparation').text}
+                    </span>
                   </td>
                   <td 
                     className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"
@@ -471,11 +497,11 @@ function CSVUploadForm({ companyId, setError, setSuccess }) {
             employee.email = values[emailIndex];
           }
           
-          // 部門コードが設定されていれば部門IDに変換
+          // 部門コードが設定されていれば保存
           if (departmentCodeIndex !== -1 && values[departmentCodeIndex]) {
             const deptCode = values[departmentCodeIndex];
             if (departmentMap[deptCode]) {
-              employee.departmentId = departmentMap[deptCode];
+              employee.departmentCode = deptCode;
             }
           }
           

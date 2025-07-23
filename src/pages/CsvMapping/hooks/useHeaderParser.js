@@ -61,11 +61,11 @@ export const useHeaderParser = (
         setRowBasedInput(initialMapping.rowBasedInput);
       }
       
-      // 入力フィールドの復元
-      if (initialMapping.headerInput) {
-        console.log('headerInputを復元:', initialMapping.headerInput);
-        setHeaderInput(initialMapping.headerInput);
-      }
+      // headerInputは一時的なUI状態のため復元しない
+      // if (initialMapping.headerInput) {
+      //   console.log('headerInputを復元:', initialMapping.headerInput);
+      //   setHeaderInput(initialMapping.headerInput);
+      // }
       
       if (initialMapping.kyItemInput) {
         console.log('kyItemInputを復元:', initialMapping.kyItemInput);
@@ -99,11 +99,11 @@ export const useHeaderParser = (
         // TODO: autoMapRequiredFields関数を実装する必要があります
         // const updated = autoMapRequiredFields(headers, prev);
         const updated = prev; // 一時的に変更なしで対応
-        // ヘッダー情報も保存
+        // ヘッダー情報のみ保存（headerInputは一時的なUI状態のため保存しない）
         return {
           ...updated,
-          parsedHeaders: headers,
-          headerInput: headerInput
+          parsedHeaders: headers
+          // headerInput: headerInput  // UI状態のため保存不要
         };
       });
       
@@ -143,8 +143,8 @@ export const useHeaderParser = (
         ...prev,
         // KY項目を一時的に保存
         kyItems: kyItems,
-        parsedHeaders: parsedHeaders,
-        headerInput: headerInput
+        parsedHeaders: parsedHeaders
+        // headerInput: headerInput  // UI状態のため保存不要
       }));
       
     } catch (err) {

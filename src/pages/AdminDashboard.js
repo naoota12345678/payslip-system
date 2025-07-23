@@ -50,6 +50,7 @@ function AdminDashboard() {
     // 最近の給与明細を取得
     const fetchRecentPayslips = async () => {
       try {
+        console.log('🔍 AdminDashboard: payslipsクエリ実行中...', userDetails.companyId);
         const q = query(
           collection(db, "payslips"),
           where("companyId", "==", userDetails.companyId),
@@ -70,13 +71,19 @@ function AdminDashboard() {
         
         setRecentPayslips(payslipList);
       } catch (err) {
-        console.error("給与明細データの取得エラー:", err);
+        console.error("❌ AdminDashboard: 給与明細データの取得エラー:", err);
+        console.error("エラー詳細:", {
+          code: err.code,
+          message: err.message,
+          companyId: userDetails.companyId
+        });
       }
     };
     
     // 最近のCSVアップロードを取得
     const fetchRecentUploads = async () => {
       try {
+        console.log('🔍 AdminDashboard: csvUploadsクエリ実行中...', userDetails.companyId);
         const q = query(
           collection(db, "csvUploads"),
           where("companyId", "==", userDetails.companyId),
@@ -98,7 +105,12 @@ function AdminDashboard() {
         
         setRecentUploads(uploadList);
       } catch (err) {
-        console.error("アップロードデータの取得エラー:", err);
+        console.error("❌ AdminDashboard: アップロードデータの取得エラー:", err);
+        console.error("エラー詳細:", {
+          code: err.code,
+          message: err.message,
+          companyId: userDetails.companyId
+        });
       }
     };
     
@@ -106,12 +118,12 @@ function AdminDashboard() {
     const calculateStats = async () => {
       try {
         // 全従業員数
-        const usersQuery = query(
-          collection(db, "users"),
+        const employeesQuery = query(
+          collection(db, "employees"),
           where("companyId", "==", userDetails.companyId)
         );
-        const usersSnapshot = await getDocs(usersQuery);
-        const totalEmployees = usersSnapshot.size;
+        const employeesSnapshot = await getDocs(employeesQuery);
+        const totalEmployees = employeesSnapshot.size;
         
         // 給与明細の総数
         const allPayslipsQuery = query(
@@ -124,6 +136,10 @@ function AdminDashboard() {
         // 今月の給与明細数と総支給額
         const now = new Date();
         const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        console.log('🔍 AdminDashboard: 今月の給与明細クエリ実行中...', {
+          companyId: userDetails.companyId,
+          firstDayOfMonth: firstDayOfMonth
+        });
         const monthlyPayslipsQuery = query(
           collection(db, "payslips"),
           where("companyId", "==", userDetails.companyId),

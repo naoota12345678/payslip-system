@@ -17,26 +17,33 @@ function PayslipDetail() {
   const [viewLogged, setViewLogged] = useState(false);
   const [relatedPayslips, setRelatedPayslips] = useState([]);
   const [employeeName, setEmployeeName] = useState('N/A');
-  const [departmentName, setDepartmentName] = useState('N/A');
+  const [departmentName, setDepartmentName] = useState('');
   const [companyName, setCompanyName] = useState('N/A');
   const [mappingConfig, setMappingConfig] = useState(null);
   const printRef = useRef(null);
 
-  // CSVマッピング設定を取得
-  const fetchMappingConfig = async (companyId) => {
+  // CSVマッピング設定を取得（同期版）
+  const fetchMappingConfigSync = async (companyId) => {
     try {
       const mappingDoc = await getDoc(doc(db, "csvMappings", companyId));
       if (mappingDoc.exists()) {
-        const data = mappingDoc.data();
-        setMappingConfig(data);
-        console.log('マッピング設定を取得:', data);
+        const mappingData = mappingDoc.data();
+        console.log('🎯 CSVマッピング設定を直接取得:', mappingData);
+        
+
+        
+
+        setMappingConfig(mappingData);
+        return mappingData;
       } else {
-        console.log('マッピング設定が見つかりません');
+        console.log('❌ マッピング設定が見つかりません');
         setMappingConfig(null);
+        return null;
       }
     } catch (err) {
-      console.error('マッピング設定取得エラー:', err);
+      console.error('🚨 マッピング設定取得エラー:', err);
       setMappingConfig(null);
+      return null;
     }
   };
 
@@ -64,7 +71,8 @@ function PayslipDetail() {
         
         // アクセス権のチェック（管理者または自分の給与明細のみ閲覧可能）
         const isAdmin = userDetails?.role === 'admin';
-        const isOwner = payslipData.userId === currentUser.uid;
+        const isOwner = payslipData.employeeId === userDetails.employeeId && 
+                       payslipData.companyId === userDetails.companyId;
         
         if (!isAdmin && !isOwner) {
           setError("この給与明細を閲覧する権限がありません");
@@ -72,9 +80,10 @@ function PayslipDetail() {
           return;
         }
 
-        // マッピング設定を取得（項目分類のため）
+        // マッピング設定を取得
+        let currentMappingConfig = null;
         if (payslipData.companyId || userDetails?.companyId) {
-          await fetchMappingConfig(payslipData.companyId || userDetails.companyId);
+          currentMappingConfig = await fetchMappingConfigSync(payslipData.companyId || userDetails.companyId);
         }
 
         // 日付型に変換
@@ -82,128 +91,87 @@ function PayslipDetail() {
           payslipData.paymentDate = payslipData.paymentDate.toDate();
         }
         
-        // マッピング設定に基づいて項目を分類
-        const classifyItemsWithMapping = (payslipData, mappingConfig) => {
+        console.log('📋 マッピング設定を使用して項目を分類中...');
+        console.log('💾 PayslipData items:', Object.keys(payslipData.items || {}));
+        
+        // シンプルな分類処理（データベースから直接）
+        const classifyItemsSimple = (payslipData, mappingConfig) => {
           const incomeItems = [];
           const deductionItems = [];
           const attendanceItems = [];
           const otherItems = [];
           
           if (!payslipData.items || !mappingConfig) {
-            // マッピング設定がない場合は従来の方法で分類
-            Object.entries(payslipData.items || {}).forEach(([id, item]) => {
-              if (item.type === 'income') {
-                incomeItems.push({ id, ...item });
-              } else if (item.type === 'deduction') {
-                deductionItems.push({ id, ...item });
-              } else {
-                otherItems.push({ id, ...item });
-              }
-            });
-          } else {
-            // マッピング設定に基づいて分類
+            // マッピング設定がない場合はCSVのキーをそのまま表示
             Object.entries(payslipData.items || {}).forEach(([csvColumn, value]) => {
-              // CSVの列名（キー）に対応するマッピング設定を検索
-              let itemInfo = null;
-              let category = 'other';
-              
-              // 支給項目で検索
-              const incomeItem = mappingConfig.incomeItems?.find(item => 
-                item.headerName === csvColumn && item.isVisible !== false
-              );
-              if (incomeItem) {
-                itemInfo = incomeItem;
-                category = 'income';
-              }
-              
-              // 控除項目で検索
-              if (!itemInfo) {
-                const deductionItem = mappingConfig.deductionItems?.find(item => 
-                  item.headerName === csvColumn && item.isVisible !== false
-                );
-                if (deductionItem) {
-                  itemInfo = deductionItem;
-                  category = 'deduction';
-                }
-              }
-              
-              // 勤怠項目で検索
-              if (!itemInfo) {
-                const attendanceItem = mappingConfig.attendanceItems?.find(item => 
-                  item.headerName === csvColumn && item.isVisible !== false
-                );
-                if (attendanceItem) {
-                  itemInfo = attendanceItem;
-                  category = 'attendance';
-                }
-              }
-              
-              // 項目コード項目で検索
-              if (!itemInfo) {
-                const itemCodeItem = mappingConfig.itemCodeItems?.find(item => 
-                  item.headerName === csvColumn && item.isVisible !== false
-                );
-                if (itemCodeItem) {
-                  itemInfo = itemCodeItem;
-                  // 項目コード項目は名前に基づいて分類
-                  if (itemCodeItem.itemName) {
-                    if (itemCodeItem.itemName.includes('給') || itemCodeItem.itemName.includes('手当') || itemCodeItem.itemName.includes('支給')) {
-                      category = 'income';
-                    } else if (itemCodeItem.itemName.includes('控除') || itemCodeItem.itemName.includes('税') || itemCodeItem.itemName.includes('保険')) {
-                      category = 'deduction';
-                    } else if (itemCodeItem.itemName.includes('時間') || itemCodeItem.itemName.includes('日数') || itemCodeItem.itemName.includes('勤怠')) {
-                      category = 'attendance';
-                    }
-                  }
-                }
-              }
-              
-              if (itemInfo) {
-                const displayItem = {
-                  id: csvColumn,
-                  name: itemInfo.itemName || itemInfo.headerName || csvColumn,
-                  value: value,
-                  type: category,
-                  csvColumn: csvColumn
-                };
-                
-                switch (category) {
-                  case 'income':
-                    incomeItems.push(displayItem);
-                    break;
-                  case 'deduction':
-                    deductionItems.push(displayItem);
-                    break;
-                  case 'attendance':
-                    attendanceItems.push(displayItem);
-                    break;
-                  default:
-                    otherItems.push(displayItem);
-                    break;
-                }
-              }
+              otherItems.push({
+                id: csvColumn,
+                name: csvColumn,
+                value: value,
+                type: 'other',
+                csvColumn: csvColumn
+              });
             });
+            return { incomeItems, deductionItems, attendanceItems, otherItems };
           }
+
+          // 全ての設定カテゴリを処理
+          console.log('合計項目数:', (mappingConfig.totalItems || []).length);
           
-          // 並び替え（項目名でソート）
-          const sortItems = (items) => {
-            return items.sort((a, b) => {
-              const nameA = a.name || '';
-              const nameB = b.name || '';
-              return nameA.localeCompare(nameB, 'ja');
+          const allCategories = [
+            { items: mappingConfig.incomeItems || [], type: 'income', targetArray: incomeItems },
+            { items: mappingConfig.deductionItems || [], type: 'deduction', targetArray: deductionItems },
+            { items: mappingConfig.attendanceItems || [], type: 'attendance', targetArray: attendanceItems },
+            { items: mappingConfig.totalItems || [], type: 'total', targetArray: otherItems }
+          ];
+
+          allCategories.forEach(category => {
+            category.items.forEach((item, index) => {
+              // CSVデータに対応する値があるかチェック
+              const value = payslipData.items[item.headerName];
+              if (value === undefined || value === null) {
+                return; // データがない項目はスキップ
+              }
+
+              // 表示/非表示のチェック
+              if (item.isVisible === false) {
+                return;
+              }
+
+                             // 表示名を決定（itemName優先、なければheaderName）
+               const displayName = (item.itemName && item.itemName.trim() !== '') 
+                 ? item.itemName 
+                 : item.headerName;
+
+
+
+              const processedItem = {
+                id: item.headerName,
+                name: displayName,
+                value: value,
+                type: category.type,
+                csvColumn: item.headerName,
+                order: index
+              };
+
+              // ハードコーディングされた分類を削除し、設定に従って分類
+              category.targetArray.push(processedItem);
             });
-          };
-          
-          return {
-            incomeItems: sortItems(incomeItems),
-            deductionItems: sortItems(deductionItems),
-            attendanceItems: sortItems(attendanceItems),
-            otherItems: sortItems(otherItems)
-          };
+          });
+
+          console.log('📊 分類結果:');
+          console.log(`- 支給項目: ${incomeItems.length}件`);
+          console.log(`- 控除項目: ${deductionItems.length}件`);
+          console.log(`- 勤怠項目: ${attendanceItems.length}件`);
+          console.log(`- その他: ${otherItems.length}件`);
+
+          return { incomeItems, deductionItems, attendanceItems, otherItems };
         };
-        
+
         const { incomeItems, deductionItems, attendanceItems, otherItems } = 
-          classifyItemsWithMapping(payslipData, mappingConfig);
+          classifyItemsSimple(payslipData, currentMappingConfig);
+        
+        console.log('otherItems数:', otherItems.length);
         
         setPayslip({
           ...payslipData,
@@ -223,13 +191,12 @@ function PayslipDetail() {
         //   logPayslipView(payslipId);
         // }
         
-        // 社員名、部署名、会社名を取得
+        // 従業員名を取得（シンプル検索）
         if (payslipData.employeeId) {
           fetchEmployeeName(payslipData.employeeId);
         }
-        if (payslipData.departmentCode) {
-          fetchDepartmentName(payslipData.departmentCode);
-        }
+        
+        // 会社名を取得
         if (payslipData.companyId || userDetails?.companyId) {
           fetchCompanyName(payslipData.companyId || userDetails.companyId);
         }
@@ -261,9 +228,17 @@ function PayslipDetail() {
     }
   }, [companyName, departmentName, employeeName]);
 
-  // 社員名を取得する関数
+  // 従業員名を取得する関数（シンプル版）
   const fetchEmployeeName = async (employeeId) => {
     try {
+      console.log('従業員名取得開始:', employeeId);
+      
+      if (!employeeId) {
+        setEmployeeName('N/A');
+        return;
+      }
+      
+      // employeesコレクションで従業員を検索
       const employeesQuery = query(
         collection(db, "employees"),
         where("companyId", "==", userDetails.companyId),
@@ -274,20 +249,48 @@ function PayslipDetail() {
       
       if (!employeesSnapshot.empty) {
         const employeeData = employeesSnapshot.docs[0].data();
-        setEmployeeName(employeeData.name || 'N/A');
+        const employeeName = employeeData.name || 'N/A';
+        
+        console.log('従業員データ取得成功:', {
+          name: employeeName,
+          departmentCode: employeeData.departmentCode,
+          departmentId: employeeData.departmentId, // 古い形式も確認
+          allKeys: Object.keys(employeeData), // 全フィールド確認
+          fullData: employeeData
+        });
+        setEmployeeName(employeeName);
+        
+        // 部門名も同時に取得
+        if (employeeData.departmentCode) {
+          console.log('部門コード検索開始:', employeeData.departmentCode);
+          await fetchDepartmentName(employeeData.departmentCode);
+        } else {
+          console.log('従業員に部門コードが設定されていません');
+          setDepartmentName(''); // 空欄（ブランク）
+        }
       } else {
         console.log('従業員が見つかりません:', employeeId);
         setEmployeeName('N/A');
+        setDepartmentName(''); // 空欄（ブランク）
       }
     } catch (err) {
-      console.error('社員名取得エラー:', err);
+      console.error('従業員名取得エラー:', err);
       setEmployeeName('N/A');
+      setDepartmentName('');
     }
   };
 
-  // 部署名を取得する関数
+  // 部門名を取得する関数（シンプル版）
   const fetchDepartmentName = async (departmentCode) => {
     try {
+      console.log('部門名取得開始:', departmentCode);
+      
+      if (!departmentCode) {
+        setDepartmentName('');
+        return;
+      }
+      
+      // departmentsコレクションで部門を検索
       const departmentsQuery = query(
         collection(db, "departments"),
         where("companyId", "==", userDetails.companyId),
@@ -296,18 +299,36 @@ function PayslipDetail() {
       
       const departmentsSnapshot = await getDocs(departmentsQuery);
       
+      console.log('部門検索結果:', {
+        departmentCode: departmentCode,
+        queryResult: departmentsSnapshot.size,
+        isEmpty: departmentsSnapshot.empty
+      });
+      
       if (!departmentsSnapshot.empty) {
         const departmentData = departmentsSnapshot.docs[0].data();
-        setDepartmentName(departmentData.name || 'N/A');
+        const departmentName = departmentData.name || '';
+        
+        console.log('部門データ取得成功:', {
+          name: departmentName,
+          code: departmentData.code,
+          fullData: departmentData
+        });
+        setDepartmentName(departmentName);
       } else {
-        console.log('部署が見つかりません:', departmentCode);
-        setDepartmentName('N/A');
+        console.log('部門が見つかりません。検索条件:', {
+          companyId: userDetails.companyId,
+          departmentCode: departmentCode
+        });
+        setDepartmentName('');
       }
     } catch (err) {
-      console.error('部署名取得エラー:', err);
-      setDepartmentName('N/A');
+      console.error('部門名取得エラー:', err);
+      setDepartmentName('');
     }
   };
+
+
 
   // 会社名を取得する関数
   const fetchCompanyName = async (companyId) => {
@@ -401,7 +422,21 @@ function PayslipDetail() {
 
   // 戻るボタンのハンドラ
   const handleBack = () => {
-    navigate('/payslips');
+    // ユーザーの権限に応じて適切なルートに戻る
+    if (userDetails?.role === 'admin') {
+      navigate('/admin/payslips');
+    } else {
+      navigate('/employee/payslips');
+    }
+  };
+
+  // 印刷ページURLを生成するヘルパー関数
+  const getPrintPageUrl = (payslipId) => {
+    if (userDetails?.role === 'admin') {
+      return `/admin/payslips/${payslipId}/print`;
+    } else {
+      return `/employee/payslips/${payslipId}/print`;
+    }
   };
 
   if (loading) {
@@ -463,7 +498,7 @@ function PayslipDetail() {
             印刷
           </button>
           <a 
-            href={`/payslips/${payslip.id}/print`} 
+            href={getPrintPageUrl(payslip.id)} 
             target="_blank" 
             rel="noopener noreferrer"
             className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 print:hidden"
@@ -476,118 +511,14 @@ function PayslipDetail() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* 左カラム - 給与明細プレビュー */}
-        <div className="lg:col-span-2">
-          <div ref={printRef} className="bg-white rounded-lg shadow-md overflow-hidden p-6">
-            {/* 利用中の明細の実績を表示 */}
-            <PayslipPreview payslipData={payslip} showDetailedInfo={true} />
-          </div>
-        </div>
-        
-        {/* 右カラム - 対象期間と関連明細 */}
-        <div className="lg:col-span-1 space-y-4 print:hidden">
-          {/* 明細情報 */}
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="p-4 bg-blue-50 border-b">
-              <h3 className="font-semibold">明細情報</h3>
-            </div>
-            <div className="p-4 space-y-2">
-              <p>
-                <span className="text-gray-600 text-sm">従業員ID:</span> 
-                <span className="font-medium ml-2">{payslip.employeeId || 'N/A'}</span>
-              </p>
-              <p>
-                <span className="text-gray-600 text-sm">従業員名:</span> 
-                <span className="font-medium ml-2">{employeeName}</span>
-              </p>
-              <p>
-                <span className="text-gray-600 text-sm">支払日:</span> 
-                <span className="font-medium ml-2">{formatDate(payslip.paymentDate)}</span>
-              </p>
-              {payslip.departmentCode && (
-                <p>
-                  <span className="text-gray-600 text-sm">部署名:</span> 
-                  <span className="font-medium ml-2">{departmentName} ({payslip.departmentCode})</span>
-                </p>
-              )}
-              <p>
-                <span className="text-gray-600 text-sm">データ登録日:</span> 
-                <span className="font-medium ml-2">{formatDate(payslip.createdAt?.toDate?.())}</span>
-              </p>
-              <hr className="my-2" />
-              <p>
-                <span className="text-gray-600 text-sm">支給額合計:</span> 
-                <span className="font-medium ml-2">{formatCurrency(payslip.totalIncome)}</span>
-              </p>
-              <p>
-                <span className="text-gray-600 text-sm">控除額合計:</span> 
-                <span className="font-medium ml-2">{formatCurrency(payslip.totalDeduction)}</span>
-              </p>
-              <p>
-                <span className="text-gray-600 text-sm">差引支給額:</span> 
-                <span className="font-bold ml-2 text-red-600">{formatCurrency(payslip.netAmount)}</span>
-              </p>
-            </div>
-          </div>
-          
-          {/* 関連明細 */}
-          {relatedPayslips.length > 0 && (
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="p-4 bg-blue-50 border-b">
-                <h3 className="font-semibold">関連明細</h3>
-              </div>
-              <div className="p-4">
-                <ul className="space-y-2">
-                  {relatedPayslips.map(related => (
-                    <li key={related.id} className="border-b pb-2 last:border-b-0 last:pb-0">
-                      <Link 
-                        to={`/payslips/${related.id}`}
-                        className="block hover:bg-gray-50 rounded p-2 transition-colors"
-                      >
-                        <div className="flex justify-between">
-                          <div className="text-blue-600">
-                            {formatDate(related.paymentDate)}
-                          </div>
-                          <div className="font-medium">
-                            {formatCurrency(related.netAmount)}
-                          </div>
-                        </div>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
-          
-          {/* 操作ボタン */}
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="p-4">
-              <a 
-                href={`/payslips/${payslip.id}/print`} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="block w-full py-2 px-4 bg-blue-600 text-white text-center rounded hover:bg-blue-700 mb-2"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" />
-                </svg>
-                印刷用ページを開く
-              </a>
-              <button
-                onClick={handlePrint}
-                className="block w-full py-2 px-4 bg-green-600 text-white text-center rounded hover:bg-green-700"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clipRule="evenodd" />
-                </svg>
-                このページを印刷
-              </button>
-            </div>
-          </div>
+      {/* 給与明細プレビュー（全幅表示） */}
+      <div>
+        <div ref={printRef} className="bg-white rounded-lg shadow-md overflow-hidden p-6">
+          {/* 利用中の明細の実績を表示 */}
+          <PayslipPreview payslipData={payslip} showDetailedInfo={true} />
         </div>
       </div>
+          
     </div>
   );
 }
