@@ -34,8 +34,9 @@ export const createDirectFirebaseData = (line1, line2) => {
     console.log('スペース区切りで分割しました（空のセルは保持されません）');
   }
   
-  headerNames = headerNames.map(item => item.trim());
-  itemNames = itemNames.map(item => item.trim());
+  // trim処理（空の要素は空文字列のまま保持）
+  headerNames = headerNames.map(item => item ? item.trim() : '');
+  itemNames = itemNames.map(item => item ? item.trim() : '');
   
   console.log('🔍 分割後の確認:');
   console.log('1行目（記号 = headerNames）:', headerNames);
@@ -62,19 +63,7 @@ export const createDirectFirebaseData = (line1, line2) => {
   // 最大長を取得（どちらか長い方に合わせる）
   const maxLength = Math.max(headerNames.length, itemNames.length);
   
-    // 🔧 記号が不足している場合の自動補完
-    if (headerNames.length > itemNames.length) {
-      console.log(`⚠️ 日本語名が不足しています（記号:${headerNames.length}, 日本語名:${itemNames.length}）`);
-      console.log('🔧 不足分の日本語名を自動生成します');
-      
-      for (let i = itemNames.length; i < headerNames.length; i++) {
-        const placeholderName = `空の項目_${i}`;
-        itemNames.push(placeholderName);
-        console.log(`🔧 自動生成: ${headerNames[i]} → ${placeholderName}`);
-      }
-    }
-    
-    // 配列を同じ長さに調整（足りない部分は空文字で埋める）
+    // 🔧 配列を同じ長さに調整（足りない部分は空文字で埋める）
     while (headerNames.length < maxLength) headerNames.push('');
     while (itemNames.length < maxLength) itemNames.push('');
     
@@ -94,17 +83,17 @@ export const createDirectFirebaseData = (line1, line2) => {
   
   // 全ての項目を処理（空の項目も含む）
   for (let i = 0; i < maxLength; i++) {
-    const symbol = headerNames[i] ? headerNames[i].trim() : '';      // 1行目 = 記号
-    const japaneseName = itemNames[i] ? itemNames[i].trim() : '';     // 2行目 = 日本語名
+    const symbol = headerNames[i] || '';           // 1行目 = 記号（既にtrim済み）
+    const japaneseName = itemNames[i] || '';       // 2行目 = 日本語名（既にtrim済み）
     
     // 空の項目でもデータを作成（indexのずれを防ぐため）
     const data = {
-      headerName: symbol || `EMPTY_${i}`,           // 記号を headerName に
-      itemName: japaneseName || `空の項目_${i}`,    // 日本語名を itemName に
+      headerName: symbol,                           // 記号を headerName に
+      itemName: japaneseName,                       // 日本語名を itemName に
       columnIndex: i,
-      isVisible: symbol && japaneseName ? true : false,  // 両方ある場合のみ表示
+      isVisible: true,                              // 空の項目も表示する
       id: `direct_${i}`,
-      isEmpty: !symbol || !japaneseName  // 空の項目かどうかのフラグ
+      isEmpty: !symbol && !japaneseName            // 両方とも空の場合のみ空項目
     };
     
     console.log(`[${i}] "${symbol}" → "${japaneseName}" (空: ${data.isEmpty})`);

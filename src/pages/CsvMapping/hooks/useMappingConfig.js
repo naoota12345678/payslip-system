@@ -52,48 +52,10 @@ export const useMappingConfig = (userDetails) => {
           const rawData = newMappingDoc.data();
           console.log('新しい形式での設定が見つかりました:', rawData);
           
-          // 🔍 詳細デバッグ：生データの構造を確認
-          console.log('=== 生データ構造詳細確認 ===');
-          if (rawData.itemCodeItems && rawData.itemCodeItems.length > 0) {
-            console.log('itemCodeItems（最初の3個）:', rawData.itemCodeItems.slice(0, 3));
-            rawData.itemCodeItems.slice(0, 3).forEach((item, index) => {
-              console.log(`  [${index}] headerName="${item.headerName}", itemName="${item.itemName}"`);
-            });
-          }
+          // 新しい形式のデータを古い形式に変換
+          const convertedData = convertFromNewFormat(rawData, initialMappingConfig);
           
-          // 🔍 mainFieldsも詳しく確認
-          console.log('=== mainFields詳細確認 ===');
-          if (rawData.mainFields) {
-            Object.entries(rawData.mainFields).forEach(([key, field]) => {
-              console.log(`  ${key}: headerName="${field.headerName}", itemName="${field.itemName}"`);
-            });
-          }
-          
-          // ❌ 変換処理を削除し、生データをそのまま使用
-          console.log('🔧 データ変換をスキップして生データをそのまま使用');
-          const convertedData = {
-            ...initialMappingConfig,
-            ...rawData,
-            // mainFieldsが空の場合は初期値を使用
-            mainFields: rawData.mainFields || initialMappingConfig.mainFields
-          };
-          
-          // 🔍 最終データの構造を確認
-          console.log('=== 最終データ構造詳細確認 ===');
-          if (convertedData.itemCodeItems && convertedData.itemCodeItems.length > 0) {
-            console.log('最終 itemCodeItems（最初の3個）:', convertedData.itemCodeItems.slice(0, 3));
-            convertedData.itemCodeItems.slice(0, 3).forEach((item, index) => {
-              console.log(`  [${index}] headerName="${item.headerName}", itemName="${item.itemName}"`);
-            });
-          }
-          
-          // 🔍 最終mainFieldsも詳しく確認
-          console.log('=== 最終mainFields詳細確認 ===');
-          if (convertedData.mainFields) {
-            Object.entries(convertedData.mainFields).forEach(([key, field]) => {
-              console.log(`  ${key}: headerName="${field.headerName}", itemName="${field.itemName}"`);
-            });
-          }
+
           
           // 追加：保存されたヘッダー情報も復元
           console.log('=== CSV設定の読み込み開始 ===');

@@ -248,19 +248,20 @@ export const convertFromNewFormat = (newFormat, initialMapping) => {
   
   console.log('復元されたデータ:', oldFormat);
   
-  // parsedHeadersがない場合、項目からヘッダーリストを生成
+  // parsedHeadersがない場合、項目からヘッダーリストを生成（空の項目も含む）
   if (!oldFormat.parsedHeaders || oldFormat.parsedHeaders.length === 0) {
-    const allHeaders = [
-      ...oldFormat.itemCodeItems.map(item => item.headerName),
-      ...oldFormat.kyItems.map(item => item.headerName),
-      ...oldFormat.incomeItems.map(item => item.headerName),
-      ...oldFormat.deductionItems.map(item => item.headerName),
-      ...oldFormat.attendanceItems.map(item => item.headerName)
-    ].filter(Boolean);
-    
-    if (allHeaders.length > 0) {
-      console.log('項目からparsedHeadersを生成:', allHeaders);
-      oldFormat.parsedHeaders = [...new Set(allHeaders)]; // 重複除去
+    // 🔧 空の項目も含めて、columnIndex順でヘッダーを復元
+    if (oldFormat.itemCodeItems && oldFormat.itemCodeItems.length > 0) {
+      // columnIndexでソートして、正しい順序を保持
+      const sortedItems = oldFormat.itemCodeItems
+        .slice() // 配列をコピー
+        .sort((a, b) => (a.columnIndex || 0) - (b.columnIndex || 0));
+      
+      // 空の項目も含めて全てのheaderNameを含める
+      const allHeaders = sortedItems.map(item => item.headerName || '');
+      
+      console.log('🔧 空の項目も含めてparsedHeadersを生成:', allHeaders);
+      oldFormat.parsedHeaders = allHeaders; // 重複除去しない（順序が重要）
     }
   }
   

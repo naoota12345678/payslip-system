@@ -8,7 +8,7 @@ import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 
 // カスタムフック
-import useMappingConfig from './hooks/useMappingConfig';
+import { useSimpleMappingConfig } from './hooks/useSimpleMappingConfig';
 import useHeaderParser from './hooks/useHeaderParser';
 import useDebounce from './hooks/useDebounce';
 
@@ -38,23 +38,26 @@ function CsvMapping() {
   const navigate = useNavigate();
   const { userDetails } = useAuth();
   
-  // マッピング設定の管理
+  // シンプルなマッピング設定の管理
   const {
     mappingConfig,
     setMappingConfig,
+    parsedHeaders,
+    setParsedHeaders,
+    headerInput,
+    setHeaderInput,
+    rowBasedInput,
+    setRowBasedInput,
     loading,
     saving,
-    setSaving,  // 追加
     error,
     setError,
     success,
     setSuccess,
-    saveMappingConfig,
-    importFromJson,
-    debugData,
-    resetMappingConfig,
-    resetCategoryMapping
-  } = useMappingConfig(userDetails);
+    createFromInput,
+    saveMapping,
+    resetMapping
+  } = useSimpleMappingConfig(userDetails);
   
   // アクティブなタブを管理
   const [activeTab, setActiveTab] = useState(TABS.INCOME);
@@ -63,16 +66,10 @@ function CsvMapping() {
   const [jsonInput, setJsonInput] = useState('');
   const [showJsonImport, setShowJsonImport] = useState(false);
   
-  // ヘッダー解析の管理 - 初期マッピング設定を渡す
+  // ヘッダー解析の管理（シンプル版では使用しない） 
   const {
-    headerInput,
-    setHeaderInput,
     kyItemInput,
     setKyItemInput,
-    rowBasedInput,
-    setRowBasedInput,
-    parsedHeaders,
-    setParsedHeaders,
     kyMappingMode,
     setKyMappingMode,
     rowMappingMode,
@@ -89,47 +86,7 @@ function CsvMapping() {
     mappingConfig  // 初期マッピング設定を渡す
   );
   
-  // マッピング設定が読み込まれたら、必要な情報を復元
-  useEffect(() => {
-    if (mappingConfig && !loading) {
-      console.log('マッピング設定が読み込まれました。保存された状態を復元します:', mappingConfig);
-      
-      // 入力フィールドの状態を復元
-      if (mappingConfig.headerInput) {
-        console.log('headerInputを復元:', mappingConfig.headerInput);
-        setHeaderInput(mappingConfig.headerInput);
-      }
-      if (mappingConfig.kyItemInput) {
-        console.log('kyItemInputを復元:', mappingConfig.kyItemInput);
-        setKyItemInput(mappingConfig.kyItemInput);
-      }
-      if (mappingConfig.rowBasedInput) {
-        console.log('rowBasedInputを復元:', mappingConfig.rowBasedInput);
-        setRowBasedInput(mappingConfig.rowBasedInput);
-        
-        // ⚠️ 自動モード設定を無効化：保存されたデータがあっても自動でモードはONしない
-        // setRowMappingMode(true);
-      }
-      
-      // 解析済みヘッダーの復元 - 明示的に保存されたもののみ復元
-      let headersToRestore = [];
-      
-      // ⚠️ 自動復元を完全停止：ユーザーが手動でのみヘッダーを設定
-      // 常に空の状態でスタートし、必要な時のみ手動で行マッピングを実行
-      console.log('⚠️ ヘッダーの自動復元を停止 - 常に空の状態でスタート');
-      
-      // if (mappingConfig.parsedHeaders && mappingConfig.parsedHeaders.length > 0) {
-      //   console.log('✅ 明示的に保存されたparsedHeadersを復元:', mappingConfig.parsedHeaders);
-      //   headersToRestore = mappingConfig.parsedHeaders;
-      //   
-      //   // ヘッダーを設定
-      //   console.log('parsedHeadersを設定:', headersToRestore);
-      //   setParsedHeaders(headersToRestore);
-      // } else {
-      //   console.log('⚠️ 明示的に保存されたヘッダーが見つかりません - 自動復元はスキップ');
-      // }
-    }
-  }, [mappingConfig, loading, setHeaderInput, setKyItemInput, setRowBasedInput, setParsedHeaders, setRowMappingMode]);
+  // シンプル版では自動復元処理は不要（useSimpleMappingConfigで処理済み）
 
   // デバウンスされたマッピング設定
   const debouncedMappingConfig = useDebounce(mappingConfig, 1000);
@@ -475,191 +432,93 @@ function CsvMapping() {
     setSuccess('ヘッダーをクリアしました。新しい行マッピングを実行してください。');
   }, [setParsedHeaders, setSuccess]);
 
-  // 設定を保存するハンドラ
+  // シンプルな保存ハンドラー
   const handleSave = async () => {
-    try {
-      console.log('=== 保存処理開始 ===');
-      console.log('保存対象の設定:', mappingConfig);
-      
-      // 空の項目名をチェック
-      const emptyItemNames = [];
-      const checkCategory = (categoryName, items) => {
-        items?.forEach((item, index) => {
-          if (!item.itemName || item.itemName.trim() === '') {
-            emptyItemNames.push(`${categoryName}[${index}]: ${item.headerName}`);
-          }
-        });
-      };
-      
-      checkCategory('支給項目', mappingConfig.incomeItems);
-      checkCategory('控除項目', mappingConfig.deductionItems);
-      checkCategory('勤怠項目', mappingConfig.attendanceItems);
-      checkCategory('項目コード', mappingConfig.itemCodeItems);
-      
-      // 警告表示
-      if (emptyItemNames.length > 0) {
-        const confirmMessage = `以下の項目で表示名が設定されていません：\n${emptyItemNames.join('\n')}\n\nこのまま保存しますか？（「項目名を一括修復」ボタンで自動設定することもできます）`;
-        if (!window.confirm(confirmMessage)) {
-          return;
-        }
-      }
-      
-             const configToSave = {
-         ...mappingConfig,
-         headerInput,
-         kyItemInput,
-         rowBasedInput
-         // ⚠️ parsedHeadersの保存を停止（ヘッダー固定化を防ぐ）
-         // parsedHeaders // 解析済みヘッダーも保存
-       };
-       console.log('保存する設定:', configToSave);
-       const success = await saveMappingConfig(configToSave, validateMappingConfig);
-       if (success) {
-         console.log('=== 保存成功 ===');
-         setSuccess('設定を正常に保存しました。ページを再読み込みしても設定が保持されます。');
-       }
-    } catch (error) {
-      console.error('=== 保存エラー ===', error);
-      setError('保存中にエラーが発生しました: ' + error.message);
+    const success = await saveMapping();
+    if (success) {
+      setSuccess('設定を保存しました。他のページに移動しても設定が保持されます。');
     }
   };
   
-  // JSONからインポートするハンドラ
+  // JSONからインポートするハンドラ（シンプル版では無効化）
   const handleJsonImport = useCallback(() => {
-    const success = importFromJson(jsonInput);
-    if (success) {
-      setShowJsonImport(false);
-    }
-  }, [jsonInput, importFromJson]);
+    setError('シンプル版ではJSONインポートは利用できません');
+  }, [setError]);
 
   // リセット機能のハンドラ
   const handleResetMapping = useCallback(async () => {
-    if (window.confirm('マッピング設定をリセットしますか？（ヘッダー情報は保持されます）')) {
-      await resetMappingConfig('mapping');
+    if (window.confirm('マッピング設定をリセットしますか？')) {
+      resetMapping();
     }
-  }, [resetMappingConfig]);
+  }, [resetMapping]);
 
   const handleResetAll = useCallback(async () => {
-    if (window.confirm('全ての設定をリセットしますか？（保存されたデータも削除されます）')) {
-      await resetMappingConfig('all');
+    if (window.confirm('全ての設定をリセットしますか？')) {
+      resetMapping();
     }
-  }, [resetMappingConfig]);
+  }, [resetMapping]);
 
   const handleDeleteFromFirestore = useCallback(async () => {
-    if (window.confirm('⚠️ 警告: Firestoreからマッピング設定を完全に削除しますか？\n\nこの操作は取り消せません。')) {
-      await resetMappingConfig('firestore');
+    if (window.confirm('⚠️ 警告: マッピング設定を削除しますか？')) {
+      resetMapping();
     }
-  }, [resetMappingConfig]);
+  }, [resetMapping]);
   
-  // 行ベースマッピングのハンドラ
-  const processRowBasedMapping = useCallback(() => {
+  // シンプル保存（マッピング作成＋保存）
+  const processRowBasedMapping = useCallback(async () => {
     if (!rowBasedInput.trim()) {
       setError('2行のデータを入力してください');
       return;
     }
     
-    // 入力を行に分割
     const rows = rowBasedInput.split('\n').filter(row => row.trim().length > 0);
     
-    // 少なくとも2行（ヘッダー行とデータ行）が必要
     if (rows.length < 2) {
-      setError('少なくとも2行（ヘッダー行とデータ行）が必要です');
+      setError('少なくとも2行（項目名行とコード行）が必要です');
       return;
     }
     
-    // 行ベースマッピングを実行
-    handleRowBasedMapping(rows);
-  }, [rowBasedInput, handleRowBasedMapping, setError]);
+    // マッピング作成
+    const result = createFromInput(rows[0], rows[1]);
+    
+    if (result) {
+      // 作成成功したら自動保存
+      const success = await saveMapping();
+      if (success) {
+        setSuccess('マッピングを作成して保存しました。他のページに移動しても設定が保持されます。');
+      }
+    }
+  }, [rowBasedInput, createFromInput, saveMapping, setError, setSuccess]);
   
-  // 古いヘッダーデータを削除するハンドラ
+  // 古いヘッダーデータを削除するハンドラ（シンプル版）
   const handleCleanupOldHeaders = useCallback(async () => {
     if (!userDetails?.companyId) return;
     
     try {
-      setSaving(true);
-      
-      // csvSettingsから古いparsedHeadersを削除
-      await setDoc(doc(db, 'csvSettings', userDetails.companyId), {
-        parsedHeaders: null,
-        updatedAt: new Date()
-      }, { merge: true });
-      
-      // 現在のparsedHeadersもクリア
+      // 現在のparsedHeadersをクリア
       setParsedHeaders([]);
-      
-      setSuccess('古いヘッダーデータを削除しました。これで固定化問題が解決されます。');
+      setSuccess('ヘッダーデータをクリアしました');
     } catch (error) {
-      setError('古いヘッダーデータの削除に失敗しました: ' + error.message);
-    } finally {
-      setSaving(false);
+      setError('ヘッダーデータのクリアに失敗しました: ' + error.message);
     }
-  }, [userDetails, setParsedHeaders, setSuccess, setError, setSaving]);
+  }, [userDetails, setParsedHeaders, setSuccess, setError]);
 
-  // 完全リセット機能を追加
+  // 完全リセット機能（シンプル版）
   const handleCompleteReset = useCallback(async () => {
     if (!userDetails?.companyId) return;
     
-    if (!window.confirm('⚠️ 警告：すべてのマッピングデータを削除して初期状態に戻します。この操作は取り消せません。続行しますか？')) {
+    if (!window.confirm('⚠️ 警告：すべてのマッピングデータをリセットします。続行しますか？')) {
       return;
     }
     
     try {
-      setSaving(true);
-      
-      // csvMappingsを完全削除
-      await setDoc(doc(db, 'csvMappings', userDetails.companyId), {
-        attendanceItems: [],
-        deductionItems: [],
-        incomeItems: [],
-        itemCodeItems: [],
-        kyItems: [],
-        summaryItems: [],
-        mainFields: {},
-        parsedHeaders: [],
-        headerInput: '',
-        rowBasedInput: '',
-        kyItemInput: '',
-        simpleMapping: {},
-        version: 'simple_v1',
-        updatedAt: new Date(),
-        updatedBy: userDetails.email || ''
-      });
-      
-      // csvSettingsも完全削除
-      await setDoc(doc(db, 'csvSettings', userDetails.companyId), {
-        employeeIdColumn: '',
-        departmentCodeColumn: '',
-        headerInput: '',
-        rowBasedInput: '',
-        itemCodeItems: [],
-        kyItems: [],
-        updatedAt: new Date()
-      });
-      
-      // 現在の状態もリセット
-      setParsedHeaders([]);
-      setHeaderInput('');
-      setKyItemInput('');
-      setRowBasedInput('');
-      
-      // マッピング設定もリセット
-      setMappingConfig({
-        mainFields: {},
-        incomeItems: [],
-        deductionItems: [],
-        attendanceItems: [],
-        itemCodeItems: [],
-        kyItems: [],
-        summaryItems: []
-      });
-      
-      setSuccess('✅ すべてのデータをクリーンアップしました。新しい行マッピングを実行してください。');
+      // シンプル版では直接リセット関数を使用
+      resetMapping();
+      setSuccess('✅ すべてのデータをリセットしました');
     } catch (error) {
       setError('リセットに失敗しました: ' + error.message);
-    } finally {
-      setSaving(false);
     }
-  }, [userDetails, setParsedHeaders, setHeaderInput, setKyItemInput, setRowBasedInput, setMappingConfig, setSuccess, setError, setSaving]);
+  }, [userDetails, resetMapping, setSuccess, setError]);
 
   // 新しいシンプルシステム用のクリア機能
   const handleSwitchToSimpleSystem = useCallback(async () => {
@@ -687,62 +546,10 @@ function CsvMapping() {
     setSuccess('✅ 新しいシンプルマッピングシステムに切り替えました！\n\n2行入力（項目名、項目コード）で直接マッピングを作成してください。');
   }, [setParsedHeaders, setHeaderInput, setKyItemInput, setRowBasedInput, setMappingConfig, setSuccess]);
 
-  // シンプル：2行入力を直接Firebase保存
+  // ダイレクト保存（シンプル版では無効化）
   const handleDirectSave = useCallback(async () => {
-    if (!rowBasedInput.trim()) {
-      setError('2行の入力が必要です');
-      return;
-    }
-    
-    if (!userDetails?.companyId) {
-      setError('会社情報が取得できませんでした');
-      return;
-    }
-    
-    try {
-      setSaving(true);
-      
-      // 入力を行に分割
-      const lines = rowBasedInput.split('\n').filter(line => line.trim().length > 0);
-      
-      if (lines.length < 2) {
-        setError('2行の入力が必要です（1行目：項目名、2行目：項目コード）');
-        return;
-      }
-      
-      console.log('🎯 シンプル直接保存開始');
-      console.log('入力行:', lines);
-      
-      // シンプルなFirebaseデータを作成
-      const firebaseData = createDirectFirebaseData(lines[0], lines[1]);
-      
-      // 直接Firebaseに保存
-      await setDoc(doc(db, 'csvMappings', userDetails.companyId), firebaseData);
-      
-      console.log('✅ Firebase保存完了');
-      setSuccess(`✅ シンプル保存完了！\n項目数: ${firebaseData.itemCodeItems.length}\n控除: ${firebaseData.deductionItems.length}\n支給: ${firebaseData.incomeItems.length}\n勤怠: ${firebaseData.attendanceItems.length}`);
-      
-      // 🔧 既存のmainFieldsを保持してマージ
-      setMappingConfig(prev => {
-        const merged = {
-          ...firebaseData,
-          // 既存のmainFieldsを保持
-          mainFields: prev.mainFields || firebaseData.mainFields || {}
-        };
-        
-        console.log('🔧 マージされたmappingConfig:', merged);
-        console.log('🔧 保持されたmainFields:', merged.mainFields);
-        
-        return merged;
-      });
-      
-    } catch (error) {
-      console.error('❌ 保存エラー:', error);
-      setError(`保存に失敗しました: ${error.message}`);
-    } finally {
-      setSaving(false);
-    }
-  }, [rowBasedInput, userDetails, setSaving, setError, setSuccess, setMappingConfig]);
+    setError('この機能はシンプル版では利用できません。「🎯 シンプル保存」ボタンを使用してください。');
+  }, [setError]);
 
   // MainFieldsSectionにpropsを渡す際の修正
   // 行ベースマッピングモード時は、KYシステム用のヘッダーを優先使用
@@ -774,12 +581,12 @@ function CsvMapping() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="bg-white shadow rounded-lg p-6">
+              <div className="bg-white shadow rounded-lg p-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold text-gray-900">CSVマッピング設定</h2>
           <div className="flex space-x-2">
             <button
-              onClick={handleDirectSave}
+              onClick={processRowBasedMapping}
               disabled={saving || !rowBasedInput.trim()}
               className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:bg-gray-400 text-sm"
             >
@@ -801,16 +608,7 @@ function CsvMapping() {
         </div>
       )}
       
-      {/* デバッグ情報表示（開発中のみ表示） */}
-      {debugData && process.env.NODE_ENV === 'development' && (
-        <div className="bg-gray-100 p-4 mb-6 rounded text-xs">
-          <p className="font-bold mb-1">デバッグ情報:</p>
-          <p>保存形式: {debugData.newFormat ? 'あり' : 'なし'}</p>
-          <p>旧形式: {debugData.oldFormat ? 'あり' : 'なし'}</p>
-          <p>rowBasedInput: {rowBasedInput ? '設定あり' : 'なし'}</p>
-          <p>parsedHeaders: {parsedHeaders.length}件</p>
-        </div>
-      )}
+      {/* デバッグ情報表示（シンプル版では無効化） */}
       
       {/* CSVヘッダー一括入力セクション */}
       <HeaderInputPanel
