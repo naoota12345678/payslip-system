@@ -47,7 +47,8 @@ import PayslipPrint from './pages/PayslipPrint';
 import BonusPayslipList from './pages/BonusPayslipList';
 import BonusPayslipDetail from './pages/BonusPayslipDetail';
 import BonusPayslipPrint from './pages/BonusPayslipPrint';
-import BonusCSVUpload from './pages/BonusCSVUpload';
+import BonusCSVUpload from './pages/BonusSimpleCSVUpload';
+import BonusCsvMapping from './pages/BonusCsvMapping';
 
 // システム設定関連
 import CompanySettings from './pages/CompanySettings';
@@ -113,6 +114,7 @@ function App() {
               
               {/* 賞与明細管理 */}
               <Route path="bonus-upload" element={<BonusCSVUpload />} />
+              <Route path="bonus-csv-mapping" element={<BonusCsvMapping />} />
               <Route path="bonus-payslips" element={<BonusPayslipList />} />
               <Route path="bonus-payslips/:payslipId" element={<BonusPayslipDetail />} />
               <Route path="bonus-payslips/:payslipId/print" element={<BonusPayslipPrint />} />

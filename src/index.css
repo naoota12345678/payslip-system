@@ -5,21 +5,123 @@
 
 /* 印刷用スタイル */
 @media print {
-  body * {
-    visibility: hidden;
+  /* ページ設定 */
+  @page {
+    margin: 1cm;
+    size: A4;
   }
-  #printable-payslip, #printable-payslip * {
-    visibility: visible;
+  
+  body {
+    font-size: 12pt;
+    line-height: 1.3;
+    color: black;
+    background: white;
   }
-  #printable-payslip {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    padding: 20px;
-  }
-  .print-hidden {
+  
+  /* Tailwindの印刷クラスのサポート */
+  .print\:hidden {
     display: none !important;
+  }
+  
+  .print\:block {
+    display: block !important;
+  }
+  
+  .print\:p-0 {
+    padding: 0 !important;
+  }
+  
+  .print\:mb-2 {
+    margin-bottom: 0.5rem !important;
+  }
+  
+  .print\:mt-2 {
+    margin-top: 0.5rem !important;
+  }
+  
+  .print\:text-lg {
+    font-size: 1.125rem !important;
+  }
+  
+  .print\:text-xs {
+    font-size: 0.75rem !important;
+  }
+  
+  /* PayslipPreviewコンポーネント用の調整 */
+  .grid-cols-4 {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+  
+  /* 4セクションのレイアウト調整 */
+  .grid-cols-4 > div {
+    break-inside: avoid;
+  }
+  
+  /* セクションのスタイル調整 */
+  .bg-green-500,
+  .bg-blue-500, 
+  .bg-yellow-500,
+  .bg-red-500,
+  .bg-gray-500 {
+    background-color: #e5e7eb !important;
+    color: black !important;
+    border: 1px solid #d1d5db !important;
+  }
+  
+  /* テーブルの改ページ制御 */
+  table {
+    page-break-inside: avoid;
+  }
+  
+  tr {
+    page-break-inside: avoid;
+  }
+  
+  /* ヘッダーとフッターの改ページ制御 */
+  h1, h2, h3 {
+    page-break-after: avoid;
+  }
+  
+  /* 影やボーダー半径を削除 */
+  * {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+  
+  /* リンクのスタイル調整 */
+  a {
+    text-decoration: none;
+    color: black;
+  }
+  
+  /* 非表示要素 */
+  .print-hidden,
+  button,
+  .no-print {
+    display: none !important;
+  }
+  
+  /* PayslipPreviewのボーダーを印刷時に表示 */
+  .border-r {
+    border-right: 1px solid #d1d5db !important;
+  }
+  
+  .border-b {
+    border-bottom: 1px solid #d1d5db !important;
+  }
+  
+  .border-gray-100 {
+    border-color: #f3f4f6 !important;
+  }
+  
+  /* テキストサイズの調整 */
+  .text-xs {
+    font-size: 0.75rem !important;
+  }
+  
+  .text-sm {
+    font-size: 0.875rem !important;
   }
 }
 

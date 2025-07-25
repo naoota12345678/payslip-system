@@ -1,8 +1,8 @@
 // src/pages/BonusPayslipDetail.js
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
-import { doc, getDoc, collection, getDocs, query, where, updateDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import PayslipPreview from '../components/payslip/PayslipPreview';
 
@@ -13,17 +13,90 @@ function BonusPayslipDetail() {
   const [payslip, setPayslip] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [relatedPayslips, setRelatedPayslips] = useState([]);
-  const [employeeInfo, setEmployeeInfo] = useState(null);
-  const [departmentInfo, setDepartmentInfo] = useState(null);
-  const [allDepartments, setAllDepartments] = useState([]);
-  const [repairLoading, setRepairLoading] = useState(false);
-  const [showRepairModal, setShowRepairModal] = useState(false);
-  const [selectedDepartment, setSelectedDepartment] = useState('');
+  const [success, setSuccess] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [employeeName, setEmployeeName] = useState('');
+  const [departmentName, setDepartmentName] = useState('');
+  const printRef = useRef();
+
+  // 金額フォーマット関数
+  const formatCurrency = (amount) => {
+    if (amount === undefined || amount === null) return '¥0';
+    return new Intl.NumberFormat('ja-JP', { 
+      style: 'currency', 
+      currency: 'JPY',
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
+  // 日付フォーマット関数
+  const formatDate = (date) => {
+    if (!date) return '';
+    
+    let dateObject;
+    if (date.toDate && typeof date.toDate === 'function') {
+      dateObject = date.toDate();
+    } else if (date instanceof Date) {
+      dateObject = date;
+    } else {
+      dateObject = new Date(date);
+    }
+    
+    if (isNaN(dateObject.getTime())) return '';
+    
+    return dateObject.toLocaleDateString('ja-JP', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+  };
+
+  // 印刷ボタンのハンドラ
+  const handlePrint = () => {
+    window.print();
+  };
+
+  // 戻るボタンのハンドラ
+  const handleBack = () => {
+    // ユーザーの権限に応じて適切なルートに戻る
+    if (userDetails?.role === 'admin') {
+      navigate('/admin/bonus-payslips');
+    } else {
+      navigate('/employee/bonus-payslips');
+    }
+  };
+
+  // 会社名を取得
+  const fetchCompanyName = async (companyId) => {
+    if (!companyId) return '';
+    try {
+      const companyDoc = await getDoc(doc(db, 'companies', companyId));
+      return companyDoc.exists() ? companyDoc.data().name || '' : '';
+    } catch (error) {
+      console.error('会社名取得エラー:', error);
+      return '';
+    }
+  };
+
+  // 従業員名を取得
+  const fetchEmployeeName = async (userId) => {
+    if (!userId) return '';
+    try {
+      const employeeDoc = await getDoc(doc(db, 'employees', userId));
+      if (employeeDoc.exists()) {
+        const data = employeeDoc.data();
+        return data.name || data.displayName || '';
+      }
+      return '';
+    } catch (error) {
+      console.error('従業員名取得エラー:', error);
+      return '';
+    }
+  };
 
   // 賞与明細データと関連情報を取得
   useEffect(() => {
-    const fetchBonusPayslipData = async () => {
+    const fetchPayslipData = async () => {
       if (!payslipId || !currentUser) {
         setError("賞与明細IDまたはユーザー情報が不足しています");
         setLoading(false);
@@ -31,7 +104,9 @@ function BonusPayslipDetail() {
       }
 
       try {
-        // 賞与明細データを取得
+        console.log('賞与明細データを取得中:', payslipId);
+
+        // bonusPayslipsコレクションから賞与明細データを取得
         const payslipRef = doc(db, "bonusPayslips", payslipId);
         const payslipDoc = await getDoc(payslipRef);
 
@@ -42,477 +117,234 @@ function BonusPayslipDetail() {
         }
 
         const payslipData = payslipDoc.data();
+        console.log('賞与明細データ:', payslipData);
         
-        // アクセス権チェック
-        const isAdmin = userDetails?.role === 'admin' || userDetails?.userType === 'company' || userDetails?.userType === 'company_admin';
-        const isOwner = payslipData.userId === currentUser.uid;
-        const isSameCompany = payslipData.companyId === userDetails?.companyId;
+        // アクセス権のチェック（管理者または自分の賞与明細のみ閲覧可能）
+        const isAdmin = userDetails?.role === 'admin';
+        const isOwner = payslipData.userId === currentUser.uid && 
+                       payslipData.companyId === userDetails?.companyId;
         
         if (!isAdmin && !isOwner) {
           setError("この賞与明細を閲覧する権限がありません");
           setLoading(false);
           return;
         }
-        
-        if (isAdmin && !isSameCompany) {
-          setError("この賞与明細を閲覧する権限がありません");
-          setLoading(false);
-          return;
-        }
 
-        // 日付変換
-        if (payslipData.paymentDate) {
-          payslipData.paymentDate = payslipData.paymentDate.toDate();
-        }
-        
-        setPayslip({
-          ...payslipData,
-          id: payslipId
-        });
-
-
-
-        // 従業員情報を取得（employeesコレクション対応）
-        let employeeData = null;
-        if (payslipData.userId) {
-          const employeeRef = doc(db, 'employees', payslipData.userId);
-          const employeeDoc = await getDoc(employeeRef);
+        // PayslipPreviewコンポーネント用にデータを変換
+        const transformedPayslip = {
+          id: payslipId,
+          userId: payslipData.userId,
+          employeeId: payslipData.employeeId,
+          companyId: payslipData.companyId,
+          departmentCode: payslipData.departmentCode,
+          paymentDate: payslipData.paymentDate,
+          payslipType: 'bonus',
           
-          if (employeeDoc.exists()) {
-            employeeData = employeeDoc.data();
-            setEmployeeInfo(employeeData);
-          }
-        }
-        
-        // 従業員情報を取得（詳細版）
-        if (payslipData.userId) {
-          try {
-            // 【修正】userIdから直接従業員情報を取得（employeesコレクション）
-            const employeeRef = doc(db, 'employees', payslipData.userId);
-            
-            const employeeDoc = await getDoc(employeeRef);
-            
-            if (employeeDoc.exists()) {
-              const empData = employeeDoc.data();
-              setEmployeeInfo(empData);
-            } else {
-              // 🚨 緊急：employeesコレクション全体をチェック
-              const allEmployeesSnapshot = await getDocs(collection(db, 'employees'));
-              
-              if (allEmployeesSnapshot.size > 0) {
-                // 従業員情報が存在するが、該当ユーザーが見つからない
-              } else {
-                // employeesコレクションが空
-              }
+          // 項目データを4セクション形式に変換
+          incomeItems: [],
+          deductionItems: [],
+          attendanceItems: [],
+          totalItems: []
+        };
+
+        // itemsオブジェクトから各カテゴリに分類
+        if (payslipData.items) {
+          Object.keys(payslipData.items).forEach(key => {
+            const item = payslipData.items[key];
+            const itemData = {
+              name: item.name || key,
+              value: item.value,
+              isVisible: item.isVisible !== false
+            };
+
+            // カテゴリ別に分類
+            switch (item.type) {
+              case 'income':
+                transformedPayslip.incomeItems.push(itemData);
+                break;
+              case 'deduction':
+                transformedPayslip.deductionItems.push(itemData);
+                break;
+              case 'attendance':
+                transformedPayslip.attendanceItems.push(itemData);
+                break;
+              case 'total':
+                transformedPayslip.totalItems.push(itemData);
+                break;
+              default:
+                // デフォルトは支給項目として扱う
+                transformedPayslip.incomeItems.push(itemData);
+                break;
             }
-          } catch (empError) {
-            // 従業員情報取得エラー
-          }
+          });
         }
 
-        // 🔍 DEBUG: 部門情報を確認
-        if (payslipData.companyId) {
-          try {
-            // 全部門データを取得
-            const departmentsQuery = query(
-              collection(db, 'departments'),
-              where('companyId', '==', payslipData.companyId)
-            );
-            const departmentsSnapshot = await getDocs(departmentsQuery);
-            const departmentsData = departmentsSnapshot.docs.map(doc => ({
-              id: doc.id,
-              ...doc.data()
-            }));
-            
-            setAllDepartments(departmentsData);
-            
-            // 該当する部門を検索
-            if (payslipData.departmentCode) {
-              const matchingDepartment = departmentsData.find(dept => {
-                const deptCode = dept.code;
-                return deptCode === payslipData.departmentCode || 
-                       String(deptCode) === String(payslipData.departmentCode) ||
-                       Number(deptCode) === Number(payslipData.departmentCode);
-              });
-              
-              setDepartmentInfo(matchingDepartment);
-            }
-          } catch (deptError) {
-            console.error('[BonusPayslipDetail Debug] 部門情報取得エラー:', deptError);
-          }
+        setPayslip(transformedPayslip);
+
+        // 関連情報を取得
+        const [fetchedCompanyName, fetchedEmployeeName] = await Promise.all([
+          fetchCompanyName(payslipData.companyId),
+          fetchEmployeeName(payslipData.userId)
+        ]);
+
+        setCompanyName(fetchedCompanyName);
+        setEmployeeName(fetchedEmployeeName);
+
+        // 部門名も設定（部門コードがある場合）
+        if (payslipData.departmentCode) {
+          setDepartmentName(payslipData.departmentCode);
         }
 
-        // 関連する賞与明細を取得（同じ従業員の他の期の明細）
-        if (payslipData.userId) {
-          try {
-            const payslipsQuery = query(
-              collection(db, 'bonusPayslips'),
-              where('userId', '==', payslipData.userId),
-              where('companyId', '==', payslipData.companyId)
-            );
-            
-            const payslipsSnapshot = await getDocs(payslipsQuery);
-            const relatedList = [];
-            
-            payslipsSnapshot.forEach(doc => {
-              const data = doc.data();
-              if (doc.id !== payslipId) {
-                relatedList.push({
-                  id: doc.id,
-                  ...data,
-                  paymentDate: data.paymentDate?.toDate() || new Date()
-                });
-              }
-            });
-            
-            // 日付順でソート（新しい順）
-            relatedList.sort((a, b) => b.paymentDate - a.paymentDate);
-            setRelatedPayslips(relatedList);
-            
-          } catch (relatedError) {
-            console.error('関連賞与明細取得エラー:', relatedError);
-          }
-        }
-
-      } catch (err) {
-        console.error("賞与明細データの取得エラー:", err);
-        setError("賞与明細データの取得中にエラーが発生しました");
+      } catch (error) {
+        console.error('賞与明細データ取得エラー:', error);
+        setError('賞与明細データの取得中にエラーが発生しました');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchBonusPayslipData();
+    fetchPayslipData();
   }, [payslipId, currentUser, userDetails]);
 
-  // データ修復機能
-  const handleDataRepair = () => {
-    setShowRepairModal(true);
-  };
-
-  const performDataRepair = async () => {
-    if (!payslip || !payslipId) return;
-    
-    setRepairLoading(true);
-    try {
-      const updateData = {};
-      
-      // 従業員IDの修復
-      if (!payslip.employeeId && employeeInfo?.employeeNumber) {
-        updateData.employeeId = employeeInfo.employeeNumber;
-      }
-      
-      // 部門コードの修復
-      if (!payslip.departmentCode && selectedDepartment) {
-        updateData.departmentCode = selectedDepartment;
-      }
-      
-      if (Object.keys(updateData).length > 0) {
-        // Firestoreを更新
-        const payslipRef = doc(db, 'bonusPayslips', payslipId);
-        await updateDoc(payslipRef, updateData);
-        
-        // ローカル状態も更新
-        setPayslip(prev => ({
-          ...prev,
-          ...updateData
-        }));
-        
-        alert('データの修復が完了しました！ページを更新して確認してください。');
-        setShowRepairModal(false);
-        
-        // ページを更新
-        window.location.reload();
-      } else {
-        alert('修復するデータがありません。');
-      }
-    } catch (error) {
-      console.error('[修復エラー]', error);
-      alert('データの修復中にエラーが発生しました: ' + error.message);
-    } finally {
-      setRepairLoading(false);
+  // PayslipPreviewにcompanyNameを設定
+  useEffect(() => {
+    if (payslip && companyName) {
+      setPayslip(prev => ({
+        ...prev,
+        companyName: companyName
+      }));
     }
-  };
-
-  // 印刷機能
-  const handlePrint = () => {
-    window.open(`/bonus-payslips/${payslipId}/print`, '_blank');
-  };
+  }, [companyName]);
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <p className="text-gray-500">読み込み中...</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="text-center py-8">
-        <p className="text-red-600 mb-4">{error}</p>
-        <button
-          onClick={() => navigate(-1)}
-          className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-        >
-          戻る
-        </button>
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4">
+          <p>{error}</p>
+          <button
+            onClick={handleBack}
+            className="mt-4 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+          >
+            戻る
+          </button>
+        </div>
       </div>
     );
   }
 
   if (!payslip) {
-    return <div className="text-center py-8">賞与明細データがありません</div>;
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <p className="text-gray-500">賞与明細が見つかりません</p>
+          <button
+            onClick={handleBack}
+            className="mt-4 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+          >
+            戻る
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="container mx-auto px-4 py-8">
       {/* ヘッダー */}
-      <div className="flex justify-between items-center mb-6">
-        <div>
+      <div className="mb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold mb-2">賞与明細詳細</h1>
+            <div className="text-gray-600 space-y-1">
+              {employeeName && <p>従業員: {employeeName}</p>}
+              {payslip.employeeId && <p>従業員ID: {payslip.employeeId}</p>}
+              {departmentName && <p>部門: {departmentName}</p>}
+              <p>支払日: {formatDate(payslip.paymentDate)}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* エラー・成功メッセージ */}
+      {error && (
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6">
+          {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6">
+          {success}
+        </div>
+      )}
+
+      {/* アクションボタン */}
+      <div className="mb-6">
+        <div className="flex flex-wrap gap-3">
           <button
-            onClick={() => navigate(-1)}
-            className="text-blue-600 hover:text-blue-800 mb-4 flex items-center"
+            onClick={handleBack}
+            className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 print:hidden"
           >
-            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
             </svg>
             戻る
           </button>
-          <h1 className="text-2xl font-bold">賞与明細詳細</h1>
-          {employeeInfo && (
-            <p className="text-gray-600 mt-2">
-              {employeeInfo?.name || employeeInfo?.displayName || '-'} 
-              {(employeeInfo?.employeeNumber || employeeInfo?.employeeId) && 
-                ` (従業員番号: ${employeeInfo?.employeeNumber || employeeInfo?.employeeId})`}
-              {departmentInfo?.name && ` | ${departmentInfo?.name}`}
-            </p>
-          )}
-          {payslip.paymentDate && (
-            <p className="text-gray-600 mt-1">
-              支払日: {payslip.paymentDate.toLocaleDateString('ja-JP')}
-            </p>
-          )}
-        </div>
-
-        <div className="space-x-3">
           <button
             onClick={handlePrint}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center"
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 print:hidden"
           >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clipRule="evenodd" />
             </svg>
             印刷
           </button>
         </div>
       </div>
 
-      {/* 🔍 DEBUG: データ確認エリア */}
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-        <details>
-          <summary className="cursor-pointer font-bold text-yellow-800">
-            🔍 部門表示デバッグ情報（問題調査用）
-          </summary>
-          <div className="mt-3 space-y-3 text-sm">
-            <div>
-              <strong>賞与明細の部門情報:</strong>
-              <div className="bg-white p-2 rounded">
-                部門コード: {payslip?.departmentCode || '未設定'} (型: {typeof payslip?.departmentCode})
-              </div>
-            </div>
-            
-            <div>
-              <strong>検索された部門:</strong>
-              <div className="bg-white p-2 rounded">
-                {departmentInfo ? `${departmentInfo.name} (コード: ${departmentInfo.code})` : '見つかりません'}
-              </div>
-            </div>
-            
-            <div>
-              <strong>全部門一覧:</strong>
-              <div className="bg-white p-2 rounded max-h-32 overflow-y-auto">
-                {allDepartments.length > 0 ? (
-                  allDepartments.map(dept => (
-                    <div key={dept.id} className="text-xs">
-                      {dept.name} (コード: {dept.code}, 型: {typeof dept.code})
-                    </div>
-                  ))
-                ) : (
-                  '部門データが見つかりません'
-                )}
-              </div>
-            </div>
-            
-            <div>
-              <strong>従業員情報:</strong>
-              <div className="bg-white p-2 rounded">
-                ID: {employeeInfo?.employeeId || employeeInfo?.employeeNumber || '未設定'}, 
-                名前: {employeeInfo?.displayName || employeeInfo?.name || '未設定'}
-              </div>
-            </div>
-
-            {/* 📝 データ修復ボタン */}
-            {(!payslip?.departmentCode || !payslip?.employeeId) && (
-              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded">
-                <strong className="text-blue-800">🔧 データ修復:</strong>
-                <p className="text-sm text-blue-700 mb-2">
-                  この賞与明細には部門コードまたは従業員IDが保存されていません。修復できます。
-                </p>
-                <button
-                  onClick={handleDataRepair}
-                  className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
-                  disabled={loading}
-                >
-                  データを修復する
-                </button>
-              </div>
-            )}
-          </div>
-        </details>
-      </div>
-
-      {/* 賞与明細プレビュー（賞与専用版が必要） */}
-      <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-        <PayslipPreview 
-          payslipData={payslip} 
-          showDetailedInfo={true}
-          userDetails={userDetails}
-          payslipType="bonus"
-        />
-      </div>
+      {/* 賞与明細プレビュー（全幅表示） */}
+      <div>
+        {/* 画面表示用 */}
+        <div className="bg-white rounded-lg shadow-md overflow-hidden p-6 print:hidden">
+          <PayslipPreview payslipData={payslip} showDetailedInfo={true} />
+        </div>
         
-      {/* 関連する賞与明細 */}
-      {relatedPayslips.length > 0 && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-4">同じ従業員の他の賞与明細</h3>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    支払日
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    支給合計
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    控除合計
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    差引支給額
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    操作
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {relatedPayslips.slice(0, 5).map((relatedPayslip) => (
-                  <tr key={relatedPayslip.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {relatedPayslip.paymentDate.toLocaleDateString('ja-JP')}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      ¥{(relatedPayslip.totalIncome || 0).toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      ¥{(relatedPayslip.totalDeduction || 0).toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap font-medium">
-                      ¥{(relatedPayslip.netAmount || 0).toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <Link 
-                        to={`/bonus-payslips/${relatedPayslip.id}`}
-                        className="text-blue-600 hover:text-blue-900"
-                      >
-                        詳細を見る
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {relatedPayslips.length > 5 && (
-            <p className="text-gray-500 text-sm mt-3">
-              他に {relatedPayslips.length - 5} 件の賞与明細があります
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* データ修復モーダル */}
-      {showRepairModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">賞与明細データの修復</h3>
-            
-            <div className="space-y-4">
-              {!payslip?.employeeId && employeeInfo?.employeeNumber && (
-                <div>
-                  <p className="text-sm text-gray-600">
-                    従業員ID: <span className="font-medium">{employeeInfo.employeeNumber}</span> を設定します
-                  </p>
-                </div>
-              )}
-              
-              {!payslip?.departmentCode && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    部門を選択してください:
-                  </label>
-                  <select
-                    value={selectedDepartment}
-                    onChange={(e) => setSelectedDepartment(e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
-                  >
-                    <option value="">部門を選択...</option>
-                    {allDepartments.map(dept => (
-                      <option key={dept.id} value={dept.code}>
-                        {dept.name} ({dept.code})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
+        {/* 印刷用レイアウト（画面表示と同じUIを使用） */}
+        <div ref={printRef} className="hidden print:block print:p-0">
+          <div className="bg-white p-6">
+            {/* 印刷用ヘッダー */}
+            <div className="text-center mb-4 print:mb-2">
+              <h1 className="text-xl font-bold mb-1 print:text-lg">賞与支払明細書</h1>
+              <p className="text-sm print:text-xs">支払日: {formatDate(payslip.paymentDate)}</p>
             </div>
+            {/* PayslipPreviewコンポーネントを印刷用に使用 */}
+            <PayslipPreview payslipData={payslip} showDetailedInfo={true} />
             
-            <div className="flex justify-end space-x-3 mt-6">
-              <button
-                onClick={() => setShowRepairModal(false)}
-                className="px-4 py-2 text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
-                disabled={repairLoading}
-              >
-                キャンセル
-              </button>
-              <button
-                onClick={performDataRepair}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                disabled={repairLoading || (!payslip?.departmentCode && !selectedDepartment)}
-              >
-                {repairLoading ? '修復中...' : '修復実行'}
-              </button>
+            {/* 印刷用フッター */}
+            <div className="mt-4 pt-2 border-t border-gray-300 text-center print:mt-2">
+              <p className="text-xs text-gray-600">
+                {payslip.companyName && `${payslip.companyName} - `}賞与支払明細書 / 発行日: {new Date().toLocaleDateString('ja-JP')}
+              </p>
             </div>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* デバッグ情報（開発時のみ） */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="bg-gray-100 rounded-lg p-4 mt-6">
-          <h4 className="font-semibold mb-2">デバッグ情報</h4>
-          <pre className="text-xs overflow-auto">
-            {JSON.stringify({
-              payslipId: payslip.id,
-              userId: payslip.userId,
-              companyId: payslip.companyId,
-              itemCount: payslip.items ? Object.keys(payslip.items).length : 0
-            }, null, 2)}
-          </pre>
-        </div>
-      )}
+      {/* フッター情報 */}
+      <div className="mt-8 text-center text-sm text-gray-500 print:hidden">
+        <p>この賞与明細は電子的に生成されています。</p>
+        <p>お問い合わせは管理者までご連絡ください。</p>
+      </div>
     </div>
   );
 }

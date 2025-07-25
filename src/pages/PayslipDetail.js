@@ -430,14 +430,7 @@ function PayslipDetail() {
     }
   };
 
-  // 印刷ページURLを生成するヘルパー関数
-  const getPrintPageUrl = (payslipId) => {
-    if (userDetails?.role === 'admin') {
-      return `/admin/payslips/${payslipId}/print`;
-    } else {
-      return `/employee/payslips/${payslipId}/print`;
-    }
-  };
+
 
   if (loading) {
     return (
@@ -497,25 +490,35 @@ function PayslipDetail() {
             </svg>
             印刷
           </button>
-          <a 
-            href={getPrintPageUrl(payslip.id)} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 print:hidden"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" />
-            </svg>
-            印刷用ページ
-          </a>
         </div>
       </div>
 
       {/* 給与明細プレビュー（全幅表示） */}
       <div>
-        <div ref={printRef} className="bg-white rounded-lg shadow-md overflow-hidden p-6">
-          {/* 利用中の明細の実績を表示 */}
+        {/* 画面表示用 */}
+        <div className="bg-white rounded-lg shadow-md overflow-hidden p-6 print:hidden">
           <PayslipPreview payslipData={payslip} showDetailedInfo={true} />
+        </div>
+        
+        {/* 印刷用レイアウト（画面表示と同じUIを使用） */}
+        <div ref={printRef} className="hidden print:block print:p-0">
+          <div className="bg-white p-6">
+            {/* 印刷用ヘッダー */}
+            <div className="text-center mb-4 print:mb-2">
+              <h1 className="text-xl font-bold mb-1 print:text-lg">給与支払明細書</h1>
+              <p className="text-sm print:text-xs">支払日: {formatDate(payslip.paymentDate)}</p>
+            </div>
+            
+            {/* PayslipPreviewコンポーネントを印刷用に使用 */}
+            <PayslipPreview payslipData={payslip} showDetailedInfo={true} />
+            
+            {/* 印刷用フッター */}
+            <div className="mt-4 pt-2 border-t border-gray-300 text-center print:mt-2">
+              <p className="text-xs text-gray-600">
+                {payslip.companyName && `${payslip.companyName} - `}給与支払明細書 / 発行日: {new Date().toLocaleDateString('ja-JP')}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
           

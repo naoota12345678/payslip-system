@@ -66,10 +66,7 @@ function PayslipPreview({ payslipData, showDetailedInfo = false }) {
           <div>
             <span className="text-gray-600">対象年月:</span>
             <span className="ml-2 font-medium">
-              {payslipData?.paymentDate ? 
-                new Date(payslipData.paymentDate).toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit' }) :
-                'N/A'
-              }
+              {formatDate(payslipData?.paymentDate)}
             </span>
           </div>
           <div className="text-right">
@@ -137,7 +134,9 @@ function PayslipPreview({ payslipData, showDetailedInfo = false }) {
               payslipData.incomeItems.map((item, index) => (
                 <div key={index} className="flex justify-between text-xs py-1 border-b border-gray-100 last:border-b-0">
                   <span>{item.name}</span>
-                  <span className="text-right">{item.value}</span>
+                  <span className="text-right">
+                    {typeof item.value === 'number' ? formatCurrency(item.value) : item.value}
+                  </span>
                 </div>
               ))
             ) : (
@@ -158,7 +157,9 @@ function PayslipPreview({ payslipData, showDetailedInfo = false }) {
               payslipData.deductionItems.map((item, index) => (
                 <div key={index} className="flex justify-between text-xs py-1 border-b border-gray-100 last:border-b-0">
                   <span>{item.name}</span>
-                  <span className="text-right">{item.value}</span>
+                  <span className="text-right">
+                    {typeof item.value === 'number' ? formatCurrency(item.value) : item.value}
+                  </span>
                 </div>
               ))
             ) : (
@@ -180,7 +181,9 @@ function PayslipPreview({ payslipData, showDetailedInfo = false }) {
               payslipData.otherItems.map((item, index) => (
                 <div key={index} className="flex justify-between text-xs py-1 border-b border-gray-100 last:border-b-0">
                   <span>{item.name}</span>
-                  <span className="text-right">{item.value}</span>
+                  <span className="text-right">
+                    {typeof item.value === 'number' ? formatCurrency(item.value) : item.value}
+                  </span>
                 </div>
               ))
             ) : (
@@ -195,9 +198,6 @@ function PayslipPreview({ payslipData, showDetailedInfo = false }) {
       {/* 詳細情報表示は合計項目が重複するため削除 */}
 
       {/* フッター */}
-      <div className="text-center p-2 text-xs text-gray-500">
-        印刷プレビュー
-      </div>
     </div>
   );
 }

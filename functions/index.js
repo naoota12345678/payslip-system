@@ -1,39 +1,26 @@
 // functions/index.js
-const functions = require('firebase-functions');
+const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { onDocumentUpdated } = require('firebase-functions/v2/firestore');
+const { setGlobalOptions } = require('firebase-functions/v2');
 const admin = require('firebase-admin');
 const fetch = require('node-fetch');
 const csv = require('csv-parser');
 const { PassThrough } = require('stream');
-const sgMail = require('@sendgrid/mail');
+// const sgMail = require('@sendgrid/mail'); // 一時的に無効化
+
+// Global options設定
+setGlobalOptions({ region: 'asia-northeast1' });
 
 admin.initializeApp();
 const db = admin.firestore();
 
-// SendGrid設定
-sgMail.setApiKey(functions.config().sendgrid?.key || process.env.SENDGRID_API_KEY);
+// SendGrid設定 - 一時的に無効化（審査待ちのため）
+// sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-// メール送信関数
+// メール送信関数 - 一時的に無効化（SendGrid審査待ちのため）
 const sendEmail = async (to, subject, htmlContent, textContent = null) => {
-  try {
-    const msg = {
-      to: to,
-      from: functions.config().sendgrid?.from_email || 'noreply@kyuyoprint.web.app',
-      subject: subject,
-      text: textContent || htmlContent.replace(/<[^>]*>/g, ''), // HTMLタグを除去してテキスト版作成
-      html: htmlContent,
-    };
-
-    console.log(`📧 メール送信試行: ${to} - ${subject}`);
-    await sgMail.send(msg);
-    console.log(`✅ メール送信成功: ${to}`);
-    return { success: true };
-  } catch (error) {
-    console.error(`❌ メール送信エラー: ${to}`, error);
-    if (error.response) {
-      console.error('SendGrid Error Response:', error.response.body);
-    }
-    return { success: false, error: error.message };
-  }
+  console.log(`📧 メール送信はSendGrid審査待ちのため無効化中: ${to} - ${subject}`);
+  return { success: false, error: 'SendGrid設定待ちのためメール送信は無効化されています' };
 };
 
 // 招待メールテンプレート
@@ -330,14 +317,15 @@ const generatePayrollItemsFromMappings = async (companyId) => {
 };
 
 // メインのCSV処理関数
-exports.processCSV = functions.https.onCall(async (data, context) => {
+exports.processCSV = onCall(async (request) => {
+  const { data, auth } = request;
   console.log('processCSV 関数が呼び出されました');
   console.log('受信データ (RAW):', safeStringify(data));
   
   // 認証チェック（一時的に無効化）
   /*
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
+  if (!auth) {
+    throw new HttpsError(
       'unauthenticated',
       'ユーザー認証が必要です'
     );
@@ -419,15 +407,15 @@ exports.processCSV = functions.https.onCall(async (data, context) => {
   
   if (!uploadId) {
     console.error('uploadId検証失敗:', uploadId);
-    throw new functions.https.HttpsError('invalid-argument', '必要なパラメータが不足しています: uploadId');
+    throw new HttpsError('invalid-argument', '必要なパラメータが不足しています: uploadId');
   }
   if (!fileUrl) {
     console.error('fileUrl検証失敗:', fileUrl);
-    throw new functions.https.HttpsError('invalid-argument', '必要なパラメータが不足しています: fileUrl');
+    throw new HttpsError('invalid-argument', '必要なパラメータが不足しています: fileUrl');
   }
   if (!companyId) {
     console.error('companyId検証失敗:', companyId);
-    throw new functions.https.HttpsError('invalid-argument', '必要なパラメータが不足しています: companyId');
+    throw new HttpsError('invalid-argument', '必要なパラメータが不足しています: companyId');
   }
   
   console.log('すべてのパラメータ検証通過');
@@ -440,7 +428,7 @@ exports.processCSV = functions.https.onCall(async (data, context) => {
     const uploadDoc = await uploadRef.get();
     
     if (!uploadDoc.exists) {
-      throw new functions.https.HttpsError('not-found', 'アップロード情報が見つかりません');
+      throw new HttpsError('not-found', 'アップロード情報が見つかりません');
     }
     
     const uploadData = uploadDoc.data();
@@ -460,7 +448,7 @@ exports.processCSV = functions.https.onCall(async (data, context) => {
     const payrollItems = await generatePayrollItemsFromMappings(companyId);
     
     if (!payrollItems || payrollItems.length === 0) {
-      throw new functions.https.HttpsError('not-found', 'CSVマッピング設定から給与項目を取得できませんでした');
+      throw new HttpsError('not-found', 'CSVマッピング設定から給与項目を取得できませんでした');
     }
     
     await logDebug(uploadId, `${payrollItems.length}件の給与項目を生成`);
@@ -476,7 +464,7 @@ exports.processCSV = functions.https.onCall(async (data, context) => {
     await logDebug(uploadId, 'マッピング情報', finalMappings);
     
     if (Object.keys(finalMappings).length === 0) {
-      throw new functions.https.HttpsError('failed-precondition', 'CSVマッピング設定が見つかりません');
+      throw new HttpsError('failed-precondition', 'CSVマッピング設定が見つかりません');
     }
     
     // CSVファイルを取得して処理
@@ -612,7 +600,7 @@ exports.processCSV = functions.https.onCall(async (data, context) => {
       console.error('エラーステータス更新失敗', updateError);
     }
     
-    throw new functions.https.HttpsError(
+    throw new HttpsError(
       'internal',
       'CSVファイルの処理中にエラーが発生しました: ' + error.message
     );
@@ -620,7 +608,8 @@ exports.processCSV = functions.https.onCall(async (data, context) => {
 });
 
 // テスト用の簡易関数
-exports.testSimpleCSV = functions.https.onCall(async (data, context) => {
+exports.testSimpleCSV = onCall(async (request) => {
+  const { data, auth } = request;
   console.log("シンプルなCSVテスト開始");
   console.log("受信データ:", safeStringify(data));
   
@@ -632,20 +621,20 @@ exports.testSimpleCSV = functions.https.onCall(async (data, context) => {
     };
   } catch (error) {
     console.error("テストエラー:", error);
-    throw new functions.https.HttpsError(
+    throw new HttpsError(
       'internal',
       'テスト中にエラーが発生しました: ' + error.message
     );
   }
 });
 
-// 招待メール送信Function
-exports.sendInvitationEmail = functions.firestore
-  .document('employees/{employeeId}')
-  .onUpdate(async (change, context) => {
+// 招待メール送信Function - 一時的に無効化
+/*
+exports.sendInvitationEmail = onDocumentUpdated('employees/{employeeId}', async (event) => {
+    const change = event.data;
     const newData = change.after.data();
     const oldData = change.before.data();
-    const employeeId = context.params.employeeId;
+    const employeeId = event.params.employeeId;
     
     try {
       // statusが 'preparation' → 'auth_created' に変更された場合のみ招待メール送信
@@ -699,16 +688,19 @@ exports.sendInvitationEmail = functions.firestore
       }
     }
   });
+*/
 
-// 給与明細通知メール送信Function
-exports.sendPayslipNotifications = functions.https.onCall(async (data, context) => {
+// 給与明細通知メール送信Function - 一時的に無効化
+/*
+exports.sendPayslipNotifications = onCall(async (request) => {
   try {
+    const { data, auth } = request;
     console.log('📧 給与明細通知メール一括送信開始');
     
     const { uploadId, paymentDate } = data;
     
     if (!uploadId || !paymentDate) {
-      throw new functions.https.HttpsError(
+      throw new HttpsError(
         'invalid-argument',
         'uploadId と paymentDate は必須です'
       );
@@ -721,7 +713,7 @@ exports.sendPayslipNotifications = functions.https.onCall(async (data, context) 
       .get();
       
     if (payslipsSnapshot.empty) {
-      throw new functions.https.HttpsError(
+      throw new HttpsError(
         'not-found',
         '指定されたuploadIdの給与明細が見つかりません'
       );
@@ -812,9 +804,339 @@ exports.sendPayslipNotifications = functions.https.onCall(async (data, context) 
     
   } catch (error) {
     console.error('給与明細通知メール一括送信エラー:', error);
-    throw new functions.https.HttpsError(
+    throw new HttpsError(
       'internal',
       '給与明細通知メール送信中にエラーが発生しました: ' + error.message
     );
   }
 });
+*/
+
+// 賞与CSVデータを処理してbonusPayslipsコレクションに保存
+exports.processBonusCSV = onCall(async (request) => {
+  const { data, auth } = request;
+  
+  if (!auth) {
+    throw new HttpsError('unauthenticated', 'ユーザー認証が必要です');
+  }
+
+  const { uploadId, fileUrl, companyId, paymentDate, employeeIdColumn, departmentCodeColumn, mappingSettings } = data;
+
+  if (!uploadId || !fileUrl || !companyId || !paymentDate) {
+    throw new HttpsError('invalid-argument', '必要なパラメータが不足しています');
+  }
+
+  try {
+    console.log('📋 賞与CSV処理開始:', { uploadId, companyId, paymentDate });
+
+    // アップロード情報を取得
+    const uploadRef = db.collection('csvUploads').doc(uploadId);
+    const uploadDoc = await uploadRef.get();
+    
+    if (!uploadDoc.exists) {
+      throw new HttpsError('not-found', 'アップロード情報が見つかりません');
+    }
+
+    const uploadData = uploadDoc.data();
+    console.log('📄 アップロード情報:', uploadData);
+
+    // 処理ステータスを更新
+    await uploadRef.update({
+      status: 'processing',
+      processingStartedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    // CSVファイルを取得
+    console.log('📥 CSVファイル取得開始:', fileUrl);
+    const response = await fetch(fileUrl);
+    if (!response.ok) {
+      throw new Error(`CSVファイル取得エラー: ${response.status} ${response.statusText}`);
+    }
+
+    const csvText = await response.text();
+    console.log('📄 CSVファイル取得完了、サイズ:', csvText.length);
+
+    // CSVを解析
+    const lines = csvText.split('\n').filter(line => line.trim());
+    if (lines.length < 2) {
+      throw new Error('CSVファイルにデータが含まれていません');
+    }
+
+    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+    const dataLines = lines.slice(1);
+
+    console.log('📊 CSV解析結果:', {
+      ヘッダー数: headers.length,
+      データ行数: dataLines.length,
+      ヘッダー: headers
+    });
+
+    // 従業員マッピング用のデータを準備
+    const employeesSnapshot = await db.collection('employees')
+      .where('companyId', '==', companyId)
+      .get();
+
+    const employeeMap = new Map();
+    employeesSnapshot.forEach(doc => {
+      const employeeData = doc.data();
+      const employeeId = employeeData.employeeId || employeeData.employeeNumber;
+      if (employeeId) {
+        employeeMap.set(String(employeeId), {
+          userId: doc.id,
+          data: employeeData
+        });
+      }
+    });
+
+    console.log('👥 従業員マッピング準備完了:', employeeMap.size, '件');
+
+    let processedCount = 0;
+    let errorCount = 0;
+    const batch = db.batch();
+
+    // 各データ行を処理
+    for (let i = 0; i < dataLines.length; i++) {
+      try {
+        const line = dataLines[i];
+        const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+        
+        if (values.length !== headers.length) {
+          console.warn(`⚠️ 行 ${i + 2}: 列数が一致しません (期待: ${headers.length}, 実際: ${values.length})`);
+          errorCount++;
+          continue;
+        }
+
+        // 行データをオブジェクト形式に変換
+        const rowData = {};
+        headers.forEach((header, index) => {
+          rowData[header] = values[index] || '';
+        });
+
+        // 従業員IDを取得
+        const employeeId = employeeIdColumn ? rowData[employeeIdColumn] : '';
+        if (!employeeId) {
+          console.warn(`⚠️ 行 ${i + 2}: 従業員IDが見つかりません`);
+          errorCount++;
+          continue;
+        }
+
+        // 従業員情報を検索
+        const employeeInfo = employeeMap.get(String(employeeId));
+        if (!employeeInfo) {
+          console.warn(`⚠️ 行 ${i + 2}: 従業員ID ${employeeId} が従業員マスタに見つかりません`);
+          errorCount++;
+          continue;
+        }
+
+        // 部門コードを取得
+        const departmentCode = departmentCodeColumn ? rowData[departmentCodeColumn] : employeeInfo.data.departmentCode || '';
+
+        // 項目データを構築
+        const items = {};
+        Object.keys(rowData).forEach(key => {
+          // 従業員ID・部門コード以外の項目を処理
+          if (key !== employeeIdColumn && key !== departmentCodeColumn && key && key.trim() !== '') {
+            const itemName = mappingSettings.simpleMapping?.[key] || key;
+            const itemType = mappingSettings.itemCategories?.[key] || 'income';
+            const isVisible = mappingSettings.visibilitySettings?.[key] !== false;
+            
+            let value = rowData[key] || '';
+            value = String(value).trim();
+            
+            // 数値変換を試行
+            if (value !== '' && !isNaN(value)) {
+              value = Number(value);
+            }
+            
+            items[key] = {
+              value: value,
+              name: itemName,
+              type: itemType,
+              isVisible: isVisible
+            };
+          }
+        });
+
+        // 賞与明細データを作成
+        const bonusPayslipData = {
+          userId: employeeInfo.userId,
+          employeeId: employeeId,
+          companyId: companyId,
+          departmentCode: departmentCode,
+          paymentDate: new Date(paymentDate),
+          items: items,
+          payslipType: 'bonus',
+          uploadId: uploadId,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          createdBy: auth.uid
+        };
+
+        // バッチに追加（bonusPayslipsコレクション）
+        const payslipRef = db.collection('bonusPayslips').doc();
+        batch.set(payslipRef, bonusPayslipData);
+        
+        processedCount++;
+
+      } catch (rowError) {
+        console.error(`❌ 行 ${i + 2} 処理エラー:`, rowError);
+        errorCount++;
+      }
+    }
+
+    // バッチでFirestoreに書き込み
+    if (processedCount > 0) {
+      console.log('💾 Firestoreバッチ書き込み開始:', processedCount, '件');
+      await batch.commit();
+      console.log('✅ Firestoreバッチ書き込み完了');
+    }
+
+    // アップロード情報を更新
+    await uploadRef.update({
+      status: 'completed',
+      processedCount: processedCount,
+      errorCount: errorCount,
+      completedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    console.log('🎉 賞与CSV処理完了:', {
+      処理件数: processedCount,
+      エラー件数: errorCount
+    });
+
+    return {
+      success: true,
+      processedCount: processedCount,
+      errorCount: errorCount,
+      message: `賞与明細 ${processedCount} 件を作成しました（エラー: ${errorCount} 件）`
+    };
+
+  } catch (error) {
+    console.error('❌ 賞与CSV処理エラー:', error);
+    
+    // エラー時もアップロード情報を更新
+    try {
+      await db.collection('csvUploads').doc(uploadId).update({
+        status: 'error',
+        errorMessage: error.message,
+        errorAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    } catch (updateError) {
+      console.error('アップロード情報更新エラー:', updateError);
+    }
+
+    throw new HttpsError('internal', '賞与CSV処理中にエラーが発生しました: ' + error.message);
+  }
+});
+
+// 賞与明細通知メール一括送信 - 一時的に無効化
+/*
+exports.sendBonusPayslipNotifications = onCall(async (request) => {
+  const { data, auth } = request;
+  
+  if (!auth) {
+    throw new HttpsError('unauthenticated', 'ユーザー認証が必要です');
+  }
+
+  const { uploadId, paymentDate } = data;
+
+  if (!uploadId || !paymentDate) {
+    throw new HttpsError('invalid-argument', 'uploadId と paymentDate は必須です');
+  }
+
+  try {
+    console.log('📧 賞与明細通知メール一括送信開始:', { uploadId, paymentDate });
+
+    // 対象の賞与明細を取得
+    const payslipsSnapshot = await db.collection('bonusPayslips')
+      .where('uploadId', '==', uploadId)
+      .get();
+
+    if (payslipsSnapshot.empty) {
+      throw new HttpsError('not-found', '対象の賞与明細が見つかりません');
+    }
+
+    console.log(`📋 対象賞与明細: ${payslipsSnapshot.size} 件`);
+
+    let successCount = 0;
+    let failCount = 0;
+    const results = [];
+
+    // 各賞与明細に対してメール送信
+    for (const payslipDoc of payslipsSnapshot.docs) {
+      const payslipData = payslipDoc.data();
+      
+      try {
+        // 従業員情報を取得
+        const employeeDoc = await db.collection('employees').doc(payslipData.userId).get();
+        
+        if (!employeeDoc.exists()) {
+          throw new Error('従業員情報が見つかりません');
+        }
+
+        const employeeData = employeeDoc.data();
+        const employeeEmail = employeeData.email;
+
+        if (!employeeEmail) {
+          throw new Error('従業員のメールアドレスが設定されていません');
+        }
+
+        // 賞与明細通知メールを送信
+        const subject = `【賞与明細】${paymentDate} の賞与明細をご確認ください`;
+        const htmlContent = `
+          <html>
+            <body>
+              <h2>賞与明細のお知らせ</h2>
+              <p>${employeeData.name || employeeData.displayName} 様</p>
+              <p>${paymentDate} の賞与明細が発行されました。</p>
+              <p>システムにログインしてご確認ください。</p>
+              <p><a href="${process.env.APP_URL || 'https://kyuyoprint.web.app'}/employee/bonus-payslips">賞与明細を確認する</a></p>
+              <hr>
+              <p><small>このメールは自動送信されています。</small></p>
+            </body>
+          </html>
+        `;
+
+        const emailResult = await sendEmail(employeeEmail, subject, htmlContent);
+        
+        if (emailResult.success) {
+          successCount++;
+          results.push({
+            employeeId: payslipData.employeeId,
+            email: employeeEmail,
+            success: true
+          });
+        } else {
+          throw new Error(emailResult.error || 'メール送信に失敗しました');
+        }
+
+      } catch (employeeError) {
+        console.error(`❌ 従業員 ${payslipData.employeeId} メール送信エラー:`, employeeError);
+        failCount++;
+        results.push({
+          employeeId: payslipData.employeeId,
+          email: null,
+          success: false,
+          error: employeeError.message
+        });
+      }
+    }
+    
+    console.log(`📧 賞与明細通知メール一括送信完了: 成功 ${successCount}件、失敗 ${failCount}件`);
+    
+    return {
+      success: true,
+      totalCount: payslipsSnapshot.size,
+      successCount,
+      failCount,
+      results
+    };
+    
+  } catch (error) {
+    console.error('賞与明細通知メール一括送信エラー:', error);
+    throw new HttpsError(
+      'internal',
+      '賞与明細通知メール送信中にエラーが発生しました: ' + error.message
+    );
+  }
+});
+*/
