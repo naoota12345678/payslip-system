@@ -25,11 +25,14 @@ function BonusPayslipDetail() {
   // CSVマッピング設定を取得（同期版）
   const fetchMappingConfigSync = async (companyId) => {
     try {
-      const mappingDoc = await getDoc(doc(db, "bonusCsvMappings", companyId));
+      const mappingDoc = await getDoc(doc(db, "csvMappingsBonus", companyId));
       if (mappingDoc.exists()) {
         const mappingData = mappingDoc.data();
         console.log('🎯 CSVマッピング設定を直接取得:', mappingData);
         
+
+        
+
         setMappingConfig(mappingData);
         return mappingData;
       } else {
@@ -135,10 +138,12 @@ function BonusPayslipDetail() {
                 return;
               }
 
-              // 表示名を決定（itemName優先、なければheaderName）
-              const displayName = (item.itemName && item.itemName.trim() !== '') 
-                ? item.itemName 
-                : item.headerName;
+                             // 表示名を決定（itemName優先、なければheaderName）
+               const displayName = (item.itemName && item.itemName.trim() !== '') 
+                 ? item.itemName 
+                 : item.headerName;
+
+
 
               const processedItem = {
                 id: item.headerName,
@@ -323,6 +328,8 @@ function BonusPayslipDetail() {
     }
   };
 
+
+
   // 会社名を取得する関数
   const fetchCompanyName = async (companyId) => {
     try {
@@ -422,6 +429,8 @@ function BonusPayslipDetail() {
       navigate('/employee/bonus-payslips');
     }
   };
+
+
 
   if (loading) {
     return (
