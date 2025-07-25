@@ -1,7 +1,8 @@
 // src/pages/EmployeeImport.js
 import React, { useState, useEffect } from 'react';
-import { db } from '../firebase';
+import { db, functions } from '../firebase';
 import { collection, doc, getDoc, setDoc, getDocs, query, where, writeBatch } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 
@@ -150,7 +151,15 @@ function EmployeeImport() {
           const result = await importEmployees(csvData, companyId);
           
           setImportResult(result);
-          setSuccess(`従業員データをインポートしました（新規: ${result.created}件、更新: ${result.updated}件）`);
+          
+          // 成功メッセージを作成
+          let successMessage = `従業員データをインポートしました（新規: ${result.created}件、更新: ${result.updated}件`;
+          if (result.authCreated !== undefined) {
+            successMessage += `、Authアカウント作成: ${result.authCreated}件`;
+          }
+          successMessage += `）`;
+          
+          setSuccess(successMessage);
           setFile(null);
           setPreviewData(null);
           
@@ -274,11 +283,13 @@ function EmployeeImport() {
           name,
           email,
           companyId,
+          status: 'active', // ステータス: アクティブ
           updatedAt: new Date()
         };
         
-        // 部門IDを設定
+        // 部門コードと部門IDを設定
         if (departmentCode && departmentMap[departmentCode]) {
+          employee.departmentCode = departmentCode;
           employee.departmentId = departmentMap[departmentCode];
         }
         
@@ -328,6 +339,60 @@ function EmployeeImport() {
     
     // バッチ処理を実行
     await batch.commit();
+    
+    // Firebase Authアカウントを作成（新規従業員のみ）
+    if (result.created > 0) {
+      console.log(`🔧 ${result.created}件の新規従業員にFirebase Authアカウントを作成中...`);
+      
+      const createEmployeeAccount = httpsCallable(functions, 'createEmployeeAccount');
+      let authCreated = 0;
+      let authErrors = [];
+      
+      // 新規作成された従業員のアカウントを作成
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        
+        try {
+          const values = line.split(',').map(v => v.trim());
+          const employeeId = values[employeeIdIndex];
+          const name = values[nameIndex];
+          const email = values[emailIndex];
+          
+          if (!employeeId || !name || !email) continue;
+          
+          // 新規作成された従業員かチェック
+          if (!existingEmployees[employeeId]) {
+            try {
+              const authResult = await createEmployeeAccount({
+                email: email,
+                name: name,
+                employeeData: {
+                  employeeId,
+                  name,
+                  email,
+                  companyId
+                }
+              });
+              
+              console.log(`✅ Firebase Authアカウント作成成功: ${email}`);
+              authCreated++;
+            } catch (authError) {
+              console.error(`❌ Firebase Authアカウント作成失敗: ${email}`, authError);
+              authErrors.push(`${name} (${email}): ${authError.message}`);
+            }
+          }
+        } catch (error) {
+          console.error(`行 ${i+1} のAuth処理エラー:`, error);
+        }
+      }
+      
+      // Auth作成結果を結果に追加
+      result.authCreated = authCreated;
+      result.authErrors = authErrors;
+      
+      console.log(`🎉 Firebase Authアカウント作成完了: ${authCreated}件成功, ${authErrors.length}件失敗`);
+    }
     
     return result;
   };
@@ -427,7 +492,7 @@ function EmployeeImport() {
       {importResult && (
         <div className="bg-white p-6 rounded-lg shadow-md mb-6">
           <h2 className="text-xl font-semibold mb-4">インポート結果</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
             <div className="bg-green-50 p-4 rounded-md">
               <p className="text-lg font-bold text-green-700">{importResult.created}</p>
               <p className="text-sm text-green-600">新規登録</p>
@@ -440,10 +505,16 @@ function EmployeeImport() {
               <p className="text-lg font-bold text-yellow-700">{importResult.skipped}</p>
               <p className="text-sm text-yellow-600">スキップ</p>
             </div>
+            {importResult.authCreated !== undefined && (
+              <div className="bg-purple-50 p-4 rounded-md">
+                <p className="text-lg font-bold text-purple-700">{importResult.authCreated}</p>
+                <p className="text-sm text-purple-600">ログインアカウント作成</p>
+              </div>
+            )}
           </div>
           
           {importResult.errors.length > 0 && (
-            <div>
+            <div className="mb-4">
               <h3 className="font-medium mb-2">エラー ({importResult.errors.length}件)</h3>
               <div className="bg-red-50 p-3 rounded-md max-h-40 overflow-y-auto">
                 <ul className="list-disc pl-5 text-sm text-red-700 space-y-1">
@@ -452,6 +523,22 @@ function EmployeeImport() {
                   ))}
                 </ul>
               </div>
+            </div>
+          )}
+          
+          {importResult.authErrors && importResult.authErrors.length > 0 && (
+            <div>
+              <h3 className="font-medium mb-2">ログインアカウント作成エラー ({importResult.authErrors.length}件)</h3>
+              <div className="bg-orange-50 p-3 rounded-md max-h-40 overflow-y-auto">
+                <ul className="list-disc pl-5 text-sm text-orange-700 space-y-1">
+                  {importResult.authErrors.map((error, index) => (
+                    <li key={index}>{error}</li>
+                  ))}
+                </ul>
+              </div>
+              <p className="mt-2 text-xs text-orange-600">
+                ※ ログインアカウント作成に失敗した従業員は、個別に従業員管理画面から再作成できます
+              </p>
             </div>
           )}
         </div>
@@ -470,6 +557,7 @@ function EmployeeImport() {
           <li>任意項目: 役職、職種、契約形態、性別、生年月日、入社日</li>
           <li>部署コードは、会社設定の部門管理で登録した部門コードと一致する必要があります</li>
           <li>社員番号が既に存在する場合は更新、存在しない場合は新規登録されます</li>
+          <li>新規従業員には自動的にFirebase Authログインアカウントが作成されます（パスワード: 000000）</li>
           <li>性別は数値で指定: 1=男性、2=女性、その他の値=その他/未指定</li>
           <li>日付はYYYY/MM/DD形式で指定してください</li>
         </ul>
