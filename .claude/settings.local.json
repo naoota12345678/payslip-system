@@ -18,7 +18,8 @@
       "Bash(node:*)",
       "Bash(cmd /c \"firebase deploy --only functions\")",
       "Bash(firebase:*)",
-      "Bash(start cmd /k \"cd /d C:\\Users\\naoot\\payslip-system && firebase deploy --only functions\")"
+      "Bash(start cmd /k \"cd /d C:\\Users\\naoot\\payslip-system && firebase deploy --only functions\")",
+      "Bash(git commit:*)"
     ],
     "deny": []
   }
