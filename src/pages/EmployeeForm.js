@@ -214,8 +214,22 @@ companyID一致: ${targetEmployeeData?.companyId === userDetails?.companyId}
         
         console.log('✅ 従業員アカウント作成結果:', result.data);
         
-        // 成功メッセージ（テスト用パスワードを表示）
-        alert(`従業員を登録しました！\n\n📧 ログイン情報:\nメール: ${saveData.email}\nパスワード: ${result.data.testPassword}\n\n※テスト用の固定パスワードです`);
+        // 詳細デバッグ情報を表示
+        const debugMessage = `従業員登録結果:
+${result.data.success ? '✅ 成功' : '❌ 失敗'}
+
+📧 ログイン情報:
+メール: ${saveData.email}
+パスワード: ${result.data.testPassword}
+
+🔍 デバッグ情報:
+UID: ${result.data.uid}
+メッセージ: ${result.data.message || 'なし'}
+
+※テスト用の固定パスワードです
+※Firestoreのemployeesコレクションも確認してください`;
+
+        alert(debugMessage);
         
         navigate('/admin/employees');
       }

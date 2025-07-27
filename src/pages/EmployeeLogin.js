@@ -36,6 +36,9 @@ function EmployeeLogin() {
     try {
       // Firebase Authenticationでログイン（Firestoreアクセスは行わない）
       console.log('🔐 Firebase認証を実行中...');
+      console.log('入力されたメール:', email);
+      console.log('入力されたパスワード長:', password.length);
+      
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       console.log('✅ Firebase認証成功:', user.uid);
@@ -57,6 +60,9 @@ function EmployeeLogin() {
       
     } catch (error) {
       console.error('❌ 従業員ログインエラー:', error);
+      console.error('エラーコード:', error.code);
+      console.error('エラーメッセージ:', error.message);
+      console.error('詳細:', error);
       
       // Firebase Authエラーメッセージの日本語化
       let errorMessage = 'ログインに失敗しました';
@@ -75,6 +81,9 @@ function EmployeeLogin() {
           break;
         case 'auth/too-many-requests':
           errorMessage = 'ログイン試行回数が多すぎます。しばらく時間をおいてから再試行してください';
+          break;
+        case 'auth/invalid-credential':
+          errorMessage = 'メールアドレスまたはパスワードが正しくありません';
           break;
         default:
           // Firestoreのパーミッションエラーをキャッチ

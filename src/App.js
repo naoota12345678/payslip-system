@@ -67,6 +67,108 @@ if (typeof window !== 'undefined') {
   window.testFirebaseAuth = testFirebaseAuth;
   window.testSimpleFunction = testSimpleFunction;
   window.fixEmployeeUIDs = fixEmployeeUIDs;
+  
+  // 従業員データ診断関数
+  window.debugEmployeeData = async function() {
+    const { db } = await import('./firebase');
+    const { collection, query, where, getDocs } = await import('firebase/firestore');
+    
+    try {
+      console.log('=== 従業員データ診断開始 ===');
+      
+      // 1. 全従業員データを確認
+      console.log('1. 全従業員データ:');
+      const employeesQuery = query(collection(db, 'employees'));
+      const employeesSnapshot = await getDocs(employeesQuery);
+      
+      employeesSnapshot.forEach((doc) => {
+        const data = doc.data();
+        console.log(`従業員: ${data.name} | Email: ${data.email} | UID: ${data.uid} | EmployeeId: ${data.employeeId} | CompanyId: ${data.companyId}`);
+      });
+      
+      // 2. 給与明細データを確認
+      console.log('\n2. 給与明細データ:');
+      const payslipsQuery = query(collection(db, 'payslips'));
+      const payslipsSnapshot = await getDocs(payslipsQuery);
+      
+      console.log(`給与明細総数: ${payslipsSnapshot.size}`);
+      
+      // 各従業員の給与明細数をカウント
+      const employeePayslipCount = {};
+      payslipsSnapshot.forEach((doc) => {
+        const data = doc.data();
+        const empId = data.employeeId;
+        if (!employeePayslipCount[empId]) {
+          employeePayslipCount[empId] = 0;
+        }
+        employeePayslipCount[empId]++;
+      });
+      
+      console.log('従業員別給与明細数:');
+      Object.entries(employeePayslipCount).forEach(([empId, count]) => {
+        console.log(`  ${empId}: ${count}件`);
+      });
+      
+      return {
+        employeesCount: employeesSnapshot.size,
+        payslipsCount: payslipsSnapshot.size,
+        employeePayslipCount
+      };
+      
+    } catch (error) {
+      console.error('診断エラー:', error);
+      return { error: error.message };
+    }
+  };
+  
+  // 特定のメールアドレスでの検索
+  window.findEmployeeByEmail = async function(email) {
+    const { db } = await import('./firebase');
+    const { collection, query, where, getDocs } = await import('firebase/firestore');
+    
+    try {
+      console.log(`=== ${email} の従業員データ検索 ===`);
+      
+      const employeeQuery = query(
+        collection(db, 'employees'),
+        where('email', '==', email)
+      );
+      
+      const employeeSnapshot = await getDocs(employeeQuery);
+      
+      if (employeeSnapshot.empty) {
+        console.log('❌ 該当する従業員データが見つかりません');
+        return null;
+      }
+      
+      const employeeData = employeeSnapshot.docs[0].data();
+      console.log('✅ 従業員データ見つかりました:', employeeData);
+      
+      // その従業員の給与明細を検索
+      const payslipQuery = query(
+        collection(db, 'payslips'),
+        where('employeeId', '==', employeeData.employeeId),
+        where('companyId', '==', employeeData.companyId)
+      );
+      
+      const payslipSnapshot = await getDocs(payslipQuery);
+      console.log(`給与明細数: ${payslipSnapshot.size}件`);
+      
+      payslipSnapshot.forEach((doc) => {
+        const payslip = doc.data();
+        console.log(`  - ${payslip.paymentDate?.toDate().toLocaleDateString('ja-JP')} | 支給額: ¥${payslip.netAmount}`);
+      });
+      
+      return {
+        employee: employeeData,
+        payslipCount: payslipSnapshot.size
+      };
+      
+    } catch (error) {
+      console.error('検索エラー:', error);
+      return { error: error.message };
+    }
+  };
 }
 
 function App() {

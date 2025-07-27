@@ -98,7 +98,11 @@ export function AuthProvider({ children }) {
         console.warn('従業員データが見つかりません。認証を拒否します (uid:', user.uid, ')');
         console.warn('Firebase Authアカウントは存在しますが、対応するFirestore従業員データがありません');
         
+        // ユーザーをログアウトさせて適切なログイン画面にリダイレクト
+        await signOut(auth);
         setUserDetails(null);
+        setCurrentUser(null);
+        
         return null;
       }
     } catch (error) {
@@ -106,6 +110,20 @@ export function AuthProvider({ children }) {
       console.error("エラーオブジェクト:", error);
       console.error("エラーコード:", error.code);
       console.error("エラーメッセージ:", error.message);
+      
+      // 権限エラーまたは認証エラーの場合はログアウト
+      if (error.code === 'auth/invalid-credential' || 
+          error.code === 'permission-denied' ||
+          error.message?.includes('Missing or insufficient permissions')) {
+        console.warn('認証エラーまたは権限エラー - ユーザーをログアウト');
+        try {
+          await signOut(auth);
+          setCurrentUser(null);
+        } catch (signOutError) {
+          console.error('ログアウトエラー:', signOutError);
+        }
+      }
+      
       setUserDetails(null);
       return null;
     }

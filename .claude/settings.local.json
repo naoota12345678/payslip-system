@@ -19,7 +19,12 @@
       "Bash(cmd /c \"firebase deploy --only functions\")",
       "Bash(firebase:*)",
       "Bash(start cmd /k \"cd /d C:\\Users\\naoot\\payslip-system && firebase deploy --only functions\")",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(del debug-employee-auth.js)",
+      "Bash(rm:*)",
+      "Bash(wsl:*)",
+      "Bash(where git)",
+      "Bash(npm config:*)"
     ],
     "deny": []
   }

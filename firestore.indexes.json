@@ -161,6 +161,42 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "bonusPayslips",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "companyId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "employeeId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "paymentDate",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "payslips",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "companyId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "employeeId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

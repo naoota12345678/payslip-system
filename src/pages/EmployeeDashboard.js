@@ -27,11 +27,22 @@ function EmployeeDashboard() {
 
   useEffect(() => {
     const fetchPayslipData = async () => {
-      if (!currentUser || !userDetails) return;
+      console.log('=== EmployeeDashboard fetchPayslipData 開始 ===');
+      console.log('currentUser:', currentUser ? currentUser.email : 'null');
+      console.log('userDetails:', userDetails);
+      
+      if (!currentUser || !userDetails) {
+        console.log('❌ currentUser または userDetails が null - データ取得をスキップ');
+        return;
+      }
       
       try {
         setLoading(true);
         setError('');
+        
+        console.log('🔍 給与明細検索条件:');
+        console.log('  - employeeId:', userDetails.employeeId);
+        console.log('  - companyId:', userDetails.companyId);
         
         // 自分の給与明細のみ取得（全件、最新順）
         const q = query(
@@ -41,22 +52,31 @@ function EmployeeDashboard() {
           orderBy("paymentDate", "desc")
         );
         
+        console.log('📋 Firestore クエリ実行中...');
         const querySnapshot = await getDocs(q);
+        console.log('📋 クエリ結果:', querySnapshot.size, '件');
+        
         const payslipList = [];
         
         querySnapshot.forEach((doc) => {
+          const docData = doc.data();
+          console.log('  - 給与明細:', doc.id, docData.paymentDate?.toDate().toLocaleDateString('ja-JP'));
           payslipList.push({
             id: doc.id,
-            ...doc.data(),
-            paymentDate: doc.data().paymentDate?.toDate() // Timestamp→Date変換
+            ...docData,
+            paymentDate: docData.paymentDate?.toDate() // Timestamp→Date変換
           });
         });
         
+        console.log('✅ 取得した給与明細数:', payslipList.length);
         setPayslips(payslipList);
         
         // 最新の給与明細
         if (payslipList.length > 0) {
           setLatestPayslip(payslipList[0]);
+          console.log('📋 最新の給与明細:', payslipList[0].paymentDate?.toLocaleDateString('ja-JP'));
+        } else {
+          console.log('⚠️ 給与明細が見つかりませんでした');
         }
         
         // 賞与明細も取得
@@ -69,9 +89,12 @@ function EmployeeDashboard() {
         await calculateStats();
       } catch (err) {
         console.error("給与データの取得エラー:", err);
-        setError("給与データの取得中にエラーが発生しました");
+        console.error("エラーコード:", err.code);
+        console.error("エラーメッセージ:", err.message);
+        setError(`給与データの取得中にエラーが発生しました: ${err.message}`);
       } finally {
         setLoading(false);
+        console.log('=== EmployeeDashboard fetchPayslipData 完了 ===');
       }
     };
     
@@ -122,6 +145,8 @@ function EmployeeDashboard() {
     // 賞与明細を取得する関数
     const fetchBonusPayslips = async () => {
       try {
+        console.log('🎁 賞与明細を検索中...');
+        
         const bonusQuery = query(
           collection(db, "bonusPayslips"),
           where("employeeId", "==", userDetails.employeeId),
@@ -130,13 +155,17 @@ function EmployeeDashboard() {
         );
         
         const bonusSnapshot = await getDocs(bonusQuery);
+        console.log('🎁 賞与明細結果:', bonusSnapshot.size, '件');
+        
         const bonusList = [];
         
         bonusSnapshot.forEach((doc) => {
+          const docData = doc.data();
+          console.log('  - 賞与明細:', doc.id, docData.paymentDate?.toDate().toLocaleDateString('ja-JP'));
           bonusList.push({
             id: doc.id,
-            ...doc.data(),
-            paymentDate: doc.data().paymentDate?.toDate()
+            ...docData,
+            paymentDate: docData.paymentDate?.toDate()
           });
         });
         
@@ -144,9 +173,14 @@ function EmployeeDashboard() {
         
         if (bonusList.length > 0) {
           setLatestBonusPayslip(bonusList[0]);
+          console.log('🎁 最新の賞与明細:', bonusList[0].paymentDate?.toLocaleDateString('ja-JP'));
+        } else {
+          console.log('⚠️ 賞与明細が見つかりませんでした');
         }
       } catch (err) {
         console.error("賞与データの取得エラー:", err);
+        console.error("エラーコード:", err.code);
+        console.error("エラーメッセージ:", err.message);
       }
     };
     

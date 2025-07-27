@@ -18,12 +18,28 @@ setGlobalOptions({
 admin.initializeApp();
 const db = admin.firestore();
 
-// Resend設定
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Resend設定（APIキーが設定されていない場合はnullにする）
+let resend = null;
+try {
+  if (process.env.RESEND_API_KEY) {
+    resend = new Resend(process.env.RESEND_API_KEY);
+    console.log('✅ Resend API初期化完了');
+  } else {
+    console.log('⚠️ RESEND_API_KEYが設定されていません - メール機能は無効');
+  }
+} catch (resendError) {
+  console.error('❌ Resend初期化エラー:', resendError.message);
+  resend = null;
+}
 
 // メール送信関数（Resend使用）
 const sendEmail = async (to, subject, htmlContent, textContent = null) => {
   try {
+    if (!resend) {
+      console.log('⚠️ Resendが初期化されていません - メール送信をスキップ');
+      return { success: false, error: 'Resend API not configured' };
+    }
+    
     console.log(`📧 Resend経由でメール送信中: ${to} - ${subject}`);
     
     const emailData = {
@@ -257,8 +273,8 @@ exports.createEmployeeAccount = onCall({
       creationTime: userRecord.metadata.creationTime
     });
     
-    // 従業員データにuidを追加
-    console.log('🔄 Firestoreの従業員データにUIDを更新中...');
+    // 従業員データの処理
+    console.log('🔄 Firestoreの従業員データ処理中...');
     
     try {
       // メールアドレスで従業員ドキュメントを検索
@@ -266,29 +282,60 @@ exports.createEmployeeAccount = onCall({
       const employeesSnapshot = await employeesQuery.get();
       
       if (!employeesSnapshot.empty) {
-        // 従業員ドキュメントが見つかった場合、UIDを更新
+        // 既存の従業員ドキュメントが見つかった場合、UIDを更新
         const employeeDoc = employeesSnapshot.docs[0];
         await employeeDoc.ref.update({
           uid: userRecord.uid,
-          userType: 'employee', // 従業員として明示的に設定
-          role: 'employee', // 従業員ロール
+          userType: 'employee',
+          role: 'employee',
           status: 'auth_created',
           isFirstLogin: true,
           tempPassword: TEST_PASSWORD,
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
         
-        console.log('✅ 従業員データのUID更新完了:', {
+        console.log('✅ 既存従業員データのUID更新完了:', {
           docId: employeeDoc.id,
           uid: userRecord.uid,
           email: email
         });
       } else {
-        console.warn('⚠️ メールアドレスに対応する従業員データが見つかりません:', email);
+        // 従業員データが見つからない場合、新規作成
+        console.log('📝 新規従業員ドキュメントを作成中...');
+        
+        if (!employeeData) {
+          throw new Error('employeeDataが提供されていません');
+        }
+        
+        // 新しい従業員ドキュメントを作成
+        const newEmployeeData = {
+          ...employeeData,
+          uid: userRecord.uid,
+          email: email,
+          name: name,
+          userType: 'employee',
+          role: 'employee',
+          status: 'auth_created',
+          isFirstLogin: true,
+          tempPassword: TEST_PASSWORD,
+          isActive: true,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        };
+        
+        // 新しいドキュメントを作成
+        const newEmployeeDocRef = await db.collection('employees').add(newEmployeeData);
+        
+        console.log('✅ 新規従業員ドキュメント作成完了:', {
+          docId: newEmployeeDocRef.id,
+          uid: userRecord.uid,
+          email: email,
+          employeeId: employeeData.employeeId
+        });
       }
     } catch (firestoreError) {
-      console.error('❌ Firestore更新エラー:', firestoreError);
-      // Firestoreエラーでもユーザー作成は成功しているので続行
+      console.error('❌ Firestore処理エラー:', firestoreError);
+      throw new Error(`Firestore処理エラー: ${firestoreError.message}`);
     }
     
     // メール送信（現在は無効化中）
