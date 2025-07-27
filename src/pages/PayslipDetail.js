@@ -28,7 +28,7 @@ function PayslipDetail() {
       const mappingDoc = await getDoc(doc(db, "csvMappings", companyId));
       if (mappingDoc.exists()) {
         const mappingData = mappingDoc.data();
-        console.log('🎯 CSVマッピング設定を直接取得:', mappingData);
+        console.log('🎯 CSVマッピング設定を取得:', mappingData);
         
 
         
@@ -69,6 +69,16 @@ function PayslipDetail() {
 
         const payslipData = payslipDoc.data();
         
+        console.log('📊 Firestoreから取得した給与明細データ:', {
+          id: payslipId,
+          employeeId: payslipData.employeeId,
+          companyId: payslipData.companyId,
+          paymentDate: payslipData.paymentDate,
+          itemsKeys: Object.keys(payslipData.items || {}),
+          itemsCount: Object.keys(payslipData.items || {}).length,
+          sampleItems: Object.entries(payslipData.items || {}).slice(0, 5)
+        });
+        
         // アクセス権のチェック（管理者または自分の給与明細のみ閲覧可能）
         const isAdmin = userDetails?.role === 'admin';
         const isOwner = payslipData.employeeId === userDetails.employeeId && 
@@ -80,10 +90,25 @@ function PayslipDetail() {
           return;
         }
 
-        // マッピング設定を取得
+        // マッピング設定とcsvSettingsを取得
         let currentMappingConfig = null;
         if (payslipData.companyId || userDetails?.companyId) {
-          currentMappingConfig = await fetchMappingConfigSync(payslipData.companyId || userDetails.companyId);
+          const companyId = payslipData.companyId || userDetails.companyId;
+          currentMappingConfig = await fetchMappingConfigSync(companyId);
+          
+          // csvSettingsも別途取得してparsedHeadersを追加
+          try {
+            const csvSettingsDoc = await getDoc(doc(db, "csvSettings", companyId));
+            if (csvSettingsDoc.exists()) {
+              const csvSettingsData = csvSettingsDoc.data();
+              console.log('🎯 CSV設定を取得:', csvSettingsData);
+              if (currentMappingConfig) {
+                currentMappingConfig.parsedHeaders = csvSettingsData.parsedHeaders || [];
+              }
+            }
+          } catch (err) {
+            console.error('🚨 CSV設定取得エラー:', err);
+          }
         }
 
         // 日付型に変換
@@ -115,6 +140,11 @@ function PayslipDetail() {
             return { incomeItems, deductionItems, attendanceItems, otherItems };
           }
 
+          // CSVヘッダーの順序を取得（parsedHeadersを優先、なければitemsのキー）
+          const csvHeaderOrder = mappingConfig.parsedHeaders || Object.keys(payslipData.items || {});
+          console.log('🔍 CSV ヘッダー順序 (parsedHeaders):', csvHeaderOrder);
+          console.log('🔍 payslipData.items keys:', Object.keys(payslipData.items || {}));
+
           // 全ての設定カテゴリを処理
           console.log('合計項目数:', (mappingConfig.totalItems || []).length);
           
@@ -138,11 +168,19 @@ function PayslipDetail() {
                 return;
               }
 
-                             // 表示名を決定（itemName優先、なければheaderName）
-               const displayName = (item.itemName && item.itemName.trim() !== '') 
-                 ? item.itemName 
-                 : item.headerName;
+              // デバッグ: 支給項目の詳細を確認
+              if (category.type === 'income') {
+                console.log(`支給項目詳細 - headerName: ${item.headerName}, itemName: "${item.itemName}", value: ${value}`);
+              }
 
+              // 表示名を決定（itemName優先、なければheaderName）
+              const displayName = (item.itemName && item.itemName.trim() !== '') 
+                ? item.itemName 
+                : item.headerName;
+
+              // CSVヘッダーの実際の位置を取得（これが正しい順序）
+              const csvOrder = csvHeaderOrder.indexOf(item.headerName);
+              const actualOrder = csvOrder >= 0 ? csvOrder : index;
 
 
               const processedItem = {
@@ -151,7 +189,7 @@ function PayslipDetail() {
                 value: value,
                 type: category.type,
                 csvColumn: item.headerName,
-                order: index
+                order: actualOrder
               };
 
               // ハードコーディングされた分類を削除し、設定に従って分類
@@ -171,8 +209,9 @@ function PayslipDetail() {
         const { incomeItems, deductionItems, attendanceItems, otherItems } = 
           classifyItemsSimple(payslipData, currentMappingConfig);
         
-        console.log('otherItems数:', otherItems.length);
+        console.log('🎯 最終分類結果 - 支給項目:', incomeItems.map(item => ({ name: item.name, order: item.order })));
         
+        // 初期値でpayslipをセット
         setPayslip({
           ...payslipData,
           id: payslipId,
@@ -180,26 +219,26 @@ function PayslipDetail() {
           deductionItems,
           attendanceItems,
           otherItems,
-          companyName: companyName,
-          departmentName: departmentName,
-          employeeName: employeeName
+          companyName: 'N/A',
+          departmentName: '',
+          employeeName: 'N/A'
         });
+        
+        // 従業員名を非同期で取得（後で更新される）
+        if (payslipData.employeeId) {
+          fetchEmployeeName(payslipData.employeeId);
+        }
+        
+        // 会社名を非同期で取得（後で更新される）
+        if (payslipData.companyId || userDetails?.companyId) {
+          fetchCompanyName(payslipData.companyId || userDetails.companyId);
+        }
 
         // 閲覧ログを記録（まだ記録していなければ）
         // TODO: logPayslipView関数を実装する必要があります
         // if (!viewLogged) {
         //   logPayslipView(payslipId);
         // }
-        
-        // 従業員名を取得（シンプル検索）
-        if (payslipData.employeeId) {
-          fetchEmployeeName(payslipData.employeeId);
-        }
-        
-        // 会社名を取得
-        if (payslipData.companyId || userDetails?.companyId) {
-          fetchCompanyName(payslipData.companyId || userDetails.companyId);
-        }
 
         // 関連する明細（同じ従業員の別の月の明細）を取得
         if (payslipData.employeeId && payslipData.userId) {
@@ -417,7 +456,32 @@ function PayslipDetail() {
 
   // 印刷ボタンのハンドラ
   const handlePrint = () => {
-    window.print();
+    console.log('🖨️ 印刷ボタンがクリックされました');
+    console.log('📱 デバイス情報:', {
+      userAgent: navigator.userAgent,
+      isMobile: /iPhone|iPad|iPod|Android/i.test(navigator.userAgent),
+      platform: navigator.platform
+    });
+    
+    try {
+      // モバイルデバイスの場合は少し待ってから印刷実行
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      
+      if (isMobile) {
+        console.log('📱 モバイルデバイス検出 - 印刷処理を調整');
+        // モバイルでの印刷前にレイアウトを安定化
+        setTimeout(() => {
+          console.log('🖨️ 印刷実行中...');
+          window.print();
+        }, 100);
+      } else {
+        console.log('🖥️ デスクトップ印刷実行');
+        window.print();
+      }
+    } catch (error) {
+      console.error('❌ 印刷エラー:', error);
+      alert('印刷機能でエラーが発生しました。ブラウザの印刷機能をお試しください。');
+    }
   };
 
   // 戻るボタンのハンドラ
@@ -472,8 +536,7 @@ function PayslipDetail() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-4 flex justify-between items-center">
-        <h1 className="text-2xl font-bold">給与明細詳細</h1>
+      <div className="mb-4 flex justify-end items-center">
         <div className="flex space-x-2">
           <button
             onClick={handleBack}
@@ -483,7 +546,25 @@ function PayslipDetail() {
           </button>
           <button
             onClick={handlePrint}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 print:hidden"
+            onTouchStart={(e) => {
+              console.log('📱 印刷ボタンタッチ開始');
+              e.currentTarget.style.transform = 'scale(0.98)';
+            }}
+            onTouchEnd={(e) => {
+              console.log('📱 印刷ボタンタッチ終了');
+              e.currentTarget.style.transform = 'scale(1)';
+              // モバイルでのダブルタップを防ぐ
+              e.preventDefault();
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 active:bg-blue-800 touch-manipulation print:hidden min-h-[48px] min-w-[48px] flex items-center justify-center transition-transform duration-150"
+            style={{ 
+              WebkitTapHighlightColor: 'transparent',
+              WebkitUserSelect: 'none',
+              userSelect: 'none',
+              WebkitTouchCallout: 'none'
+            }}
+            type="button"
+            aria-label="給与明細を印刷"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clipRule="evenodd" />
@@ -500,24 +581,10 @@ function PayslipDetail() {
           <PayslipPreview payslipData={payslip} showDetailedInfo={true} />
         </div>
         
-        {/* 印刷用レイアウト（画面表示と同じUIを使用） */}
+        {/* 印刷用レイアウト */}
         <div ref={printRef} className="hidden print:block print:p-0">
-          <div className="bg-white p-6">
-            {/* 印刷用ヘッダー */}
-            <div className="text-center mb-4 print:mb-2">
-              <h1 className="text-xl font-bold mb-1 print:text-lg">給与支払明細書</h1>
-              <p className="text-sm print:text-xs">支払日: {formatDate(payslip.paymentDate)}</p>
-            </div>
-            
-            {/* PayslipPreviewコンポーネントを印刷用に使用 */}
+          <div className="bg-white p-4">
             <PayslipPreview payslipData={payslip} showDetailedInfo={true} />
-            
-            {/* 印刷用フッター */}
-            <div className="mt-4 pt-2 border-t border-gray-300 text-center print:mt-2">
-              <p className="text-xs text-gray-600">
-                {payslip.companyName && `${payslip.companyName} - `}給与支払明細書 / 発行日: {new Date().toLocaleDateString('ja-JP')}
-              </p>
-            </div>
           </div>
         </div>
       </div>
