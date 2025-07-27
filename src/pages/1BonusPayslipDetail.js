@@ -1,4 +1,4 @@
-// src/pages/PayslipDetail.js
+// src/pages/BonusPayslipDetail.js
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import PayslipPreview from '../components/payslip/PayslipPreview';
@@ -7,7 +7,7 @@ import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firesto
 import { httpsCallable } from 'firebase/functions';
 import { useAuth } from '../contexts/AuthContext';
 
-function PayslipDetail() {
+function BonusPayslipDetail() {
   const { payslipId } = useParams();
   const navigate = useNavigate();
   const { currentUser, userDetails } = useAuth();
@@ -25,7 +25,7 @@ function PayslipDetail() {
   // CSVマッピング設定を取得（同期版）
   const fetchMappingConfigSync = async (companyId) => {
     try {
-      const mappingDoc = await getDoc(doc(db, "csvMappings", companyId));
+      const mappingDoc = await getDoc(doc(db, "csvMappingsBonus", companyId));
       if (mappingDoc.exists()) {
         const mappingData = mappingDoc.data();
         console.log('🎯 CSVマッピング設定を直接取得:', mappingData);
@@ -47,35 +47,35 @@ function PayslipDetail() {
     }
   };
 
-  // 給与明細のデータを取得
+  // 賞与明細のデータを取得
   useEffect(() => {
     const fetchPayslipData = async () => {
       if (!payslipId || !currentUser) {
-        setError("給与明細IDまたはユーザー情報が不足しています");
+        setError("賞与明細IDまたはユーザー情報が不足しています");
         setLoading(false);
         return;
       }
 
       try {
-        // Firestoreから給与明細データを取得
-        const payslipRef = doc(db, "payslips", payslipId);
+        // Firestoreから賞与明細データを取得
+        const payslipRef = doc(db, "bonusPayslips", payslipId);
         const payslipDoc = await getDoc(payslipRef);
 
         if (!payslipDoc.exists()) {
-          setError("指定された給与明細は存在しません");
+          setError("指定された賞与明細は存在しません");
           setLoading(false);
           return;
         }
 
         const payslipData = payslipDoc.data();
         
-        // アクセス権のチェック（管理者または自分の給与明細のみ閲覧可能）
+        // アクセス権のチェック（管理者または自分の賞与明細のみ閲覧可能）
         const isAdmin = userDetails?.role === 'admin';
         const isOwner = payslipData.employeeId === userDetails.employeeId && 
                        payslipData.companyId === userDetails.companyId;
         
         if (!isAdmin && !isOwner) {
-          setError("この給与明細を閲覧する権限がありません");
+          setError("この賞与明細を閲覧する権限がありません");
           setLoading(false);
           return;
         }
@@ -128,10 +128,11 @@ function PayslipDetail() {
           allCategories.forEach(category => {
             category.items.forEach((item, index) => {
               // CSVデータに対応する値があるかチェック
-              const value = payslipData.items[item.headerName];
-              if (value === undefined || value === null) {
+              const itemData = payslipData.items[item.headerName];
+              if (!itemData || itemData.value === undefined || itemData.value === null) {
                 return; // データがない項目はスキップ
               }
+              const value = itemData.value;
 
               // 表示/非表示のチェック
               if (item.isVisible === false) {
@@ -206,8 +207,8 @@ function PayslipDetail() {
           fetchRelatedPayslips(payslipData.userId, payslipData.employeeId, payslipId);
         }
       } catch (err) {
-        console.error("給与明細データの取得エラー:", err);
-        setError("給与明細データの取得中にエラーが発生しました");
+        console.error("賞与明細データの取得エラー:", err);
+        setError("賞与明細データの取得中にエラーが発生しました");
       } finally {
         setLoading(false);
       }
@@ -349,12 +350,12 @@ function PayslipDetail() {
     }
   };
 
-  // 関連する給与明細を取得する関数
+  // 関連する賞与明細を取得する関数
   const fetchRelatedPayslips = async (userId, employeeId, currentPayslipId) => {
     try {
-      // 同じユーザーの他の給与明細を取得（直近の5件）
+      // 同じユーザーの他の賞与明細を取得（直近の5件）
       const payslipsQuery = query(
-        collection(db, "payslips"),
+        collection(db, "bonusPayslips"),
         where("userId", "==", userId),
         where("employeeId", "==", employeeId)
       );
@@ -424,9 +425,9 @@ function PayslipDetail() {
   const handleBack = () => {
     // ユーザーの権限に応じて適切なルートに戻る
     if (userDetails?.role === 'admin') {
-      navigate('/admin/payslips');
+      navigate('/admin/bonus-payslips');
     } else {
-      navigate('/employee/payslips');
+      navigate('/employee/bonus-payslips');
     }
   };
 
@@ -459,7 +460,7 @@ function PayslipDetail() {
   if (!payslip) {
     return (
       <div className="container mx-auto px-4 py-8 text-center">
-        <p className="text-gray-500">給与明細データが見つかりません</p>
+        <p className="text-gray-500">賞与明細データが見つかりません</p>
         <button
           onClick={handleBack}
           className="mt-2 px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
@@ -472,7 +473,8 @@ function PayslipDetail() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-4 flex justify-end items-center">
+      <div className="mb-4 flex justify-between items-center">
+        <h1 className="text-2xl font-bold">賞与明細詳細</h1>
         <div className="flex space-x-2">
           <button
             onClick={handleBack}
@@ -482,7 +484,7 @@ function PayslipDetail() {
           </button>
           <button
             onClick={handlePrint}
-            className="hidden md:block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 print:hidden"
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 print:hidden"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clipRule="evenodd" />
@@ -492,10 +494,32 @@ function PayslipDetail() {
         </div>
       </div>
 
-      {/* 給与明細プレビュー（全幅表示） */}
+      {/* 賞与明細プレビュー（全幅表示） */}
       <div>
-        <div ref={printRef} className="bg-white rounded-lg shadow-md overflow-hidden p-6">
+        {/* 画面表示用 */}
+        <div className="bg-white rounded-lg shadow-md overflow-hidden p-6 print:hidden">
           <PayslipPreview payslipData={payslip} showDetailedInfo={true} />
+        </div>
+        
+        {/* 印刷用レイアウト（画面表示と同じUIを使用） */}
+        <div ref={printRef} className="hidden print:block print:p-0">
+          <div className="bg-white p-6">
+            {/* 印刷用ヘッダー */}
+            <div className="text-center mb-4 print:mb-2">
+              <h1 className="text-xl font-bold mb-1 print:text-lg">賞与支払明細書</h1>
+              <p className="text-sm print:text-xs">支払日: {formatDate(payslip.paymentDate)}</p>
+            </div>
+            
+            {/* PayslipPreviewコンポーネントを印刷用に使用 */}
+            <PayslipPreview payslipData={payslip} showDetailedInfo={true} />
+            
+            {/* 印刷用フッター */}
+            <div className="mt-4 pt-2 border-t border-gray-300 text-center print:mt-2">
+              <p className="text-xs text-gray-600">
+                {payslip.companyName && `${payslip.companyName} - `}賞与支払明細書 / 発行日: {new Date().toLocaleDateString('ja-JP')}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
           
@@ -503,4 +527,4 @@ function PayslipDetail() {
   );
 }
 
-export default PayslipDetail;
+export default BonusPayslipDetail; 

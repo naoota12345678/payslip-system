@@ -78,13 +78,12 @@ function BonusPayslipList() {
           const data = doc.data();
           let shouldInclude = false;
           
-          // 権限に応じて適切なフィルタリング
-          if (userDetails.role === 'admin' || userDetails.userType === 'company_admin') {
-            // 管理者の場合は会社全体の明細を含める
+          // 会社管理者の場合は会社全体の明細を含める
+          if (userDetails.userType === 'company' || userDetails.role === 'admin') {
             shouldInclude = data.companyId === userDetails.companyId;
           } else {
-            // 従業員の場合は自分の明細のみ含める（employeeIdで判定）
-            shouldInclude = data.employeeId === userDetails.employeeId;
+            // 一般ユーザーの場合は自分の明細のみ含める
+            shouldInclude = data.userId === currentUser.uid;
           }
           
           if (shouldInclude) {
@@ -332,9 +331,7 @@ function BonusPayslipList() {
                          </div>
                          <div className="ml-4">
                            <Link
-                             to={userDetails?.role === 'admin' || userDetails?.userType === 'company_admin' 
-                               ? `/admin/bonus-payslips/${payslip.id}` 
-                               : `/employee/bonus-payslips/${payslip.id}`}
+                             to={`/admin/bonus-payslips/${payslip.id}`}
                              className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-blue-600 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                            >
                              詳細を見る

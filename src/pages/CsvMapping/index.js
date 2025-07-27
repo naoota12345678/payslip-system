@@ -491,6 +491,19 @@ function CsvMapping() {
       return;
     }
     
+    // 既存の設定がある場合は確認ダイアログを表示
+    if (mappingConfig && (
+      mappingConfig.incomeItems?.length > 0 || 
+      mappingConfig.deductionItems?.length > 0 || 
+      mappingConfig.attendanceItems?.length > 0 ||
+      mappingConfig.totalItems?.length > 0
+    )) {
+      const confirmMessage = '既存のマッピング設定があります。新規作成すると現在の設定が失われます。続行しますか？';
+      if (!window.confirm(confirmMessage)) {
+        return; // キャンセルされた場合は処理を中止
+      }
+    }
+    
     // マッピング作成
     const result = createFromInput(rows[0], rows[1]);
     
@@ -501,7 +514,7 @@ function CsvMapping() {
         setSuccess('マッピングを作成して保存しました。他のページに移動しても設定が保持されます。');
       }
     }
-  }, [rowBasedInput, createFromInput, saveMapping, setError, setSuccess]);
+  }, [rowBasedInput, createFromInput, saveMapping, setError, setSuccess, mappingConfig]);
   
   // 古いヘッダーデータを削除するハンドラ（シンプル版）
   const handleCleanupOldHeaders = useCallback(async () => {
@@ -595,24 +608,52 @@ function CsvMapping() {
   return (
     <div className="container mx-auto px-4 py-8">
               <div className="bg-white shadow rounded-lg p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold text-gray-900">CSVマッピング設定</h2>
-          <div className="flex space-x-2">
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400 text-sm"
-            >
-              {saving ? '保存中...' : '💾 設定を保存'}
-            </button>
-            <button
-              onClick={processRowBasedMapping}
-              disabled={saving || !rowBasedInput.trim()}
-              className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:bg-gray-400 text-sm"
-            >
-              {saving ? '作成中...' : '🎯 新規作成'}
-            </button>
+        <div className="mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">CSVマッピング設定</h2>
+            <div className="flex items-center space-x-4">
+              {/* 設定状態の表示 */}
+              {mappingConfig && (
+                mappingConfig.incomeItems?.length > 0 || 
+                mappingConfig.deductionItems?.length > 0 || 
+                mappingConfig.attendanceItems?.length > 0 ||
+                mappingConfig.totalItems?.length > 0
+              ) && (
+                <div className="flex items-center text-green-600">
+                  <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                  </svg>
+                  <span className="text-sm font-medium">マッピング設定済み</span>
+                </div>
+              )}
+              {/* 保存ボタン（大きく目立つように） */}
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 text-base font-medium shadow-sm transition-colors"
+              >
+                {saving ? '保存中...' : '💾 設定を保存'}
+              </button>
+              {/* 新規作成ボタン（小さく控えめに） */}
+              <button
+                onClick={processRowBasedMapping}
+                disabled={saving || !rowBasedInput.trim()}
+                className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 disabled:bg-gray-400 text-sm transition-colors"
+                title="既存の設定をリセットして新規作成します"
+              >
+                {saving ? '作成中...' : '🔄 新規作成'}
+              </button>
+            </div>
           </div>
+          {/* 設定の統計情報 */}
+          {mappingConfig && (
+            <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+              <span className="mr-4">支給項目: {mappingConfig.incomeItems?.length || 0}件</span>
+              <span className="mr-4">控除項目: {mappingConfig.deductionItems?.length || 0}件</span>
+              <span className="mr-4">勤怠項目: {mappingConfig.attendanceItems?.length || 0}件</span>
+              <span>合計項目: {mappingConfig.totalItems?.length || 0}件</span>
+            </div>
+          )}
         </div>
       </div>
       

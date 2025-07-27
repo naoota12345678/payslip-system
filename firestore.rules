@@ -3,10 +3,19 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // 従業員コレクション（統合後）
     match /employees/{employeeId} {
-      // 自分の従業員データの読み書き
-      allow read, write: if request.auth != null && resource.data.uid == request.auth.uid;
-      // 管理者は全従業員データを読み書き可能（簡略化版）
-      allow read, write: if request.auth != null;
+      // 認証済みユーザーは読み取り可能
+      allow read: if request.auth != null;
+      
+      // 新規作成: 認証済みユーザーなら誰でも（初回管理者登録とCSVインポート用）
+      allow create: if request.auth != null;
+      
+      // 更新・削除: 以下のいずれかの条件を満たす場合
+      allow update, delete: if request.auth != null && (
+        // 1. 自分自身のデータ（uidが一致）
+        (resource.data.uid == request.auth.uid) ||
+        // 2. 認証済みユーザー（一時的に緩和 - companyIdチェックは後でアプリ側で実装）
+        true
+      );
     }
     
     // 給与明細コレクション - デバッグ用に一時的に緩和

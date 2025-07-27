@@ -80,24 +80,18 @@ function BonusPayslipDetail() {
           return;
         }
 
-        // マッピング設定とcsvSettingsを取得
+        // マッピング設定を取得
         let currentMappingConfig = null;
         if (payslipData.companyId || userDetails?.companyId) {
-          const companyId = payslipData.companyId || userDetails.companyId;
-          currentMappingConfig = await fetchMappingConfigSync(companyId);
-          
-          // csvSettingsBonusも別途取得してparsedHeadersを追加
-          try {
-            const csvSettingsDoc = await getDoc(doc(db, "csvSettingsBonus", companyId));
-            if (csvSettingsDoc.exists()) {
-              const csvSettingsData = csvSettingsDoc.data();
-              console.log('🎯 賞与CSV設定を取得:', csvSettingsData);
-              if (currentMappingConfig) {
-                currentMappingConfig.parsedHeaders = csvSettingsData.parsedHeaders || [];
-              }
-            }
-          } catch (err) {
-            console.error('🚨 賞与CSV設定取得エラー:', err);
+          currentMappingConfig = await fetchMappingConfigSync(payslipData.companyId || userDetails.companyId);
+        }
+
+        // csvSettingsBonusも別途取得してparsedHeadersを追加
+        if (currentMappingConfig) {
+          const csvSettingsDoc = await getDoc(doc(db, "csvSettingsBonus", payslipData.companyId || userDetails.companyId));
+          if (csvSettingsDoc.exists()) {
+            const csvSettingsData = csvSettingsDoc.data();
+            currentMappingConfig.parsedHeaders = csvSettingsData.parsedHeaders || [];
           }
         }
 
@@ -130,11 +124,6 @@ function BonusPayslipDetail() {
             return { incomeItems, deductionItems, attendanceItems, otherItems };
           }
 
-          // CSVヘッダーの順序を取得（parsedHeadersを優先、なければitemsのキー）
-          const csvHeaderOrder = mappingConfig.parsedHeaders || Object.keys(payslipData.items || {});
-          console.log('🔍 賞与CSV ヘッダー順序 (parsedHeaders):', csvHeaderOrder);
-          console.log('🔍 payslipData.items keys:', Object.keys(payslipData.items || {}));
-
           // 全ての設定カテゴリを処理
           console.log('合計項目数:', (mappingConfig.totalItems || []).length);
           
@@ -158,14 +147,12 @@ function BonusPayslipDetail() {
                 return;
               }
 
-              // 表示名を決定（itemName優先、なければheaderName）
-              const displayName = (item.itemName && item.itemName.trim() !== '') 
-                ? item.itemName 
-                : item.headerName;
+                             // 表示名を決定（itemName優先、なければheaderName）
+               const displayName = (item.itemName && item.itemName.trim() !== '') 
+                 ? item.itemName 
+                 : item.headerName;
 
-              // CSVヘッダーの実際の位置を取得（これが正しい順序）
-              const csvOrder = csvHeaderOrder.indexOf(item.headerName);
-              const actualOrder = csvOrder >= 0 ? csvOrder : index;
+
 
               const processedItem = {
                 id: item.headerName,
@@ -173,7 +160,7 @@ function BonusPayslipDetail() {
                 value: value,
                 type: category.type,
                 csvColumn: item.headerName,
-                order: actualOrder
+                order: index
               };
 
               // ハードコーディングされた分類を削除し、設定に従って分類
@@ -439,31 +426,24 @@ function BonusPayslipDetail() {
 
   // 印刷ボタンのハンドラ
   const handlePrint = () => {
-    console.log('🖨️ 賞与印刷ボタンがクリックされました');
-    console.log('📱 デバイス情報:', {
-      userAgent: navigator.userAgent,
-      isMobile: /iPhone|iPad|iPod|Android/i.test(navigator.userAgent),
-      platform: navigator.platform
-    });
-    
+    console.log('🖨️ 印刷ボタンがクリックされました');
     try {
-      // モバイルデバイスの場合は少し待ってから印刷実行
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      console.log('📱 デバイス情報:', { isMobile, userAgent: navigator.userAgent });
       
       if (isMobile) {
-        console.log('📱 モバイルデバイス検出 - 印刷処理を調整');
-        // モバイルでの印刷前にレイアウトを安定化
+        console.log('📱 モバイルデバイス検出 - 遅延後に印刷実行');
         setTimeout(() => {
-          console.log('🖨️ 印刷実行中...');
+          console.log('🖨️ モバイル印刷実行');
           window.print();
         }, 100);
       } else {
-        console.log('🖥️ デスクトップ印刷実行');
+        console.log('💻 デスクトップデバイス - 即座に印刷実行');
         window.print();
       }
     } catch (error) {
-      console.error('❌ 印刷エラー:', error);
-      alert('印刷機能でエラーが発生しました。ブラウザの印刷機能をお試しください。');
+      console.error('🚨 印刷エラー:', error);
+      alert('印刷中にエラーが発生しました。もう一度お試しください。');
     }
   };
 
@@ -529,25 +509,10 @@ function BonusPayslipDetail() {
           </button>
           <button
             onClick={handlePrint}
-            onTouchStart={(e) => {
-              console.log('📱 賞与印刷ボタンタッチ開始');
-              e.currentTarget.style.transform = 'scale(0.98)';
-            }}
-            onTouchEnd={(e) => {
-              console.log('📱 賞与印刷ボタンタッチ終了');
-              e.currentTarget.style.transform = 'scale(1)';
-              // モバイルでのダブルタップを防ぐ
-              e.preventDefault();
-            }}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 active:bg-blue-800 touch-manipulation print:hidden min-h-[48px] min-w-[48px] flex items-center justify-center transition-transform duration-150"
-            style={{ 
-              WebkitTapHighlightColor: 'transparent',
-              WebkitUserSelect: 'none',
-              userSelect: 'none',
-              WebkitTouchCallout: 'none'
-            }}
-            type="button"
-            aria-label="賞与明細を印刷"
+            onTouchStart={() => console.log('🤏 印刷ボタンタッチ開始')}
+            onTouchEnd={() => console.log('🤏 印刷ボタンタッチ終了')}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 print:hidden min-h-[44px] min-w-[44px] touch-manipulation active:bg-blue-800 transition-colors"
+            style={{ WebkitTapHighlightColor: 'transparent' }}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clipRule="evenodd" />
@@ -559,16 +524,8 @@ function BonusPayslipDetail() {
 
       {/* 賞与明細プレビュー（全幅表示） */}
       <div>
-        {/* 画面表示用 */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden p-6 print:hidden">
+        <div ref={printRef} className="bg-white rounded-lg shadow-md overflow-hidden p-6">
           <PayslipPreview payslipData={payslip} showDetailedInfo={true} isBonus={true} />
-        </div>
-        
-        {/* 印刷用レイアウト */}
-        <div ref={printRef} className="hidden print:block print:p-0">
-          <div className="bg-white p-4">
-            <PayslipPreview payslipData={payslip} showDetailedInfo={true} isBonus={true} />
-          </div>
         </div>
       </div>
           

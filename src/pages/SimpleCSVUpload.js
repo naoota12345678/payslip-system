@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { db, storage } from '../firebase';
+import { db, storage, functions } from '../firebase';
 import { collection, addDoc, serverTimestamp, getDocs, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { httpsCallable } from 'firebase/functions';
 import { fetchUnifiedMappingSettings } from '../utils/mappingUtils';
 
 const SimpleCSVUpload = () => {
@@ -19,6 +20,11 @@ const SimpleCSVUpload = () => {
   const [employeeIdColumn, setEmployeeIdColumn] = useState('');
   const [departmentCodeColumn, setDepartmentCodeColumn] = useState('');
   // 給与専用（賞与機能は分離済み）
+  
+  // メール通知設定
+  const [sendNotification, setSendNotification] = useState(false);
+  const [notificationDate, setNotificationDate] = useState('');
+  const [sendImmediately, setSendImmediately] = useState(false);
 
   // 🔧 CSVヘッダーから新しい形式のマッピングデータを生成・保存
   const saveHeaderMappings = async (headers, mappingSettings) => {
@@ -363,6 +369,20 @@ const SimpleCSVUpload = () => {
       // 【追加】CSVヘッダーから新しい形式のマッピングデータを生成・保存
       console.log('🧹 既存のマッピングデータをクリアして新しいデータで上書きします');
       await saveHeaderMappings(headers, mappingSettings);
+      
+      // CSVアップロード情報を保存
+      const uploadData = await addDoc(collection(db, 'csvUploads'), {
+        fileName: file.name,
+        companyId: userDetails.companyId,
+        paymentDate: new Date(paymentDate),
+        paymentYear,
+        paymentMonth,
+        type: 'payslip',
+        status: 'processing',
+        recordCount: csvData.length,
+        createdAt: serverTimestamp(),
+        createdBy: userDetails.uid
+      });
 
       // 各行のデータを給与明細として保存
       for (let i = 0; i < csvData.length; i++) {
@@ -512,6 +532,7 @@ const SimpleCSVUpload = () => {
           year: paymentYear, // 選択された年
           paymentDate: new Date(paymentDate), // 選択された支払日
           payslipType: 'salary', // 給与専用
+          uploadId: uploadData.id, // アップロードIDを追加
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
           
@@ -605,6 +626,47 @@ const SimpleCSVUpload = () => {
 
       setMessage(`✅ ${csvData.length}件の給与明細データを保存しました！`);
       
+      // メール通知設定の処理
+      if (sendNotification) {
+        try {
+          const sendPayslipNotifications = httpsCallable(functions, 'sendPayslipNotifications');
+          
+          if (sendImmediately) {
+            // すぐに送信
+            setMessage('📧 通知メールを送信中...');
+            const notificationResult = await sendPayslipNotifications({
+              uploadId: uploadData.id,
+              paymentDate: paymentDate,
+              type: 'payslip'
+            });
+            
+            if (notificationResult.data.success) {
+              setMessage(`✅ ${csvData.length}件の給与明細を保存し、${notificationResult.data.successCount}件の通知メールを送信しました！`);
+            } else {
+              setMessage(`✅ 給与明細は保存されましたが、通知メール送信で一部エラーがありました。`);
+            }
+          } else if (notificationDate) {
+            // スケジュール送信
+            const scheduleDateTime = new Date(notificationDate);
+            scheduleDateTime.setHours(9, 0, 0, 0); // 朝9時に設定
+            
+            const notificationResult = await sendPayslipNotifications({
+              uploadId: uploadData.id,
+              paymentDate: paymentDate,
+              scheduleDate: scheduleDateTime.toISOString(),
+              type: 'payslip'
+            });
+            
+            if (notificationResult.data.success) {
+              setMessage(`✅ ${csvData.length}件の給与明細を保存し、${notificationDate}の朝9時に通知メール送信をスケジュールしました！`);
+            }
+          }
+        } catch (notificationError) {
+          console.error('通知設定エラー:', notificationError);
+          setMessage(`✅ 給与明細は保存されましたが、通知設定でエラーが発生しました: ${notificationError.message}`);
+        }
+      }
+      
       // 保存後にデータをクリア
       setTimeout(() => {
         setFile(null);
@@ -612,8 +674,11 @@ const SimpleCSVUpload = () => {
         setHeaders([]);
         setShowPreview(false);
         setMessage('');
+        setSendNotification(false);
+        setNotificationDate('');
+        setSendImmediately(false);
         document.getElementById('csvFileInput').value = '';
-      }, 3000);
+      }, 5000);
 
     } catch (error) {
       console.error('データ保存エラー:', error);
@@ -658,7 +723,86 @@ const SimpleCSVUpload = () => {
         />
       </div>
 
-
+      {/* メール通知設定 */}
+      <div className="mb-6 p-4 bg-green-50 rounded-lg">
+        <h3 className="text-md font-semibold mb-3">📧 メール通知設定</h3>
+        <div className="space-y-3">
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="sendNotification"
+              checked={sendNotification}
+              onChange={(e) => {
+                setSendNotification(e.target.checked);
+                if (!e.target.checked) {
+                  setSendImmediately(false);
+                  setNotificationDate('');
+                }
+              }}
+              className="mr-2"
+              disabled={uploading}
+            />
+            <label htmlFor="sendNotification" className="text-sm font-medium">
+              従業員へ通知メールを送信する
+            </label>
+          </div>
+          
+          {sendNotification && (
+            <div className="pl-6 space-y-3">
+              <div className="flex items-center space-x-4">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="notificationTiming"
+                    checked={sendImmediately}
+                    onChange={() => {
+                      setSendImmediately(true);
+                      setNotificationDate('');
+                    }}
+                    className="mr-2"
+                    disabled={uploading}
+                  />
+                  <span className="text-sm">すぐに送信</span>
+                </label>
+                
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="notificationTiming"
+                    checked={!sendImmediately}
+                    onChange={() => setSendImmediately(false)}
+                    className="mr-2"
+                    disabled={uploading}
+                  />
+                  <span className="text-sm">指定日に送信</span>
+                </label>
+              </div>
+              
+              {!sendImmediately && (
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    通知日（朝9時に送信されます）
+                  </label>
+                  <input
+                    type="date"
+                    value={notificationDate}
+                    onChange={(e) => setNotificationDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                    className="w-full max-w-xs p-2 border border-gray-300 rounded-md"
+                    disabled={uploading}
+                    required={sendNotification && !sendImmediately}
+                  />
+                </div>
+              )}
+              
+              <div className="text-xs text-gray-600 bg-gray-100 p-2 rounded">
+                <p>📌 通知対象：CSVに含まれる従業員でメールアドレスが登録されている方</p>
+                <p>📌 通知内容：給与明細が発行されたことをお知らせするメール</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* 支払情報設定 */}
       <div className="mb-6 p-4 bg-gray-50 rounded-lg">

@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { db, storage, functions } from '../firebase';
+import { db, storage } from '../firebase';
 import { collection, addDoc, serverTimestamp, getDocs, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { httpsCallable } from 'firebase/functions';
 import { fetchUnifiedMappingSettings } from '../utils/mappingUtils';
 
 const BonusSimpleCSVUpload = () => {
@@ -20,11 +19,6 @@ const BonusSimpleCSVUpload = () => {
   const [employeeIdColumn, setEmployeeIdColumn] = useState('');
   const [departmentCodeColumn, setDepartmentCodeColumn] = useState('');
   // 賞与専用（給与機能は分離済み）
-  
-  // メール通知設定
-  const [sendNotification, setSendNotification] = useState(false);
-  const [notificationDate, setNotificationDate] = useState('');
-  const [sendImmediately, setSendImmediately] = useState(false);
 
   // 🔧 CSVヘッダーから新しい形式のマッピングデータを生成・保存（賞与版）
   const saveHeaderMappings = async (headers, mappingSettings) => {

@@ -51,7 +51,7 @@ function Layout() {
     } else if (path === '/profile') {
       setPageTitle('プロフィール');
     } else {
-      setPageTitle('給与明細システム');
+      setPageTitle('');
     }
     
     // モバイルメニューを閉じる
@@ -112,7 +112,7 @@ function Layout() {
             
               {/* ロゴ */}
               <Link to="/" className="flex items-center">
-                <div className="text-xl font-bold text-blue-600">給与明細システム</div>
+                <div className="text-xl font-bold text-blue-600">給与明細</div>
               </Link>
             </div>
             
@@ -179,12 +179,12 @@ function Layout() {
       {/* フッター */}
       <footer className="bg-white border-t mt-auto py-4">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="text-sm text-gray-500 mb-2 md:mb-0">
-              &copy; {new Date().getFullYear()} 給与明細システム
+          <div className="flex justify-center items-center space-x-4">
+            <div className="text-sm text-gray-500">
+              &copy; {new Date().getFullYear()}
             </div>
             <div className="text-sm text-gray-500">
-              <span>Version 0.1.0</span>
+              Version 0.1.0
             </div>
           </div>
         </div>

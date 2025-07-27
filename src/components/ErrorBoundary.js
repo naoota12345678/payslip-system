@@ -39,22 +39,54 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="max-w-md w-full space-y-8 p-10 bg-white rounded-lg shadow-md">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-red-600 mb-4">
-                アプリケーションエラー
-              </h2>
-              <p className="text-gray-600 mb-6">
-                申し訳ございません。アプリケーションでエラーが発生しました。
-              </p>
+        <div style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: '#f9fafb',
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+          padding: '20px'
+        }}>
+          <div style={{
+            maxWidth: '28rem',
+            width: '100%',
+            padding: '2.5rem',
+            background: 'white',
+            borderRadius: '8px',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+          }}>
+            <div style={{ textAlign: 'center' }}>
+              <h2 style={{
+                fontSize: '1.5rem',
+                fontWeight: 'bold',
+                color: '#dc2626',
+                marginBottom: '1rem'
+              }}>アプリケーションエラー</h2>
+              <p style={{
+                color: '#6b7280',
+                marginBottom: '1.5rem'
+              }}>申し訳ございません。アプリケーションでエラーが発生しました。</p>
               
               {process.env.NODE_ENV === 'development' && (
-                <details className="text-left bg-gray-100 p-4 rounded mb-4">
-                  <summary className="cursor-pointer font-medium">
-                    エラー詳細（開発者向け）
-                  </summary>
-                  <pre className="mt-2 text-xs text-red-600 overflow-auto">
+                <details style={{
+                  textAlign: 'left',
+                  background: '#f3f4f6',
+                  padding: '1rem',
+                  borderRadius: '4px',
+                  marginBottom: '1rem'
+                }}>
+                  <summary style={{
+                    cursor: 'pointer',
+                    fontWeight: '500'
+                  }}>エラー詳細（開発者向け）</summary>
+                  <pre style={{
+                    marginTop: '0.5rem',
+                    fontSize: '0.75rem',
+                    color: '#dc2626',
+                    overflow: 'auto',
+                    whiteSpace: 'pre-wrap'
+                  }}>
                     {this.state.error && this.state.error.toString()}
                     <br />
                     {this.state.errorInfo.componentStack}
@@ -62,10 +94,23 @@ class ErrorBoundary extends React.Component {
                 </details>
               )}
 
-              <div className="space-y-3">
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.75rem'
+              }}>
                 <button
                   onClick={() => window.location.reload()}
-                  className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem 1rem',
+                    background: '#2563eb',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '1rem'
+                  }}
                 >
                   ページを再読み込み
                 </button>
@@ -74,14 +119,34 @@ class ErrorBoundary extends React.Component {
                   onClick={() => {
                     this.setState({ hasError: false, error: null, errorInfo: null });
                   }}
-                  className="w-full px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem 1rem',
+                    background: '#6b7280',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '1rem'
+                  }}
                 >
                   再試行
                 </button>
                 
                 <a
                   href="/"
-                  className="block w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-center"
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    padding: '0.5rem 1rem',
+                    background: '#059669',
+                    color: 'white',
+                    borderRadius: '4px',
+                    textDecoration: 'none',
+                    textAlign: 'center',
+                    fontSize: '1rem',
+                    boxSizing: 'border-box'
+                  }}
                 >
                   ホームページに戻る
                 </a>

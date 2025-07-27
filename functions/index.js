@@ -1,26 +1,349 @@
 // functions/index.js
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { onDocumentUpdated } = require('firebase-functions/v2/firestore');
+const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { setGlobalOptions } = require('firebase-functions/v2');
 const admin = require('firebase-admin');
 const fetch = require('node-fetch');
 const csv = require('csv-parser');
 const { PassThrough } = require('stream');
+const { Resend } = require('resend');
 // const sgMail = require('@sendgrid/mail'); // 一時的に無効化
 
-// Global options設定
-setGlobalOptions({ region: 'asia-northeast1' });
+// Global options設定（CORS設定を追加）
+setGlobalOptions({ 
+  region: 'asia-northeast1'
+});
 
 admin.initializeApp();
 const db = admin.firestore();
 
-// SendGrid設定 - 一時的に無効化（審査待ちのため）
-// sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+// Resend設定
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-// メール送信関数 - 一時的に無効化（SendGrid審査待ちのため）
+// メール送信関数（Resend使用）
 const sendEmail = async (to, subject, htmlContent, textContent = null) => {
-  console.log(`📧 メール送信はSendGrid審査待ちのため無効化中: ${to} - ${subject}`);
-  return { success: false, error: 'SendGrid設定待ちのためメール送信は無効化されています' };
+  try {
+    console.log(`📧 Resend経由でメール送信中: ${to} - ${subject}`);
+    
+    const emailData = {
+      from: process.env.FROM_EMAIL || 'noreply@atelier-temma.com',
+      to: to,
+      subject: subject,
+      html: htmlContent
+    };
+    
+    if (textContent) {
+      emailData.text = textContent;
+    }
+    
+    const result = await resend.emails.send(emailData);
+    console.log('✅ メール送信成功:', result);
+    return { success: true, result };
+  } catch (error) {
+    console.error('❌ メール送信エラー:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// テスト用固定パスワード
+const TEST_PASSWORD = '000000';
+
+// 簡単なテスト関数
+exports.simpleTest = onCall(async (request) => {
+  console.log('🔥 simpleTest 関数が呼び出されました');
+  console.log('受信データ:', request.data);
+  
+  // 認証状態をログ出力
+  console.log('認証状態:', request.auth ? '認証済み' : '未認証');
+  if (request.auth) {
+    console.log('認証ユーザーUID:', request.auth.uid);
+  }
+  
+  return {
+    success: true,
+    message: 'テスト関数が正常に動作しています',
+    timestamp: new Date().toISOString(),
+    receivedData: request.data
+  };
+});
+
+// 従業員作成時にFirebase Authアカウントも作成
+// 従業員UIDを修正する一時的な関数
+exports.fixEmployeeUIDs = onCall({ 
+  enforceAppCheck: false,
+  invoker: 'public'
+}, async (request) => {
+  console.log('🔧 従業員UID修正関数が呼び出されました');
+  
+  // 認証確認
+  if (!request.auth || !request.auth.uid) {
+    throw new HttpsError('unauthenticated', 'この機能を使用するには管理者認証が必要です');
+  }
+  
+  try {
+    // 全ての従業員を取得
+    const employeesSnapshot = await db.collection('employees').get();
+    console.log(`📊 ${employeesSnapshot.size}件の従業員データを確認中...`);
+    
+    let fixedCount = 0;
+    let skippedCount = 0;
+    const results = [];
+    
+    for (const doc of employeesSnapshot.docs) {
+      const employeeData = doc.data();
+      const docId = doc.id;
+      
+      // UIDが既に設定されている場合はスキップ  
+      if (employeeData.uid) {
+        console.log(`⏭️  スキップ: ${employeeData.email} (UID既に設定済み)`);
+        skippedCount++;
+        results.push({ email: employeeData.email, status: 'skipped', reason: 'UID既に設定済み' });
+        continue;
+      }
+      
+      // メールアドレスがない場合はスキップ
+      if (!employeeData.email) {
+        console.log(`⚠️  スキップ: ${docId} (メールアドレスなし)`);
+        skippedCount++;
+        results.push({ docId, status: 'skipped', reason: 'メールアドレスなし' });
+        continue;
+      }
+      
+      try {
+        // Firebase Authでユーザーをメールアドレスで検索
+        const userRecord = await admin.auth().getUserByEmail(employeeData.email);
+        
+        // Firestoreドキュメントを更新
+        await doc.ref.update({
+          uid: userRecord.uid,
+          status: 'auth_created',
+          isFirstLogin: true,
+          tempPassword: '000000',
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        
+        console.log(`✅ 修正完了: ${employeeData.email} -> UID: ${userRecord.uid}`);
+        fixedCount++;
+        results.push({ email: employeeData.email, status: 'fixed', uid: userRecord.uid });
+        
+      } catch (authError) {
+        if (authError.code === 'auth/user-not-found') {
+          console.log(`❌ 未修正: ${employeeData.email} (Firebase Authユーザーが存在しません)`);
+          results.push({ email: employeeData.email, status: 'not_found', reason: 'Firebase Authユーザーが存在しません' });
+        } else {
+          console.error(`❌ エラー: ${employeeData.email}`, authError.message);
+          results.push({ email: employeeData.email, status: 'error', reason: authError.message });
+        }
+        skippedCount++;
+      }
+    }
+    
+    const summary = {
+      fixed: fixedCount,
+      skipped: skippedCount,
+      total: fixedCount + skippedCount,
+      results: results
+    };
+    
+    console.log(`🎉 修正完了: 修正${fixedCount}件、スキップ${skippedCount}件`);
+    return summary;
+    
+  } catch (error) {
+    console.error('❌ UID修正処理でエラー:', error);
+    throw new HttpsError('internal', `UID修正処理でエラーが発生しました: ${error.message}`);
+  }
+});
+
+exports.createEmployeeAccount = onCall({ 
+  enforceAppCheck: false,
+  invoker: 'public'
+}, async (request) => {
+  console.log('🔥 createEmployeeAccount 関数の最初の行に到達');
+  console.log('🔍 Request情報:', {
+    hasAuth: !!request.auth,
+    authUid: request.auth?.uid,
+    origin: request.rawRequest?.headers?.origin,
+    method: request.rawRequest?.method
+  });
+  
+  // 認証確認（より厳密に）
+  if (!request.auth || !request.auth.uid) {
+    console.error('❌ 認証されていないリクエスト');
+    console.error('Auth情報:', request.auth);
+    throw new HttpsError('unauthenticated', 'この機能を使用するには管理者認証が必要です');
+  }
+  
+  // 管理者権限確認（必要に応じて）
+  try {
+    const userRecord = await admin.auth().getUser(request.auth.uid);
+    console.log('認証済みユーザーEmail:', userRecord.email);
+  } catch (error) {
+    console.error('ユーザー情報取得エラー:', error);
+    throw new HttpsError('permission-denied', '無効なユーザーです');
+  }
+  
+  console.log('✅ 認証済みユーザー:', request.auth.uid);
+  
+  try {
+    console.log('🚀 createEmployeeAccount 関数開始');
+    console.log('📥 受信データ:', JSON.stringify(request.data, null, 2));
+    
+    // Firebase Admin SDK の初期化確認
+    console.log('🔧 Firebase Admin SDK 初期化状況確認...');
+    try {
+      const testAuth = admin.auth();
+      console.log('✅ Firebase Auth SDK 初期化成功');
+    } catch (initError) {
+      console.error('❌ Firebase Auth SDK 初期化失敗:', initError);
+      throw new Error(`Firebase Auth SDK 初期化エラー: ${initError.message}`);
+    }
+    
+    const { email, name, employeeData } = request.data;
+    
+    // 入力パラメータの詳細検証
+    if (!email) {
+      throw new Error('emailパラメータが必要です');
+    }
+    if (!name) {
+      throw new Error('nameパラメータが必要です');
+    }
+    
+    // メールアドレスの形式チェック
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      throw new Error(`無効なメールアドレス形式: ${email}`);
+    }
+    
+    console.log('✅ パラメータ検証完了:', { email, name });
+    
+    // 既存ユーザーの確認
+    try {
+      const existingUser = await admin.auth().getUserByEmail(email);
+      console.log('⚠️ 既存ユーザーが見つかりました:', existingUser.uid);
+      
+      return {
+        success: true,
+        uid: existingUser.uid,
+        email: email,
+        testPassword: TEST_PASSWORD,
+        message: '既存のアカウントを使用しました（既に存在していました）'
+      };
+    } catch (getUserError) {
+      // ユーザーが存在しない場合（期待される動作）
+      if (getUserError.code === 'auth/user-not-found') {
+        console.log('✅ 新規ユーザー作成を続行します');
+      } else {
+        console.error('❌ ユーザー検索時のエラー:', getUserError);
+        throw getUserError;
+      }
+    }
+    
+    console.log('👤 Firebase Authユーザー作成開始...');
+    
+    // Firebase Authでユーザー作成
+    const userRecord = await admin.auth().createUser({
+      email: email,
+      password: TEST_PASSWORD, // テスト用固定パスワード
+      displayName: name,
+      emailVerified: false
+    });
+    
+    console.log('✅ 従業員アカウント作成完了:', {
+      uid: userRecord.uid,
+      email: email,
+      displayName: userRecord.displayName,
+      emailVerified: userRecord.emailVerified,
+      creationTime: userRecord.metadata.creationTime
+    });
+    
+    // 従業員データにuidを追加
+    console.log('🔄 Firestoreの従業員データにUIDを更新中...');
+    
+    try {
+      // メールアドレスで従業員ドキュメントを検索
+      const employeesQuery = db.collection('employees').where('email', '==', email);
+      const employeesSnapshot = await employeesQuery.get();
+      
+      if (!employeesSnapshot.empty) {
+        // 従業員ドキュメントが見つかった場合、UIDを更新
+        const employeeDoc = employeesSnapshot.docs[0];
+        await employeeDoc.ref.update({
+          uid: userRecord.uid,
+          userType: 'employee', // 従業員として明示的に設定
+          role: 'employee', // 従業員ロール
+          status: 'auth_created',
+          isFirstLogin: true,
+          tempPassword: TEST_PASSWORD,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        
+        console.log('✅ 従業員データのUID更新完了:', {
+          docId: employeeDoc.id,
+          uid: userRecord.uid,
+          email: email
+        });
+      } else {
+        console.warn('⚠️ メールアドレスに対応する従業員データが見つかりません:', email);
+      }
+    } catch (firestoreError) {
+      console.error('❌ Firestore更新エラー:', firestoreError);
+      // Firestoreエラーでもユーザー作成は成功しているので続行
+    }
+    
+    // メール送信（現在は無効化中）
+    try {
+      await sendEmployeeInvitationEmail(email, name, TEST_PASSWORD);
+    } catch (mailError) {
+      console.log('メール送信エラー（無視）:', mailError.message);
+    }
+    
+    console.log('🎉 createEmployeeAccount 関数完了');
+    
+    return {
+      success: true,
+      uid: userRecord.uid,
+      email: email,
+      testPassword: TEST_PASSWORD,
+      message: '従業員アカウントが作成されました'
+    };
+    
+  } catch (error) {
+    console.error('❌ 従業員アカウント作成エラー (詳細):', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      stack: error.stack
+    });
+    
+    // エラーの詳細な分析
+    if (error.code === 'auth/email-already-exists') {
+      console.log('🔍 原因: メールアドレスが既に使用されています');
+    } else if (error.code === 'auth/invalid-email') {
+      console.log('🔍 原因: 無効なメールアドレス形式です');
+    } else if (error.code === 'auth/weak-password') {
+      console.log('🔍 原因: パスワードが弱すぎます');
+    } else if (error.code === 'auth/quota-exceeded') {
+      console.log('🔍 原因: APIクォータを超過しました');
+    } else {
+      console.log('🔍 原因: 不明なエラー');
+    }
+    
+    throw new HttpsError('internal', `アカウント作成に失敗しました: [${error.code || 'UNKNOWN'}] ${error.message}`);
+  }
+});
+
+// 従業員招待メール送信関数
+const sendEmployeeInvitationEmail = async (email, name, tempPassword) => {
+  const loginUrl = 'https://kyuyoprint.web.app/employee/login';
+  const subject = '給与明細システム - ログイン情報';
+  const htmlContent = createInvitationEmailContent(name, tempPassword, loginUrl);
+  
+  console.log(`📧 従業員招待メール送信準備: ${email}`);
+  console.log(`📋 ログイン情報 - Email: ${email}, Password: ${tempPassword}`);
+  
+  // 実際のメール送信は現在無効化中
+  return await sendEmail(email, subject, htmlContent);
 };
 
 // 招待メールテンプレート
@@ -76,7 +399,10 @@ const createInvitationEmailContent = (employeeName, tempPassword, loginUrl) => {
 };
 
 // 給与明細通知メールテンプレート
-const createPayslipNotificationContent = (employeeName, paymentDate, loginUrl) => {
+const createPayslipNotificationContent = (employeeName, paymentDate, loginUrl, type = 'payslip') => {
+  const isBonus = type === 'bonus';
+  const title = isBonus ? '賞与明細のお知らせ' : '給与明細のお知らせ';
+  const description = isBonus ? '賞与明細' : '給与明細';
   return `
 <!DOCTYPE html>
 <html>
@@ -84,32 +410,33 @@ const createPayslipNotificationContent = (employeeName, paymentDate, loginUrl) =
   <meta charset="utf-8">
   <style>
     .container { max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif; }
-    .header { background-color: #28a745; color: white; padding: 20px; text-align: center; }
+    .header { background-color: ${isBonus ? '#fd7e14' : '#28a745'}; color: white; padding: 20px; text-align: center; }
     .content { padding: 30px; background-color: #ffffff; }
     .payslip-info { background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
-    .button { display: inline-block; background-color: #28a745; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 10px 0; }
+    .button { display: inline-block; background-color: ${isBonus ? '#fd7e14' : '#28a745'}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 10px 0; }
     .footer { background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #666; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1>給与明細のお知らせ</h1>
+      <h1>${title}</h1>
     </div>
     <div class="content">
       <h2>${employeeName} 様</h2>
-      <p>${paymentDate}の給与明細をご確認いただけます。</p>
+      <p>${paymentDate}の${description}をご確認いただけます。</p>
       
       <div class="payslip-info">
-        <h3>給与明細確認</h3>
+        <h3>${description}確認</h3>
         <p>下記のボタンをクリックして給与明細システムにログインし、明細をご確認ください。</p>
-        <a href="${loginUrl}" class="button">給与明細を確認する</a>
+        <a href="${loginUrl}" class="button">${description}を確認する</a>
       </div>
       
       <p><strong>注意事項:</strong></p>
       <ul>
-        <li>給与明細は機密情報です。第三者に開示しないでください。</li>
+        <li>${description}は機密情報です。第三者に開示しないでください。</li>
         <li>内容に関するご質問は人事部までお問い合わせください。</li>
+        <li>ログインできない場合は、システム管理者にお問い合わせください。</li>
       </ul>
     </div>
     <div class="footer">
@@ -1140,3 +1467,266 @@ exports.sendBonusPayslipNotifications = onCall(async (request) => {
   }
 });
 */
+
+// 給与明細通知メール送信Function
+exports.sendPayslipNotifications = onCall(async (request) => {
+  const { data, auth } = request;
+  
+  // 認証チェック
+  if (!auth) {
+    throw new HttpsError('unauthenticated', 'ユーザー認証が必要です');
+  }
+  
+  const { 
+    uploadId, 
+    paymentDate, 
+    scheduleDate, // 送信予定日時（指定日の9時）
+    type = 'payslip' // 'payslip' または 'bonus'
+  } = data;
+  
+  if (!uploadId || !paymentDate) {
+    throw new HttpsError('invalid-argument', 'uploadId と paymentDate は必須です');
+  }
+  
+  try {
+    console.log('📧 給与明細通知メール送信開始:', { uploadId, paymentDate, type, scheduleDate });
+    
+    // 対象コレクションを決定
+    const collectionName = type === 'bonus' ? 'bonusPayslips' : 'payslips';
+    
+    // 該当する明細データを取得
+    const payslipsSnapshot = await db.collection(collectionName)
+      .where('uploadId', '==', uploadId)
+      .get();
+      
+    if (payslipsSnapshot.empty) {
+      throw new HttpsError('not-found', `指定されたuploadIdの${type === 'bonus' ? '賞与' : '給与'}明細が見つかりません`);
+    }
+    
+    console.log(`📋 対象明細数: ${payslipsSnapshot.size}件`);
+    
+    // スケジュール送信の場合は通知設定を保存して終了
+    if (scheduleDate) {
+      const notificationDoc = {
+        uploadId,
+        paymentDate,
+        type,
+        scheduleDate: new Date(scheduleDate),
+        status: 'scheduled',
+        targetCount: payslipsSnapshot.size,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdBy: auth.uid
+      };
+      
+      await db.collection('emailNotifications').add(notificationDoc);
+      
+      console.log('📅 スケジュール送信設定完了:', scheduleDate);
+      return {
+        success: true,
+        message: `${scheduleDate}に${payslipsSnapshot.size}件の通知メール送信をスケジュールしました`,
+        scheduledCount: payslipsSnapshot.size,
+        scheduleDate
+      };
+    }
+    
+    // 即座に送信する場合
+    const loginUrl = process.env.APP_URL || 'https://kyuyoprint.web.app/employee/login';
+    const results = [];
+    let successCount = 0;
+    let failCount = 0;
+    
+    // 各従業員にメール送信
+    for (const payslipDoc of payslipsSnapshot.docs) {
+      const payslipData = payslipDoc.data();
+      
+      try {
+        // 従業員情報を取得
+        let employeeData = null;
+        
+        // userIdがある場合はそれを使用
+        if (payslipData.userId) {
+          const employeeDoc = await db.collection('employees').doc(payslipData.userId).get();
+          if (employeeDoc.exists) {
+            employeeData = employeeDoc.data();
+          }
+        }
+        
+        // userIdがない場合はemployeeIdで検索
+        if (!employeeData && payslipData.employeeId) {
+          const employeeSnapshot = await db.collection('employees')
+            .where('employeeId', '==', payslipData.employeeId)
+            .where('companyId', '==', payslipData.companyId)
+            .get();
+            
+          if (!employeeSnapshot.empty) {
+            employeeData = employeeSnapshot.docs[0].data();
+          }
+        }
+        
+        if (!employeeData || !employeeData.email) {
+          console.warn(`⚠️ 従業員情報またはメールアドレスが見つかりません: ${payslipData.employeeId}`);
+          failCount++;
+          results.push({
+            employeeId: payslipData.employeeId,
+            email: null,
+            success: false,
+            error: '従業員情報またはメールアドレスが見つかりません'
+          });
+          continue;
+        }
+        
+        // メール送信
+        const subjectPrefix = type === 'bonus' ? '【賞与明細】' : '【給与明細】';
+        const subject = `${subjectPrefix}${paymentDate}の明細のお知らせ`;
+        const htmlContent = createPayslipNotificationContent(
+          employeeData.name || payslipData.employeeId,
+          paymentDate,
+          loginUrl,
+          type
+        );
+        
+        const result = await sendEmail(employeeData.email, subject, htmlContent);
+        
+        if (result.success) {
+          successCount++;
+          console.log(`✅ ${type}明細通知メール送信成功: ${employeeData.email}`);
+        } else {
+          failCount++;
+          console.error(`❌ ${type}明細通知メール送信失敗: ${employeeData.email}`, result.error);
+        }
+        
+        results.push({
+          employeeId: payslipData.employeeId,
+          email: employeeData.email,
+          success: result.success,
+          error: result.error || null
+        });
+        
+        // API制限を避けるため少し待機
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+      } catch (employeeError) {
+        console.error(`❌ 従業員処理エラー: ${payslipData.employeeId}`, employeeError);
+        failCount++;
+        results.push({
+          employeeId: payslipData.employeeId,
+          email: null,
+          success: false,
+          error: employeeError.message
+        });
+      }
+    }
+    
+    console.log(`📧 ${type}明細通知メール送信完了: 成功 ${successCount}件、失敗 ${failCount}件`);
+    
+    return {
+      success: true,
+      totalCount: payslipsSnapshot.size,
+      successCount,
+      failCount,
+      results,
+      type
+    };
+    
+  } catch (error) {
+    console.error(`❌ ${type}明細通知メール送信エラー:`, error);
+    throw new HttpsError('internal', `${type}明細通知メール送信中にエラーが発生しました: ` + error.message);
+  }
+});
+
+// スケジュールされた通知を実行するFunction（毎日朝9時に自動実行）
+exports.scheduledEmailNotifications = onSchedule({
+  schedule: '0 9 * * *',  // 毎日9時0分
+  timeZone: 'Asia/Tokyo', // 日本時間
+  memory: '512MiB',       // メモリ増量（大量処理対応）
+}, async (event) => {
+  try {
+    console.log('⏰ 毎日9時の通知処理開始');
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    // 今日送信予定の通知を取得
+    const notificationsSnapshot = await db.collection('emailNotifications')
+      .where('status', '==', 'scheduled')
+      .where('scheduleDate', '>=', admin.firestore.Timestamp.fromDate(today))
+      .where('scheduleDate', '<', admin.firestore.Timestamp.fromDate(tomorrow))
+      .get();
+    
+    if (notificationsSnapshot.empty) {
+      console.log('⏰ 本日の送信予定はありません');
+      return null;
+    }
+    
+    console.log(`⏰ ${notificationsSnapshot.size}件の通知を処理します`);
+    
+    // バッチ処理で効率化
+    const batchSize = 10; // 10件ずつ並列処理
+    const notifications = notificationsSnapshot.docs;
+    
+    for (let i = 0; i < notifications.length; i += batchSize) {
+      const batch = notifications.slice(i, i + batchSize);
+      
+      // 並列処理
+      await Promise.all(batch.map(async (notificationDoc) => {
+        const notificationData = notificationDoc.data();
+        
+        try {
+          // 通知ステータスを実行中に更新
+          await notificationDoc.ref.update({
+            status: 'executing',
+            executionStartedAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+          
+          // 実際の通知を送信
+          const result = await exports.sendPayslipNotifications({
+            data: {
+              uploadId: notificationData.uploadId,
+              paymentDate: notificationData.paymentDate,
+              type: notificationData.type
+            },
+            auth: { uid: notificationData.createdBy }
+          });
+          
+          // 実行完了に更新
+          await notificationDoc.ref.update({
+            status: 'completed',
+            executionCompletedAt: admin.firestore.FieldValue.serverTimestamp(),
+            executionResult: result
+          });
+          
+          console.log(`✅ 通知完了: ${notificationDoc.id}`);
+          
+        } catch (notificationError) {
+          console.error(`❌ 通知エラー: ${notificationDoc.id}`, notificationError);
+          
+          // エラーステータスに更新
+          await notificationDoc.ref.update({
+            status: 'error',
+            executionError: notificationError.message,
+            executionErrorAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+        }
+      }));
+      
+      // APIレート制限対策
+      if (i + batchSize < notifications.length) {
+        await new Promise(resolve => setTimeout(resolve, 1000)); // 1秒待機
+      }
+    }
+    
+    console.log('⏰ 毎日9時の通知処理完了');
+    return null;
+    
+  } catch (error) {
+    console.error('⏰ スケジュール実行エラー:', error);
+    // エラーログをFirestoreに記録
+    await db.collection('systemLogs').add({
+      type: 'scheduled_notification_error',
+      error: error.message,
+      timestamp: admin.firestore.FieldValue.serverTimestamp()
+    });
+  }
+});

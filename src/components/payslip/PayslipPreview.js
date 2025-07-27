@@ -1,8 +1,15 @@
 // src/components/payslip/PayslipPreview.js
 import React from 'react';
 
-function PayslipPreview({ payslipData, showDetailedInfo = false }) {
+function PayslipPreview({ payslipData, showDetailedInfo = false, isBonus = false }) {
   // PayslipDetailで既に分類済みの項目を使用
+  
+  // デバッグ: 各項目の内容を確認
+  console.log('📊 PayslipPreview - 受け取ったデータ:');
+  console.log('支給項目:', payslipData?.incomeItems);
+  console.log('控除項目:', payslipData?.deductionItems);
+  console.log('勤怠項目:', payslipData?.attendanceItems);
+  console.log('その他項目:', payslipData?.otherItems);
 
 
 
@@ -54,15 +61,15 @@ function PayslipPreview({ payslipData, showDetailedInfo = false }) {
 
 
   return (
-    <div className="bg-white border rounded-lg overflow-hidden" style={{ minHeight: '600px' }}>
-      {/* ヘッダー部分 */}
-      <div className="text-center bg-gray-100 p-4">
-        <h1 className="text-lg font-bold text-gray-800">給与明細</h1>
+    <div className="bg-white border rounded-lg overflow-hidden print:border-0 print:rounded-none" style={{ minHeight: '600px' }}>
+      {/* 印刷時のみ表示されるヘッダー */}
+      <div className="hidden print:block text-center mb-1">
+        <h1 className="text-base font-bold">{isBonus ? '賞与支払明細書' : '給与支払明細書'}</h1>
       </div>
-
+      
       {/* 基本情報 */}
-      <div className="p-4 border-b">
-        <div className="grid grid-cols-2 gap-4 text-sm">
+      <div className="p-4 print:p-1 border-b">
+        <div className="grid grid-cols-2 gap-4 text-sm print:text-xs print:gap-2">
           <div>
             <span className="text-gray-600">対象年月:</span>
             <span className="ml-2 font-medium">
@@ -71,11 +78,11 @@ function PayslipPreview({ payslipData, showDetailedInfo = false }) {
           </div>
           <div className="text-right">
             <span className="text-gray-600">会社名:</span>
-                            <span className="ml-2 font-medium">{payslipData.companyName || 'N/A'}</span>
+            <span className="ml-2 font-medium">{payslipData.companyName || 'N/A'}</span>
           </div>
         </div>
         
-        <div className="grid grid-cols-2 gap-4 text-sm mt-2">
+        <div className="grid grid-cols-2 gap-4 text-sm mt-2 print:mt-1 print:gap-2">
           <div>
             <span className="text-gray-600">社員名:</span>
             <span className="ml-2 font-medium">{payslipData?.employeeName || 'N/A'}</span>
@@ -90,7 +97,7 @@ function PayslipPreview({ payslipData, showDetailedInfo = false }) {
           </div>
         </div>
         
-        <div className="grid grid-cols-2 gap-4 text-sm mt-2">
+        <div className="grid grid-cols-2 gap-4 text-sm mt-2 print:mt-1 print:gap-2">
           <div>
             <span className="text-gray-600">社員コード:</span>
             <span className="ml-2 font-medium">{payslipData?.employeeId || 'N/A'}</span>
@@ -101,23 +108,25 @@ function PayslipPreview({ payslipData, showDetailedInfo = false }) {
         </div>
       </div>
 
-      {/* 4セクション表示 */}
-      <div className="grid grid-cols-4 gap-0 border-b">
+      {/* 4セクション表示 - モバイルでは2×2グリッド、印刷時は4列 */}
+      <div className="grid grid-cols-2 md:grid-cols-4 print:!grid-cols-4 gap-0 border-b">
         {/* 勤怠セクション */}
-        <div className="border-r">
+        <div className="border-r border-b md:border-b-0">
           <div className={getSectionStyle('attendance')}>
             勤怠
           </div>
-          <div className="p-2">
+          <div className="p-2 print:p-1">
             {payslipData.attendanceItems && payslipData.attendanceItems.length > 0 ? (
-              payslipData.attendanceItems.map((item, index) => (
-                <div key={index} className="flex justify-between text-xs py-1 border-b border-gray-100 last:border-b-0">
+              payslipData.attendanceItems
+                .sort((a, b) => (a.order || 0) - (b.order || 0))
+                .map((item, index) => (
+                <div key={index} className="flex justify-between text-xs print:text-[0.6rem] py-1 print:py-0.5 border-b border-gray-100 last:border-b-0">
                   <span>{item.name}</span>
                   <span>{item.value}</span>
                 </div>
               ))
             ) : (
-              <div className="text-xs text-gray-500 text-center py-2">
+              <div className="text-xs print:text-[0.6rem] text-gray-500 text-center py-2 print:py-1">
                 データなし
               </div>
             )}
@@ -125,14 +134,16 @@ function PayslipPreview({ payslipData, showDetailedInfo = false }) {
         </div>
 
         {/* 支給セクション */}
-        <div className="border-r">
+        <div className="md:border-r border-b md:border-b-0">
           <div className={getSectionStyle('income')}>
             支給
           </div>
-          <div className="p-2">
+          <div className="p-2 print:p-1">
             {payslipData.incomeItems && payslipData.incomeItems.length > 0 ? (
-              payslipData.incomeItems.map((item, index) => (
-                <div key={index} className="flex justify-between text-xs py-1 border-b border-gray-100 last:border-b-0">
+              payslipData.incomeItems
+                .sort((a, b) => (a.order || 0) - (b.order || 0))
+                .map((item, index) => (
+                <div key={index} className="flex justify-between text-xs print:text-[0.6rem] py-1 print:py-0.5 border-b border-gray-100 last:border-b-0">
                   <span>{item.name}</span>
                   <span className="text-right">
                     {typeof item.value === 'number' ? formatCurrency(item.value) : item.value}
@@ -140,7 +151,7 @@ function PayslipPreview({ payslipData, showDetailedInfo = false }) {
                 </div>
               ))
             ) : (
-              <div className="text-xs text-gray-500 text-center py-2">
+              <div className="text-xs print:text-[0.6rem] text-gray-500 text-center py-2 print:py-1">
                 データなし
               </div>
             )}
@@ -152,10 +163,12 @@ function PayslipPreview({ payslipData, showDetailedInfo = false }) {
           <div className={getSectionStyle('deduction')}>
             控除
           </div>
-          <div className="p-2">
+          <div className="p-2 print:p-1">
             {payslipData.deductionItems && payslipData.deductionItems.length > 0 ? (
-              payslipData.deductionItems.map((item, index) => (
-                <div key={index} className="flex justify-between text-xs py-1 border-b border-gray-100 last:border-b-0">
+              payslipData.deductionItems
+                .sort((a, b) => (a.order || 0) - (b.order || 0))
+                .map((item, index) => (
+                <div key={index} className="flex justify-between text-xs print:text-[0.6rem] py-1 print:py-0.5 border-b border-gray-100 last:border-b-0">
                   <span>{item.name}</span>
                   <span className="text-right">
                     {typeof item.value === 'number' ? formatCurrency(item.value) : item.value}
@@ -163,7 +176,7 @@ function PayslipPreview({ payslipData, showDetailedInfo = false }) {
                 </div>
               ))
             ) : (
-              <div className="text-xs text-gray-500 text-center py-2">
+              <div className="text-xs print:text-[0.6rem] text-gray-500 text-center py-2 print:py-1">
                 データなし
               </div>
             )}
@@ -175,11 +188,13 @@ function PayslipPreview({ payslipData, showDetailedInfo = false }) {
           <div className={getSectionStyle('total')}>
             合計
           </div>
-          <div className="p-2">
+          <div className="p-2 print:p-1">
             {/* CSVの合計データをそのまま表示 */}
             {payslipData.otherItems && payslipData.otherItems.length > 0 ? (
-              payslipData.otherItems.map((item, index) => (
-                <div key={index} className="flex justify-between text-xs py-1 border-b border-gray-100 last:border-b-0">
+              payslipData.otherItems
+                .sort((a, b) => (a.order || 0) - (b.order || 0))
+                .map((item, index) => (
+                <div key={index} className="flex justify-between text-xs print:text-[0.6rem] py-1 print:py-0.5 border-b border-gray-100 last:border-b-0">
                   <span>{item.name}</span>
                   <span className="text-right">
                     {typeof item.value === 'number' ? formatCurrency(item.value) : item.value}
@@ -187,7 +202,7 @@ function PayslipPreview({ payslipData, showDetailedInfo = false }) {
                 </div>
               ))
             ) : (
-              <div className="text-xs text-gray-500 text-center py-2">
+              <div className="text-xs print:text-[0.6rem] text-gray-500 text-center py-2 print:py-1">
                 データなし
               </div>
             )}
@@ -195,9 +210,12 @@ function PayslipPreview({ payslipData, showDetailedInfo = false }) {
         </div>
       </div>
 
-      {/* 詳細情報表示は合計項目が重複するため削除 */}
-
-      {/* フッター */}
+      {/* 印刷時のみ表示されるフッター */}
+      <div className="hidden print:block mt-1 pt-0.5 border-t text-center">
+        <p className="text-xs text-gray-600">
+          発行日: {new Date().toLocaleDateString('ja-JP')}
+        </p>
+      </div>
     </div>
   );
 }

@@ -117,6 +117,13 @@ function CompanySettings() {
         return;
       }
       
+      console.log("=== 会社情報保存デバッグ ===");
+      console.log("companyId:", companyId);
+      console.log("認証UID:", currentUser?.uid);
+      console.log("userDetails:", userDetails);
+      console.log("companyInfo:", companyInfo);
+      console.log("========================");
+      
       // 必須項目のチェック
       if (!companyInfo.name) {
         setError("会社名を入力してください");
@@ -141,16 +148,20 @@ function CompanySettings() {
       
       const companyDocRef = doc(db, "companies", companyId);
       
-      await updateDoc(companyDocRef, {
+      // setDocを使用して新規作成または更新（merge: trueで既存データは保持）
+      await setDoc(companyDocRef, {
         ...updatedCompanyInfo,
-        updatedAt: new Date()
-      });
+        updatedAt: new Date(),
+        createdAt: new Date() // 新規作成時のみ使用される
+      }, { merge: true });
       
       setSuccess("会社情報を保存しました" + (updatedCompanyInfo.companyNumber !== companyInfo.companyNumber ? ` (会社番号: ${updatedCompanyInfo.companyNumber})` : ""));
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
       console.error("会社情報保存エラー:", error);
-      setError("会社情報の保存中にエラーが発生しました");
+      console.error("エラーコード:", error.code);
+      console.error("エラーメッセージ:", error.message);
+      setError(`会社情報の保存中にエラーが発生しました: ${error.message}`);
     }
   };
 

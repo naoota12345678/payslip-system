@@ -1,5 +1,8 @@
 // src/App.js
 import React from 'react';
+import { testFirebaseAuth } from './utils/testAuth';
+import { testSimpleFunction } from './utils/simpleTest';
+import { fixEmployeeUIDs } from './utils/fixEmployeeUIDs';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, Link } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import Layout from './components/Layout';
@@ -59,6 +62,13 @@ import DataBackup from './pages/DataBackup';
 // エラーページ
 import NotFound from './pages/NotFound';
 
+// テスト用にグローバルにアクセス可能にする
+if (typeof window !== 'undefined') {
+  window.testFirebaseAuth = testFirebaseAuth;
+  window.testSimpleFunction = testSimpleFunction;
+  window.fixEmployeeUIDs = fixEmployeeUIDs;
+}
+
 function App() {
   return (
     <ErrorBoundary>
@@ -75,8 +85,8 @@ function App() {
           <Route path="/admin/signup" element={<SignUp />} />
           
           {/* 従業員向けルート */}
-          <Route path="/employee" element={<Login />} />
-          <Route path="/employee/login" element={<Login />} />
+          <Route path="/employee" element={<Navigate to="/employee/login" />} />
+          <Route path="/employee/login" element={<EmployeeLogin />} />
           
           {/* 共通認証ページ */}
           <Route path="/login" element={<Login />} />
@@ -126,8 +136,7 @@ function App() {
               <Route path="settings/backup" element={<DataBackup />} />
             </Route>
             
-            {/* 従業員ログイン（認証前） */}
-            <Route path="/employee/login" element={<EmployeeLogin />} />
+            {/* 従業員パスワードリセット（認証前） */}
             <Route path="/employee/forgot-password" element={<EmployeeForgotPassword />} />
             
             {/* 従業員専用機能（認証後） */}
@@ -145,6 +154,25 @@ function App() {
               <Route path="bonus-payslips" element={<BonusPayslipList />} />
               <Route path="bonus-payslips/:payslipId" element={<BonusPayslipDetail />} />
               <Route path="bonus-payslips/:payslipId/print" element={<BonusPayslipPrint />} />
+            </Route>
+            
+            {/* 共通ルート（ロール無関係でアクセス可能） */}
+            <Route path="/" element={<PrivateRoute />}>
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="profile" element={<Profile />} />
+              
+              {/* 給与明細関連 */}
+              <Route path="payslips" element={<PayslipList />} />
+              <Route path="payslips/:payslipId" element={<PayslipDetail />} />
+              <Route path="payslips/:payslipId/print" element={<PayslipPrint />} />
+              
+              {/* 賞与明細関連 */}
+              <Route path="bonus-payslips" element={<BonusPayslipList />} />
+              <Route path="bonus-payslips/:payslipId" element={<BonusPayslipDetail />} />
+              <Route path="bonus-payslips/:payslipId/print" element={<BonusPayslipPrint />} />
+              
+              {/* 通知設定 */}
+              <Route path="notifications" element={<NotificationSettings />} />
             </Route>
           </Route>
           

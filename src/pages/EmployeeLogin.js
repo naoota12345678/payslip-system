@@ -1,9 +1,8 @@
 // src/pages/EmployeeLogin.js
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
-import { db, auth } from '../firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { auth } from '../firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useAuth } from '../contexts/AuthContext';
 
 function EmployeeLogin() {
@@ -12,83 +11,49 @@ function EmployeeLogin() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { currentUser } = useAuth();
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    
-    if (!email || !password) {
-      return setError('メールアドレスとパスワードを入力してください');
+  // 既にログインしている場合はダッシュボードへリダイレクト
+  useEffect(() => {
+    if (currentUser) {
+      navigate('/employee/dashboard');
     }
+  }, [currentUser, navigate]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    
+    console.log('🔄 従業員ログイン処理開始...');
+    console.log('📧 メールアドレス:', email);
+    console.log('📱 デバイス情報:', {
+      userAgent: navigator.userAgent,
+      platform: navigator.platform,
+      isMobile: /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    });
     
     try {
-      setError('');
-      setLoading(true);
+      // Firebase Authenticationでログイン（Firestoreアクセスは行わない）
+      console.log('🔐 Firebase認証を実行中...');
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      console.log('✅ Firebase認証成功:', user.uid);
       
-      console.log('🔍 従業員ログイン試行:', { email });
+      // AuthContextが自動的にuserDetailsを設定するまで待機
+      console.log('✅ Firebase認証成功、AuthContextによる自動処理を待機中...');
       
-      // 1. Firestoreで従業員情報を確認
-      const employeesQuery = query(
-        collection(db, 'employees'),
-        where('email', '==', email.toLowerCase().trim())
-      );
-      const employeesSnapshot = await getDocs(employeesQuery);
+      // モバイルデバイスの場合は待機時間を長くする
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const waitTime = isMobile ? 2500 : 1000;
       
-      if (employeesSnapshot.empty) {
-        throw new Error('メールアドレスが登録されていません。システム管理者にお問い合わせください。');
-      }
+      console.log(`📱 デバイス: ${isMobile ? 'モバイル' : 'PC'} - 待機時間: ${waitTime}ms`);
       
-      const employeeDoc = employeesSnapshot.docs[0];
-      const employeeData = employeeDoc.data();
-      const employeeDocId = employeeDoc.id;
-      
-      console.log('✅ 従業員情報確認完了:', { 
-        employeeId: employeeData.employeeId,
-        name: employeeData.name,
-        isFirstLogin: employeeData.isFirstLogin
-      });
-      
-      let user;
-      
-      // 2. 初回ログイン or 既存ユーザーかを判定
-      if (employeeData.isFirstLogin === true) {
-        // 初回ログイン：仮パスワードをチェック
-        if (password !== employeeData.tempPassword) {
-          throw new Error('仮パスワードが正しくありません。管理者から受け取った仮パスワードを入力してください。');
-        }
-        
-        console.log('🔧 初回ログイン：Firebase Authユーザーを作成中...');
-        
-        // Firebase Authユーザーを作成
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        user = userCredential.user;
-        
-                 // Firestoreにuidを追加し、初回ログインフラグを更新
-         await updateDoc(doc(db, 'employees', employeeDocId), {
-           uid: user.uid,
-           isFirstLogin: false,
-           status: 'active', // ステータスをアクティブに更新
-           tempPassword: null, // 仮パスワードを削除
-           activatedAt: new Date(),
-           updatedAt: new Date()
-         });
-        
-        console.log('✅ Firebase Authユーザー作成完了:', user.uid);
-        console.log('🔄 パスワード変更画面へリダイレクト');
-        navigate('/employee/change-password?first=true');
-        return;
-        
-      } else {
-        // 既存ユーザー：通常のログイン
-        console.log('🔍 既存ユーザーでFirebase認証試行');
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        user = userCredential.user;
-        console.log('✅ Firebase認証成功:', user.uid);
-      }
-      
-      // 3. ダッシュボードへリダイレクト
-      console.log('✅ 従業員ログイン完了');
-      navigate('/employee/dashboard');
+      // 待機してからリダイレクト
+      setTimeout(() => {
+        console.log('🚀 ダッシュボードへリダイレクト実行');
+        navigate('/employee/dashboard');
+      }, waitTime);
       
     } catch (error) {
       console.error('❌ 従業員ログインエラー:', error);
@@ -112,90 +77,110 @@ function EmployeeLogin() {
           errorMessage = 'ログイン試行回数が多すぎます。しばらく時間をおいてから再試行してください';
           break;
         default:
-          errorMessage = error.message || 'ログインに失敗しました';
+          // Firestoreのパーミッションエラーをキャッチ
+          if (error.message && error.message.includes('Missing or insufficient permissions')) {
+            errorMessage = 'アカウント情報の取得に失敗しました。管理者にお問い合わせください。';
+            console.error('🚨 Firestore権限エラー - 従業員データへのアクセスが拒否されました');
+          } else {
+            errorMessage = error.message || 'ログインに失敗しました';
+          }
       }
       
       setError(errorMessage);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-      <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full mx-4">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">従業員ログイン</h1>
-          <p className="text-gray-600">給与明細システムにアクセス</p>
-        </div>
-        
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
+    <div className="min-h-screen bg-gray-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          従業員ログイン
+        </h2>
+        <p className="mt-2 text-center text-sm text-gray-600">
+          給与明細システムにアクセス
+        </p>
+      </div>
+
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          {error && (
+            <div className="mb-4 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
+              {error}
+            </div>
+          )}
+
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                メールアドレス
+              </label>
+              <div className="mt-1">
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                パスワード
+              </label>
+              <div className="mt-1">
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Link
+                to="/employee/forgot-password"
+                className="text-sm text-blue-600 hover:text-blue-500"
+              >
+                パスワードをお忘れの方
+              </Link>
+            </div>
+
+            <div>
+              <button
+                type="submit"
+                disabled={loading}
+                className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+                  loading
+                    ? 'bg-gray-400 cursor-not-allowed'
+                    : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+                }`}
+              >
+                {loading ? 'ログイン中...' : 'ログイン'}
+              </button>
+            </div>
+          </form>
+
+          <div className="mt-6">
+            <div className="text-center text-sm text-gray-600">
+              初回ログインの方は、システム管理者から配布されたパスワードをご利用ください。
+            </div>
           </div>
-        )}
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">
-              メールアドレス <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="email"
-              type="email"
-              required
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="your.email@company.com"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
-              パスワード <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="password"
-              type="password"
-              required
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="パスワードを入力"
-            />
-            <p className="text-sm text-gray-500 mt-1">
-              初回ログイン用のパスワードは管理者から受け取ってください
-            </p>
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <button
-              type="submit"
-              disabled={loading}
-              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full disabled:opacity-50"
-            >
-              {loading ? 'ログイン中...' : 'ログイン'}
-            </button>
-          </div>
-        </form>
-        
-        <div className="text-center mt-6">
-          <p className="text-sm text-gray-600 mb-2">
-            パスワードを忘れた場合は{' '}
-            <Link to="/employee/forgot-password" className="text-blue-600 hover:text-blue-800">
-              こちら
-            </Link>
-          </p>
-          <p className="text-sm text-gray-600">
-            <Link to="/" className="text-gray-500 hover:text-gray-700">
-              ← トップページに戻る
-            </Link>
-          </p>
         </div>
       </div>
     </div>
   );
 }
 
-export default EmployeeLogin; 
+export default EmployeeLogin;

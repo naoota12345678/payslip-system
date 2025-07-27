@@ -95,35 +95,11 @@ export function AuthProvider({ children }) {
         console.log('userDetailsを設定しました (employees版):', employeeData);
         return employeeData;
       } else {
-        console.warn('従業員データが見つかりません。管理者として自動作成します (uid:', user.uid, ')');
+        console.warn('従業員データが見つかりません。認証を拒否します (uid:', user.uid, ')');
+        console.warn('Firebase Authアカウントは存在しますが、対応するFirestore従業員データがありません');
         
-        // 管理者ユーザーとして自動作成
-        const autoAdminData = {
-          uid: user.uid,
-          email: user.email,
-          name: user.email.split('@')[0] || '管理者',
-          employeeId: `ADMIN_${user.uid.substring(0, 8)}`,
-          position: '管理者',
-          userType: 'company_admin',
-          role: 'admin',
-          companyId: user.uid, // 自分のUIDを会社IDとして使用
-          departmentCode: '',
-          phone: '',
-          isActive: true,
-          createdAt: new Date()
-        };
-        
-        try {
-          const docRef = await addDoc(collection(db, 'employees'), autoAdminData);
-          console.log('✅ 管理者ユーザーを自動作成しました:', docRef.id);
-          
-          setUserDetails(autoAdminData);
-          return autoAdminData;
-        } catch (createError) {
-          console.error('❌ 管理者ユーザー自動作成エラー:', createError);
-          setUserDetails(null);
-          return null;
-        }
+        setUserDetails(null);
+        return null;
       }
     } catch (error) {
       console.error("=== fetchUserDetails エラー (employees版) ===");
@@ -137,19 +113,50 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log('認証状態の変更を検出しました:', user ? `ユーザー: ${user.email}` : 'ログアウト状態');
+      console.log('🔄 AuthContext: 認証状態変更検出');
+      console.log('   - user:', user ? `${user.email} (${user.uid})` : 'null');
+      
       setCurrentUser(user);
+      
       if (user) {
         try {
+          console.log('📋 AuthContext: ユーザー詳細取得開始');
+          
+          // モバイルデバイスの場合は遅延を追加
+          const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+          if (isMobile) {
+            console.log('📱 モバイルデバイス検出 - 認証トークン同期のため待機');
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+          
           const details = await fetchUserDetails(user);
-          console.log('ユーザー詳細の取得完了:', details);
+          console.log('✅ AuthContext: ユーザー詳細取得完了:', details);
         } catch (error) {
-          console.error('ユーザー詳細の取得に失敗:', error);
+          console.error('❌ AuthContext: ユーザー詳細取得失敗:', error);
+          
+          // 権限エラーの場合はリトライ
+          if (error.message && error.message.includes('Missing or insufficient permissions')) {
+            console.log('🔄 権限エラー検出 - 3秒後にリトライ');
+            setTimeout(async () => {
+              try {
+                const details = await fetchUserDetails(user);
+                console.log('✅ リトライ成功:', details);
+              } catch (retryError) {
+                console.error('❌ リトライも失敗:', retryError);
+                setUserDetails(null);
+              }
+            }, 3000);
+          } else {
+            setUserDetails(null);
+          }
         }
       } else {
+        console.log('🚪 AuthContext: ログアウト状態 - userDetailsをクリア');
         setUserDetails(null);
       }
+      
       setLoading(false);
+      console.log('🏁 AuthContext: loading完了');
     });
 
     return unsubscribe;

@@ -87,31 +87,21 @@ function PayslipList() {
         
         let q;
         
-        // デバッグ用：一時的に全ユーザーが会社全体の明細を見れるように変更
-        console.log('🛠️ デバッグモード: 会社全体の明細を取得します');
-        q = query(
-          collection(db, "payslips"),
-          where("companyId", "==", userDetails.companyId)
-          // orderBy一時的に削除（インデックス問題を回避）
-          // orderBy("paymentDate", "desc")
-        );
-        
-        // 元のロジック（コメントアウト）
-        // if (userDetails.role === 'admin') {
-        //   console.log('📊 管理者として会社全体の明細を取得中...');
-        //   q = query(
-        //     collection(db, "payslips"),
-        //     where("companyId", "==", userDetails.companyId),
-        //     orderBy("paymentDate", "desc")
-        //   );
-        // } else {
-        //   console.log('👤 一般ユーザーとして自分の明細を取得中...');
-        //   q = query(
-        //     collection(db, "payslips"),
-        //     where("userId", "==", currentUser.uid),
-        //     orderBy("paymentDate", "desc")
-        //   );
-        // }
+        // 権限に応じて適切なクエリを実行
+        if (userDetails.role === 'admin' || userDetails.userType === 'company_admin') {
+          console.log('📊 管理者として会社全体の明細を取得中...');
+          q = query(
+            collection(db, "payslips"),
+            where("companyId", "==", userDetails.companyId)
+          );
+        } else {
+          console.log('👤 従業員として自分の明細のみ取得中...');
+          // 従業員IDで絞り込み
+          q = query(
+            collection(db, "payslips"),
+            where("employeeId", "==", userDetails.employeeId)
+          );
+        }
         
         const querySnapshot = await getDocs(q);
         const payslipList = [];
@@ -439,15 +429,6 @@ function PayslipList() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       部門
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      支給額
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      控除額
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      手取り額
-                    </th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       操作
                     </th>
@@ -465,18 +446,11 @@ function PayslipList() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getDepartmentName(payslip.employeeId)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        {formatCurrency(payslip.totalIncome)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        {formatCurrency(payslip.totalDeduction)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right font-medium">
-                        {formatCurrency(payslip.netAmount)}
-                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <Link
-                          to={`/admin/payslips/${payslip.id}`}
+                          to={userDetails?.role === 'admin' || userDetails?.userType === 'company_admin' 
+                            ? `/admin/payslips/${payslip.id}` 
+                            : `/employee/payslips/${payslip.id}`}
                           className="inline-flex items-center px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
                         >
                           詳細
@@ -522,11 +496,6 @@ function PayslipList() {
                   <p className="text-sm text-gray-500 mt-1">
                     {payslipsForDate.length}件の給与明細
                   </p>
-                  <div className="mt-2 text-sm text-gray-600">
-                    合計支給額: {formatCurrency(
-                      payslipsForDate.reduce((sum, p) => sum + (p.totalIncome || 0), 0)
-                    )}
-                  </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   {userDetails?.role === 'admin' && (

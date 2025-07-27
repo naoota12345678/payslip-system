@@ -24,11 +24,85 @@
       work correctly both with client-side routing and a non-root public URL.
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
-    <title>React App</title>
+    <title>給与明細システム</title>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
+    <div id="root">
+      <!-- モバイル用のフォールバック画面 -->
+      <div id="loading-fallback" style="
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
+        font-family: system-ui, -apple-system, sans-serif;
+        padding: 20px;
+        box-sizing: border-box;
+      ">
+        <div style="
+          background: white;
+          border-radius: 8px;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+          padding: 2rem;
+          max-width: 400px;
+          width: 100%;
+          text-align: center;
+        ">
+          <h1 style="
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 1rem;
+          ">給与明細システム</h1>
+          <div style="
+            margin: 2rem 0;
+            color: #6b7280;
+          ">
+            <div style="
+              width: 40px;
+              height: 40px;
+              border: 3px solid #e5e7eb;
+              border-top-color: #3b82f6;
+              border-radius: 50%;
+              animation: spin 1s linear infinite;
+              margin: 0 auto 1rem;
+            "></div>
+            読み込み中...
+          </div>
+          <div style="
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-top: 2rem;
+          ">
+            <a href="/admin" style="
+              background: #2563eb;
+              color: white;
+              padding: 12px 24px;
+              border-radius: 6px;
+              text-decoration: none;
+              font-weight: 500;
+              display: block;
+            ">管理者ログイン</a>
+            <a href="/employee/login" style="
+              background: #059669;
+              color: white;
+              padding: 12px 24px;
+              border-radius: 6px;
+              text-decoration: none;
+              font-weight: 500;
+              display: block;
+            ">従業員ログイン</a>
+          </div>
+        </div>
+      </div>
+      <style>
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      </style>
+    </div>
     <!--
       This HTML file is a template.
       If you open it directly in the browser, you will see an empty page.

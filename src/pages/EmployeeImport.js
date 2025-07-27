@@ -283,8 +283,12 @@ function EmployeeImport() {
           name,
           email,
           companyId,
+          userType: 'employee', // 従業員として設定
+          role: 'employee', // 従業員ロール
           status: 'active', // ステータス: アクティブ
-          updatedAt: new Date()
+          isActive: true, // アクティブフラグ
+          updatedAt: new Date(),
+          createdAt: new Date()
         };
         
         // 部門コードと部門IDを設定
@@ -379,7 +383,18 @@ function EmployeeImport() {
               authCreated++;
             } catch (authError) {
               console.error(`❌ Firebase Authアカウント作成失敗: ${email}`, authError);
-              authErrors.push(`${name} (${email}): ${authError.message}`);
+              console.error('詳細エラー:', authError.code, authError.message, authError.details);
+              
+              // より詳細なエラーメッセージ
+              let errorMessage = authError.message || 'Unknown error';
+              if (authError.code) {
+                errorMessage = `[${authError.code}] ${errorMessage}`;
+              }
+              if (authError.details) {
+                errorMessage += ` (詳細: ${authError.details})`;
+              }
+              
+              authErrors.push(`${name} (${email}): ${errorMessage}`);
             }
           }
         } catch (error) {
@@ -392,6 +407,26 @@ function EmployeeImport() {
       result.authErrors = authErrors;
       
       console.log(`🎉 Firebase Authアカウント作成完了: ${authCreated}件成功, ${authErrors.length}件失敗`);
+      
+      // エラーが発生した場合、詳細を確認しやすくするため
+      if (authErrors.length > 0) {
+        console.group('🔍 Firebase Auth作成エラー詳細:');
+        authErrors.forEach((error, index) => {
+          console.error(`${index + 1}. ${error}`);
+        });
+        console.groupEnd();
+        
+        // ユーザーにアラートで主要エラーを表示
+        const errorSummary = authErrors.slice(0, 3).join('\n\n');
+        alert(`Firebase Auth作成で${authErrors.length}件のエラーが発生しました。\n\n最初の${Math.min(3, authErrors.length)}件のエラー:\n${errorSummary}\n\nコンソールで詳細を確認してください。`);
+        
+        // LocalStorageにもエラーを保存（デバッグ用）
+        localStorage.setItem('lastAuthErrors', JSON.stringify({
+          timestamp: new Date().toISOString(),
+          errors: authErrors,
+          totalCount: authErrors.length
+        }));
+      }
     }
     
     return result;

@@ -1,14 +1,15 @@
 // src/pages/EmployeeForm.js
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { db } from '../firebase';
+import { db, functions } from '../firebase';
 import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import { useAuth } from '../contexts/AuthContext';
 
 function EmployeeForm() {
   const { employeeId } = useParams();
   const navigate = useNavigate();
-  const { userDetails } = useAuth();
+  const { currentUser, userDetails } = useAuth();
   
   // 編集モードかどうか
   const isEditMode = !!employeeId;
@@ -134,9 +135,29 @@ function EmployeeForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // 最初にデバッグ情報を表示
+    const debugInfo = {
+      authUID: currentUser?.uid,
+      userDetailsUID: userDetails?.uid,
+      companyId: userDetails?.companyId,
+      role: userDetails?.role,
+      userType: userDetails?.userType,
+      isEditMode: isEditMode,
+      employeeId: employeeId
+    };
+    
+    alert(`認証デバッグ情報:
+Auth UID: ${debugInfo.authUID}
+userDetails UID: ${debugInfo.userDetailsUID}
+会社ID: ${debugInfo.companyId}
+role: ${debugInfo.role}
+userType: ${debugInfo.userType}
+編集モード: ${debugInfo.isEditMode}
+対象ID: ${debugInfo.employeeId}`);
+    
     // 入力検証
-    if (!employeeData.name || !employeeData.employeeId) {
-      setError('氏名と従業員IDは必須項目です');
+    if (!employeeData.name || !employeeData.employeeId || !employeeData.email) {
+      setError('氏名、従業員ID、メールアドレスは必須項目です');
       return;
     }
     
@@ -154,30 +175,47 @@ function EmployeeForm() {
       };
       
       if (isEditMode) {
+        // 編集対象の従業員データを事前に取得してcompanyIdを確認
+        const targetEmployeeDoc = await getDoc(doc(db, 'employees', employeeId));
+        const targetEmployeeData = targetEmployeeDoc.data();
+        
+        alert(`編集対象の従業員情報:
+従業員companyId: ${targetEmployeeData?.companyId}
+管理者companyId: ${userDetails?.companyId}
+companyID一致: ${targetEmployeeData?.companyId === userDetails?.companyId}
+対象従業員名: ${targetEmployeeData?.name}`);
+        
         // 既存従業員の更新
         await updateDoc(doc(db, 'employees', employeeId), saveData);
-        navigate(`/admin/employees/${employeeId}`);
+        alert('従業員情報を更新しました');
+        navigate('/admin/employees');
       } else {
-        // 新規従業員の作成
+        // 新規従業員の作成 - Firebase Functionsを使用
         saveData.createdAt = new Date();
-        saveData.status = 'preparation'; // ステータス: 準備中
+        saveData.status = 'active'; // ステータス: アクティブ
         saveData.isFirstLogin = true; // 初回ログインフラグ
-        
-        // 仮パスワードを生成（8文字の英数字）
-        const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-2).toUpperCase();
-        saveData.tempPassword = tempPassword; // 仮パスワードをFirestoreに保存
+        saveData.userType = 'employee'; // 従業員タイプ（固定）
+        saveData.role = 'employee'; // 従業員ロール（固定）
+        saveData.isActive = true; // アクティブフラグ
         
         console.log('🔧 新規従業員作成:', {
           email: saveData.email,
           name: saveData.name,
-          status: 'preparation'
+          status: 'active'
         });
         
-        const employeeDoc = doc(collection(db, 'employees'));
-        await setDoc(employeeDoc, saveData);
+        // Firebase Functionsを呼び出してアカウント作成
+        const createEmployeeAccount = httpsCallable(functions, 'createEmployeeAccount');
+        const result = await createEmployeeAccount({
+          email: saveData.email,
+          name: saveData.name,
+          employeeData: saveData
+        });
         
-        // 成功メッセージ（パスワードは表示しない）
-        alert(`従業員を登録しました。\n\n従業員詳細画面から「招待メール送信」を行ってください。`);
+        console.log('✅ 従業員アカウント作成結果:', result.data);
+        
+        // 成功メッセージ（テスト用パスワードを表示）
+        alert(`従業員を登録しました！\n\n📧 ログイン情報:\nメール: ${saveData.email}\nパスワード: ${result.data.testPassword}\n\n※テスト用の固定パスワードです`);
         
         navigate('/admin/employees');
       }
@@ -259,7 +297,7 @@ function EmployeeForm() {
               
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                  メールアドレス
+                  メールアドレス <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="email"
@@ -267,7 +305,11 @@ function EmployeeForm() {
                   value={employeeData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  required
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  ログイン用のメールアドレスです。テスト用パスワード「000000」でログイン可能になります。
+                </p>
               </div>
               
               <div>

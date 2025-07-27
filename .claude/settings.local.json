@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(firebase deploy:*)",
+      "Bash(cmd /c \"firebase deploy\")",
+      "Bash(npx firebase:*)",
+      "Bash(git add:*)",
+      "Bash(powershell:*)",
+      "Bash(npm run deploy:*)",
+      "Bash(npm run logs:*)",
+      "Bash(firebase functions:list:*)",
+      "Bash(npm install:*)",
+      "Bash(firebase functions:log:*)",
+      "Bash(cmd /c \"cd /d C:\\Users\\naoot\\payslip-system && firebase deploy --only functions\")",
+      "Bash(npm start)",
+      "Bash(firebase hosting:channel:open:*)",
+      "Bash(node:*)",
+      "Bash(cmd /c \"firebase deploy --only functions\")",
+      "Bash(firebase:*)",
+      "Bash(start cmd /k \"cd /d C:\\Users\\naoot\\payslip-system && firebase deploy --only functions\")"
+    ],
+    "deny": []
+  }
+}
