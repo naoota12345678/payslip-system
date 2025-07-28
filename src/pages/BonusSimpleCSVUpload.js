@@ -5,6 +5,7 @@ import { collection, addDoc, serverTimestamp, getDocs, query, where, doc, getDoc
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
 import { fetchUnifiedMappingSettings } from '../utils/mappingUtils';
+import PayslipNotificationUI from './PayslipNotificationUI';
 
 const BonusSimpleCSVUpload = () => {
   const { userDetails } = useAuth();
@@ -25,6 +26,9 @@ const BonusSimpleCSVUpload = () => {
   const [sendNotification, setSendNotification] = useState(false);
   const [notificationDate, setNotificationDate] = useState('');
   const [sendImmediately, setSendImmediately] = useState(false);
+  
+  // アップロード完了後の状態
+  const [uploadedData, setUploadedData] = useState(null);
 
   // 🔧 CSVヘッダーから新しい形式のマッピングデータを生成・保存（賞与版）
   const saveHeaderMappings = async (headers, mappingSettings) => {
@@ -611,6 +615,13 @@ const BonusSimpleCSVUpload = () => {
 
       setMessage(`✅ ${csvData.length}件の賞与明細データを保存しました！`);
       
+      // アップロード完了データを保存
+      setUploadedData({
+        uploadId: uploadData.id,
+        paymentDate: paymentDate,
+        count: csvData.length
+      });
+      
       // 保存後にデータをクリア
       setTimeout(() => {
         setFile(null);
@@ -790,6 +801,17 @@ const BonusSimpleCSVUpload = () => {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+      
+      {/* アップロード完了後のメール配信UI */}
+      {uploadedData && !showPreview && (
+        <div className="mt-6">
+          <PayslipNotificationUI
+            uploadId={uploadedData.uploadId}
+            paymentDate={uploadedData.paymentDate}
+            type="bonus"
+          />
         </div>
       )}
     </div>
