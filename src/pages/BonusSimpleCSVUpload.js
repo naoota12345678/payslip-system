@@ -617,7 +617,7 @@ const BonusSimpleCSVUpload = () => {
       
       // アップロード完了データを保存
       setUploadedData({
-        uploadId: uploadData.id,
+        uploadId: `bonus_upload_${Date.now()}`,
         paymentDate: paymentDate,
         count: csvData.length
       });
