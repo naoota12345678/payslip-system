@@ -43,6 +43,13 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
     return '';
   };
   
+  // 表示用の項目名を取得するヘルパー関数
+  const getDisplayNameFromSymbol = (symbol) => {
+    if (!symbol) return symbol;
+    const matchedItem = fixedItems.find(item => item.headerName === symbol);
+    return matchedItem?.itemName || symbol;
+  };
+  
   console.log('🔍 基本項目マッピング（記号版）:');
   console.log('- 利用可能な記号（headerName）:', availableSymbols);
   console.log('- 利用可能な記号（最初の10個）:', availableSymbols.slice(0, 10));
@@ -67,7 +74,7 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
             >
               <option value="">選択してください</option>
               {availableSymbols.map((symbol, index) => (
-                <option key={index} value={symbol}>{symbol}</option>
+                <option key={index} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
               ))}
             </select>
           </div>
@@ -83,7 +90,7 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
             >
               <option value="">選択してください</option>
               {availableSymbols.map((symbol, index) => (
-                <option key={index} value={symbol}>{symbol}</option>
+                <option key={index} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
               ))}
             </select>
           </div>
@@ -99,7 +106,7 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
             >
               <option value="">選択してください</option>
               {availableSymbols.map((symbol, index) => (
-                <option key={index} value={symbol}>{symbol}</option>
+                <option key={index} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
               ))}
             </select>
           </div>
@@ -115,7 +122,7 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
             >
               <option value="">選択してください</option>
               {availableSymbols.map((symbol, index) => (
-                <option key={index} value={symbol}>{symbol}</option>
+                <option key={index} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
               ))}
             </select>
           </div>
@@ -131,7 +138,7 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
             >
               <option value="">選択してください</option>
               {availableSymbols.map((symbol, index) => (
-                <option key={index} value={symbol}>{symbol}</option>
+                <option key={index} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
               ))}
             </select>
           </div>
@@ -147,7 +154,7 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
             >
               <option value="">選択してください</option>
               {availableSymbols.map((symbol, index) => (
-                <option key={index} value={symbol}>{symbol}</option>
+                <option key={index} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
               ))}
             </select>
           </div>
