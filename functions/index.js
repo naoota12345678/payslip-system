@@ -49,7 +49,7 @@ const initializeGmail = async () => {
     
     if (gmailUser && gmailAppPassword) {
       try {
-        transporter = nodemailer.createTransporter({
+        transporter = nodemailer.createTransport({
           service: 'gmail',
           host: 'smtp.gmail.com',
           port: 587,
