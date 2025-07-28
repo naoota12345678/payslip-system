@@ -13,6 +13,7 @@ function EmployeeManagement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [bulkEmailSending, setBulkEmailSending] = useState(false);
 
   // 従業員と部門データを読み込む
   useEffect(() => {
@@ -120,6 +121,87 @@ function EmployeeManagement() {
     return '-';
   };
 
+  // 一括招待メール送信
+  const sendBulkInvitationEmails = async () => {
+    if (!window.confirm('全ての在職従業員に設定メールを送信しますか？')) {
+      return;
+    }
+    
+    try {
+      setBulkEmailSending(true);
+      setError('');
+      setSuccess('');
+      
+      console.log('🔥 一括招待メール送信開始');
+      
+      const sendBulkEmails = httpsCallable(functions, 'sendBulkInvitationEmails');
+      const result = await sendBulkEmails({
+        companyId: userDetails.companyId
+      });
+      
+      console.log('📧 一括招待メール送信結果:', result.data);
+      
+      if (result.data.success) {
+        setSuccess(`一括メール送信完了: 成功 ${result.data.successCount}件、失敗 ${result.data.failCount}件`);
+        
+        // 詳細結果をコンソールに表示
+        if (result.data.results) {
+          console.log('📋 詳細結果:', result.data.results);
+        }
+      } else {
+        setError('一括メール送信に失敗しました');
+      }
+    } catch (error) {
+      console.error('❌ 一括招待メール送信エラー:', error);
+      setError(`一括メール送信エラー: ${error.message}`);
+    } finally {
+      setBulkEmailSending(false);
+    }
+  };
+
+  // 個別招待メール送信
+  const sendIndividualInvitationEmail = async (employee) => {
+    if (!employee.email) {
+      setError('この従業員にはメールアドレスが設定されていません');
+      return;
+    }
+    
+    if (!window.confirm(`${employee.name || employee.employeeId} に設定メールを送信しますか？`)) {
+      return;
+    }
+    
+    try {
+      setError('');
+      setSuccess('');
+      
+      console.log('🔥 個別招待メール送信開始:', employee.email);
+      
+      // createEmployeeAccount関数を呼び出してアカウント作成とメール送信を実行
+      const createAccount = httpsCallable(functions, 'createEmployeeAccount');
+      const result = await createAccount({
+        email: employee.email,
+        name: employee.name || employee.employeeId,
+        employeeData: {
+          employeeId: employee.employeeId,
+          name: employee.name,
+          email: employee.email,
+          companyId: userDetails.companyId
+        }
+      });
+      
+      console.log('📧 個別招待メール送信結果:', result.data);
+      
+      if (result.data.success) {
+        setSuccess(`${employee.name || employee.employeeId} にメール送信完了`);
+      } else {
+        setError(`${employee.name || employee.employeeId} へのメール送信に失敗しました`);
+      }
+    } catch (error) {
+      console.error('❌ 個別招待メール送信エラー:', error);
+      setError(`メール送信エラー: ${error.message}`);
+    }
+  };
+
   // ステータス表示用関数
   const getStatusDisplay = (employee) => {
     // 退職ステータスを最優先で表示
@@ -151,7 +233,14 @@ function EmployeeManagement() {
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">従業員管理</h1>
       
-      <div className="flex justify-end mb-6">
+      <div className="flex justify-end mb-6 space-x-3">
+        <button
+          onClick={sendBulkInvitationEmails}
+          disabled={bulkEmailSending}
+          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:bg-blue-300"
+        >
+          {bulkEmailSending ? '送信中...' : '一括設定メール送信'}
+        </button>
         <Link 
           to="/admin/employees/new" 
           className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
@@ -255,6 +344,15 @@ function EmployeeManagement() {
                     >
                       編集
                     </Link>
+                    {employee.isActive !== false && employee.email && (
+                      <button
+                        onClick={() => sendIndividualInvitationEmail(employee)}
+                        className="text-purple-600 hover:text-purple-800 mr-3"
+                        title="設定メールを送信"
+                      >
+                        メール送信
+                      </button>
+                    )}
                     <button
                       onClick={() => deleteEmployee(employee.id)}
                       className="text-red-600 hover:text-red-800"

@@ -7,7 +7,8 @@ const admin = require('firebase-admin');
 const fetch = require('node-fetch');
 const csv = require('csv-parser');
 const { PassThrough } = require('stream');
-const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
+// const { Resend } = require('resend'); // 一時的に無効化
 // const sgMail = require('@sendgrid/mail'); // 一時的に無効化
 
 // Global options設定（CORS設定を追加）
@@ -18,52 +19,178 @@ setGlobalOptions({
 admin.initializeApp();
 const db = admin.firestore();
 
-// Resend設定（APIキーが設定されていない場合はnullにする）
-let resend = null;
-try {
-  if (process.env.RESEND_API_KEY) {
-    resend = new Resend(process.env.RESEND_API_KEY);
-    console.log('✅ Resend API初期化完了');
-  } else {
-    console.log('⚠️ RESEND_API_KEYが設定されていません - メール機能は無効');
-  }
-} catch (resendError) {
-  console.error('❌ Resend初期化エラー:', resendError.message);
-  resend = null;
-}
+// Gmail SMTP設定
+const functions = require('firebase-functions');
+let transporter = null;
 
-// メール送信関数（Resend使用）
-const sendEmail = async (to, subject, htmlContent, textContent = null) => {
+// 初期化を関数内で行う（環境変数が読み込まれるタイミング対応）
+const initializeGmail = async () => {
   try {
-    if (!resend) {
-      console.log('⚠️ Resendが初期化されていません - メール送信をスキップ');
-      return { success: false, error: 'Resend API not configured' };
+    // Firebase Functions v2では環境変数を使用（フォールバック付き）
+    let gmailUser = process.env.GMAIL_USER;
+    let gmailAppPassword = process.env.GMAIL_APP_PASSWORD;
+    
+    // フォールバック: 古いfunctions.config()も試す
+    if (!gmailUser || !gmailAppPassword) {
+      try {
+        const config = functions.config();
+        gmailUser = gmailUser || config.gmail?.user;
+        gmailAppPassword = gmailAppPassword || config.gmail?.app_password;
+      } catch (configError) {
+        console.log('functions.config()は利用できません（v2では非推奨）');
+      }
     }
     
-    console.log(`📧 Resend経由でメール送信中: ${to} - ${subject}`);
+    console.log('🔍 Gmail設定確認:', {
+      user: gmailUser ? `${gmailUser.substring(0, 3)}***@gmail.com` : 'なし',
+      password: gmailAppPassword ? `設定済み(${gmailAppPassword.length}文字)` : 'なし',
+      envVars: Object.keys(process.env).filter(key => key.includes('GMAIL'))
+    });
     
-    const emailData = {
-      from: process.env.FROM_EMAIL || 'noreply@atelier-temma.com',
+    if (gmailUser && gmailAppPassword) {
+      try {
+        transporter = nodemailer.createTransporter({
+          service: 'gmail',
+          host: 'smtp.gmail.com',
+          port: 587,
+          secure: false,
+          auth: {
+            user: gmailUser,
+            pass: gmailAppPassword
+          },
+          tls: {
+            rejectUnauthorized: false
+          }
+        });
+        
+        // 接続テスト
+        await transporter.verify();
+        console.log('✅ Gmail SMTP初期化・接続テスト完了');
+        return true;
+      } catch (verifyError) {
+        console.error('❌ Gmail SMTP接続テスト失敗:', verifyError);
+        transporter = null;
+        return false;
+      }
+    } else {
+      console.log('⚠️ GMAIL設定が不完全です - メール機能は無効');
+      console.log('設定状況:', { 
+        gmailUser: !!gmailUser, 
+        gmailAppPassword: !!gmailAppPassword,
+        allEnvVars: Object.keys(process.env).filter(key => key.startsWith('G'))
+      });
+      return false;
+    }
+  } catch (gmailError) {
+    console.error('❌ Gmail初期化エラー:', gmailError.message);
+    console.error('詳細エラー:', gmailError);
+    return false;
+  }
+};
+
+// メール送信関数（Gmail SMTP使用）
+const sendEmail = async (to, subject, htmlContent, textContent = null) => {
+  try {
+    // 初回呼び出し時にGmail初期化
+    if (!transporter) {
+      const initialized = await initializeGmail();
+      if (!initialized) {
+        console.log('⚠️ Gmail SMTPが初期化できません - メール送信をスキップ');
+        return { success: false, error: 'Gmail SMTP not configured' };
+      }
+    }
+    
+    console.log(`📧 Gmail SMTP経由でメール送信中: ${to} - ${subject}`);
+    
+    const mailOptions = {
+      from: process.env.GMAIL_USER, // Gmail送信者アドレス
       to: to,
       subject: subject,
       html: htmlContent
     };
     
     if (textContent) {
-      emailData.text = textContent;
+      mailOptions.text = textContent;
     }
     
-    const result = await resend.emails.send(emailData);
-    console.log('✅ メール送信成功:', result);
-    return { success: true, result };
+    const result = await transporter.sendMail(mailOptions);
+    console.log('✅ メール送信成功:', result.messageId);
+    return { success: true, result: { messageId: result.messageId } };
   } catch (error) {
     console.error('❌ メール送信エラー:', error);
+    console.error('エラー詳細:', {
+      code: error.code,
+      command: error.command,
+      response: error.response,
+      responseCode: error.responseCode
+    });
     return { success: false, error: error.message };
   }
 };
 
 // テスト用固定パスワード
 const TEST_PASSWORD = '000000';
+
+// Gmail設定テスト関数
+exports.testGmailConfig = onCall(async (request) => {
+  console.log('🧪 Gmail設定テスト開始');
+  
+  try {
+    const config = functions.config();
+    const gmailUser = config.gmail?.user;
+    const gmailAppPassword = config.gmail?.app_password;
+    
+    const result = {
+      hasConfig: !!config.gmail,
+      hasUser: !!gmailUser,
+      hasPassword: !!gmailAppPassword,
+      userLength: gmailUser ? gmailUser.length : 0,
+      passwordLength: gmailAppPassword ? gmailAppPassword.length : 0,
+      timestamp: new Date().toISOString()
+    };
+    
+    // SMTP接続テスト
+    try {
+      const initialized = await initializeGmail();
+      result.smtpConnectionTest = initialized;
+    } catch (smtpError) {
+      result.smtpConnectionTest = false;
+      result.smtpError = smtpError.message;
+    }
+    
+    console.log('🧪 Gmail設定テスト結果:', result);
+    return result;
+  } catch (error) {
+    console.error('🧪 Gmail設定テストエラー:', error);
+    return { error: error.message };
+  }
+});
+
+// 簡易メール送信テスト関数
+exports.testSendEmail = onCall(async (request) => {
+  console.log('📧 メール送信テスト開始');
+  
+  const { to, subject = 'テストメール' } = request.data;
+  
+  if (!to) {
+    throw new HttpsError('invalid-argument', 'toパラメータが必要です');
+  }
+  
+  try {
+    const htmlContent = `
+      <h1>テストメール</h1>
+      <p>Gmail SMTP接続テストです。</p>
+      <p>送信時刻: ${new Date().toISOString()}</p>
+    `;
+    
+    const result = await sendEmail(to, subject, htmlContent);
+    console.log('📧 メール送信テスト結果:', result);
+    return result;
+  } catch (error) {
+    console.error('📧 メール送信テストエラー:', error);
+    return { success: false, error: error.message };
+  }
+});
 
 // 簡単なテスト関数
 exports.simpleTest = onCall(async (request) => {
@@ -234,44 +361,38 @@ exports.createEmployeeAccount = onCall({
     console.log('✅ パラメータ検証完了:', { email, name });
     
     // 既存ユーザーの確認
+    let userRecord;
     try {
       const existingUser = await admin.auth().getUserByEmail(email);
       console.log('⚠️ 既存ユーザーが見つかりました:', existingUser.uid);
-      
-      return {
-        success: true,
-        uid: existingUser.uid,
-        email: email,
-        testPassword: TEST_PASSWORD,
-        message: '既存のアカウントを使用しました（既に存在していました）'
-      };
+      userRecord = existingUser;
     } catch (getUserError) {
       // ユーザーが存在しない場合（期待される動作）
       if (getUserError.code === 'auth/user-not-found') {
         console.log('✅ 新規ユーザー作成を続行します');
+        
+        console.log('👤 Firebase Authユーザー作成開始...');
+        
+        // Firebase Authでユーザー作成
+        userRecord = await admin.auth().createUser({
+          email: email,
+          password: TEST_PASSWORD, // テスト用固定パスワード
+          displayName: name,
+          emailVerified: false
+        });
+        
+        console.log('✅ 従業員アカウント作成完了:', {
+          uid: userRecord.uid,
+          email: email,
+          displayName: userRecord.displayName,
+          emailVerified: userRecord.emailVerified,
+          creationTime: userRecord.metadata.creationTime
+        });
       } else {
         console.error('❌ ユーザー検索時のエラー:', getUserError);
         throw getUserError;
       }
     }
-    
-    console.log('👤 Firebase Authユーザー作成開始...');
-    
-    // Firebase Authでユーザー作成
-    const userRecord = await admin.auth().createUser({
-      email: email,
-      password: TEST_PASSWORD, // テスト用固定パスワード
-      displayName: name,
-      emailVerified: false
-    });
-    
-    console.log('✅ 従業員アカウント作成完了:', {
-      uid: userRecord.uid,
-      email: email,
-      displayName: userRecord.displayName,
-      emailVerified: userRecord.emailVerified,
-      creationTime: userRecord.metadata.creationTime
-    });
     
     // 従業員データの処理
     console.log('🔄 Firestoreの従業員データ処理中...');
@@ -338,11 +459,17 @@ exports.createEmployeeAccount = onCall({
       throw new Error(`Firestore処理エラー: ${firestoreError.message}`);
     }
     
-    // メール送信（現在は無効化中）
+    // メール送信（詳細ログ付き）
     try {
+      console.log('🚀 メール送信開始...');
       await sendEmployeeInvitationEmail(email, name, TEST_PASSWORD);
+      console.log('✅ メール送信完了');
     } catch (mailError) {
-      console.log('メール送信エラー（無視）:', mailError.message);
+      console.error('❌ メール送信エラー（詳細）:', {
+        message: mailError.message,
+        stack: mailError.stack,
+        code: mailError.code
+      });
     }
     
     console.log('🎉 createEmployeeAccount 関数完了');
@@ -352,7 +479,7 @@ exports.createEmployeeAccount = onCall({
       uid: userRecord.uid,
       email: email,
       testPassword: TEST_PASSWORD,
-      message: '従業員アカウントが作成されました'
+      message: userRecord.metadata?.creationTime ? '従業員アカウントが作成されました' : '既存のアカウントを使用しました（既に存在していました）'
     };
     
   } catch (error) {
@@ -406,39 +533,92 @@ const createInvitationEmailContent = (employeeName, tempPassword, loginUrl) => {
     .content { padding: 30px; background-color: #ffffff; }
     .login-info { background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
     .button { display: inline-block; background-color: #4A90E2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 10px 0; }
+    .warning-box { background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 4px; margin: 20px 0; }
+    .info-box { background-color: #e3f2fd; border: 1px solid #90caf9; padding: 15px; border-radius: 4px; margin: 20px 0; }
+    .important-box { background-color: #ffebee; border: 2px solid #ef5350; padding: 15px; border-radius: 4px; margin: 20px 0; }
     .footer { background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #666; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1>給与明細システム ログイン情報</h1>
+      <h1>給与明細システム ログイン情報のお知らせ</h1>
     </div>
     <div class="content">
       <h2>${employeeName} 様</h2>
-      <p>給与明細システムへのアクセス権が付与されました。</p>
+      <p>合同会社グレースコンサルティングの給与明細電子化システムへのアクセス権を付与させていただきました。</p>
+      <p>以下のログイン情報をご確認の上、初回ログインをお願いいたします。</p>
+      
+      <div class="important-box">
+        <p style="color: #c62828; margin: 0; font-size: 16px;"><strong>📌 重要：必ずお読みください</strong></p>
+        <p style="color: #c62828; margin: 10px 0;"><strong>メール通知が届かなくても、給与明細は必ず確認できます！</strong></p>
+        <p style="color: #424242; margin: 5px 0;">給与明細は給与支払日の午前10時までにシステムに反映されます。</p>
+        <p style="color: #424242; margin: 5px 0;">メール通知の有無にかかわらず、下記URLから直接アクセスしてご確認いただけます。</p>
+        <p style="margin: 10px 0;">
+          <strong>システムURL（必ずブックマークしてください）：</strong><br>
+          <code style="background: #ffcdd2; padding: 6px 12px; border-radius: 4px; font-size: 16px;">https://kyuyoprint.web.app</code>
+        </p>
+      </div>
       
       <div class="login-info">
         <h3>ログイン情報</h3>
-        <p><strong>ログインページ:</strong><br>
+        <p><strong>ログインページ：</strong><br>
         <a href="${loginUrl}" class="button">給与明細システムにログイン</a></p>
         
-        <p><strong>初回ログイン用パスワード:</strong><br>
-        <code style="background: #e9ecef; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${tempPassword}</code></p>
+        <p><strong>ログイン用メールアドレス：</strong><br>
+        <code style="background: #e9ecef; padding: 4px 8px; border-radius: 4px;">このメールの宛先アドレス</code></p>
+        
+        <p><strong>初回ログイン用パスワード：</strong><br>
+        <code style="background: #e9ecef; padding: 4px 8px; border-radius: 4px; font-family: monospace; font-size: 18px;">${tempPassword}</code></p>
+      </div>
+      
+      <div class="warning-box">
+        <p style="color: #856404; margin: 0;"><strong>⚠️ メール受信設定のお願い</strong></p>
+        <p style="color: #856404; margin: 8px 0;">今後の給与明細通知メールが確実に届くよう、以下の対策をお願いします：</p>
+        <ul style="color: #856404; margin: 5px 0;">
+          <li><strong>roumu3737@gmail.com</strong> を連絡先・アドレス帳に追加</li>
+          <li>迷惑メールフォルダも定期的にご確認ください</li>
+          <li>携帯キャリアメールをご利用の方は、PCメールの受信許可設定をご確認ください</li>
+        </ul>
+        <p style="color: #856404; margin: 8px 0;"><strong>※メールが届かない場合でも、上記URLから直接ログインすれば必ず給与明細を確認できます。</strong></p>
       </div>
       
       <h3>ログイン手順</h3>
       <ol>
-        <li>上記のログインページにアクセス</li>
-        <li>メールアドレスと初回ログイン用パスワードでログイン</li>
-        <li>初回ログイン時に新しいパスワードを設定</li>
+        <li>上記のログインボタンまたはURLからアクセス</li>
+        <li>メールアドレスと初回ログイン用パスワード「000000」でログイン</li>
+        <li>初回ログイン時に新しいパスワードを設定（パスワード変更通知メールが送信されます）</li>
         <li>以降は新しいパスワードでログイン</li>
       </ol>
       
-      <p><strong>注意:</strong> 初回ログイン用パスワードは一度きりの使用です。必ず新しいパスワードに変更してください。</p>
+      <div class="info-box">
+        <p style="color: #1976d2; margin: 0;"><strong>📱 スマートフォンでアクセスできない場合</strong></p>
+        <p style="color: #1976d2; margin: 5px 0;">以下をお試しください：</p>
+        <ul style="color: #1976d2; margin: 5px 0;">
+          <li>コンテンツブロッカーやセキュリティアプリを一時的にオフにする</li>
+          <li>別のブラウザ（Chrome、Safari等）でアクセスする</li>
+          <li>プライベートブラウジング（シークレットモード）で試す</li>
+        </ul>
+      </div>
+      
+      <div class="warning-box">
+        <p style="color: #856404; margin: 0;"><strong>🔐 セキュリティに関する重要なお願い</strong></p>
+        <p style="color: #856404; margin: 5px 0;">初回ログイン用パスワード「000000」は仮パスワードです。</p>
+        <p style="color: #856404; margin: 5px 0;">セキュリティ確保のため、<strong>必ず初回ログイン時に新しいパスワードに変更</strong>してください。</p>
+      </div>
+      
+      <div class="info-box">
+        <p style="color: #1976d2; margin: 0;"><strong>📅 今後の給与明細配信について</strong></p>
+        <p style="color: #1976d2; margin: 5px 0;">給与明細は毎月の給与支払日の午前10時までにシステムに反映されます。</p>
+        <p style="color: #1976d2; margin: 5px 0;">メール通知も同時刻頃に送信されますが、<strong>メールが届かなくても上記URLから必ず確認可能です。</strong></p>
+      </div>
+      
+      <p style="margin-top: 20px;"><strong>ご不明な点がございましたら、お気軽にお問い合わせください。</strong></p>
     </div>
     <div class="footer">
-      <p>このメールに心当たりがない場合は、システム管理者にお問い合わせください。</p>
+      <p><strong>合同会社グレースコンサルティング</strong></p>
+      <p>お問い合わせ: <a href="mailto:roumu3737@gmail.com">roumu3737@gmail.com</a></p>
+      <p style="font-size: 10px; margin-top: 15px;">このメールに心当たりがない場合は、システム管理者にお問い合わせください。</p>
     </div>
   </div>
 </body>
@@ -1686,6 +1866,145 @@ exports.sendPayslipNotifications = onCall(async (request) => {
   } catch (error) {
     console.error(`❌ ${type}明細通知メール送信エラー:`, error);
     throw new HttpsError('internal', `${type}明細通知メール送信中にエラーが発生しました: ` + error.message);
+  }
+});
+
+// 一括招待メール送信関数（全アクティブ従業員対象）
+exports.sendBulkInvitationEmails = onCall({ 
+  enforceAppCheck: false,
+  invoker: 'public'
+}, async (request) => {
+  console.log('🔥 sendBulkInvitationEmails 関数開始');
+  
+  // 認証確認
+  if (!request.auth || !request.auth.uid) {
+    throw new HttpsError('unauthenticated', 'この機能を使用するには管理者認証が必要です');
+  }
+  
+  try {
+    const { companyId } = request.data;
+    
+    if (!companyId) {
+      throw new HttpsError('invalid-argument', 'companyIdは必須です');
+    }
+    
+    console.log(`📧 会社ID ${companyId} の全アクティブ従業員に招待メールを送信開始`);
+    
+    // アクティブな従業員を取得
+    const employeesSnapshot = await db.collection('employees')
+      .where('companyId', '==', companyId)
+      .where('isActive', '==', true) // 在職者のみ
+      .get();
+    
+    if (employeesSnapshot.empty) {
+      throw new HttpsError('not-found', 'アクティブな従業員が見つかりません');
+    }
+    
+    console.log(`👥 対象従業員数: ${employeesSnapshot.size}件`);
+    
+    // 従業員リストをログに出力（デバッグ用）
+    const employeesList = employeesSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        employeeId: data.employeeId,
+        name: data.name,
+        email: data.email,
+        isActive: data.isActive
+      };
+    });
+    console.log('📋 対象従業員リスト:', employeesList);
+    
+    const results = [];
+    let successCount = 0;
+    let failCount = 0;
+    
+    // 各従業員に招待メール送信
+    for (const employeeDoc of employeesSnapshot.docs) {
+      const employeeData = employeeDoc.data();
+      
+      try {
+        console.log(`🔄 処理中の従業員: ${employeeData.employeeId} (${employeeData.name}) - ${employeeData.email}`);
+        
+        // メールアドレスがない従業員はスキップ
+        if (!employeeData.email) {
+          console.warn(`⚠️ メールアドレスなし: ${employeeData.employeeId}`);
+          failCount++;
+          results.push({
+            employeeId: employeeData.employeeId,
+            name: employeeData.name,
+            email: null,
+            success: false,
+            error: 'メールアドレスが設定されていません'
+          });
+          continue;
+        }
+        
+        // 招待メール送信
+        const emailResult = await sendEmployeeInvitationEmail(
+          employeeData.email, 
+          employeeData.name || employeeData.employeeId,
+          TEST_PASSWORD
+        );
+        
+        if (emailResult.success) {
+          successCount++;
+          console.log(`✅ 招待メール送信成功: ${employeeData.email}`);
+          
+          // メール送信履歴をFirestoreに記録
+          await employeeDoc.ref.update({
+            lastInvitationEmailSent: admin.firestore.FieldValue.serverTimestamp(),
+            lastInvitationEmailResult: 'success'
+          });
+          
+        } else {
+          failCount++;
+          console.error(`❌ 招待メール送信失敗: ${employeeData.email}`, emailResult.error);
+          
+          // 失敗履歴をFirestoreに記録
+          await employeeDoc.ref.update({
+            lastInvitationEmailResult: 'failed',
+            lastInvitationEmailError: emailResult.error
+          });
+        }
+        
+        results.push({
+          employeeId: employeeData.employeeId,
+          name: employeeData.name,
+          email: employeeData.email,
+          success: emailResult.success,
+          error: emailResult.error || null
+        });
+        
+        // API制限を避けるため少し待機
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+      } catch (employeeError) {
+        console.error(`❌ 従業員処理エラー: ${employeeData.employeeId}`, employeeError);
+        failCount++;
+        results.push({
+          employeeId: employeeData.employeeId,
+          name: employeeData.name,
+          email: employeeData.email,
+          success: false,
+          error: employeeError.message
+        });
+      }
+    }
+    
+    console.log(`🎉 一括招待メール送信完了: 成功 ${successCount}件、失敗 ${failCount}件`);
+    
+    return {
+      success: true,
+      totalCount: employeesSnapshot.size,
+      successCount,
+      failCount,
+      results,
+      message: `招待メール送信完了: 成功 ${successCount}件、失敗 ${failCount}件`
+    };
+    
+  } catch (error) {
+    console.error('❌ 一括招待メール送信エラー:', error);
+    throw new HttpsError('internal', `一括招待メール送信中にエラーが発生しました: ${error.message}`);
   }
 });
 
