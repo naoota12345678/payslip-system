@@ -1245,9 +1245,10 @@ exports.processBonusCSV = onCall(async (request) => {
       ヘッダー: headers
     });
 
-    // 従業員マッピング用のデータを準備
+    // 従業員マッピング用のデータを準備（在職者のみ）
     const employeesSnapshot = await db.collection('employees')
       .where('companyId', '==', companyId)
+      .where('isActive', '==', true) // 退職者は処理対象外
       .get();
 
     const employeeMap = new Map();
@@ -1594,7 +1595,13 @@ exports.sendPayslipNotifications = onCall(async (request) => {
         if (payslipData.userId) {
           const employeeDoc = await db.collection('employees').doc(payslipData.userId).get();
           if (employeeDoc.exists) {
-            employeeData = employeeDoc.data();
+            const empData = employeeDoc.data();
+            // 在職者のみ対象（退職者はメール送信対象外）
+            if (empData.isActive !== false) {
+              employeeData = empData;
+            } else {
+              console.log(`⚠️ 退職者のためメール送信スキップ: ${empData.employeeId} (${empData.name})`);
+            }
           }
         }
         
@@ -1603,6 +1610,7 @@ exports.sendPayslipNotifications = onCall(async (request) => {
           const employeeSnapshot = await db.collection('employees')
             .where('employeeId', '==', payslipData.employeeId)
             .where('companyId', '==', payslipData.companyId)
+            .where('isActive', '==', true) // 在職者のみ対象
             .get();
             
           if (!employeeSnapshot.empty) {

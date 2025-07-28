@@ -61,7 +61,7 @@ function Layout() {
   const handleLogout = async () => {
     try {
       await logout();
-      navigate('/login');
+      navigate('/');
     } catch (error) {
       console.error("ログアウトエラー:", error);
     }

@@ -26,7 +26,9 @@ function EmployeeForm() {
     gender: '',
     birthDate: '',
     hireDate: '',
-    departmentCode: ''
+    departmentCode: '',
+    isActive: true, // 在職状況（デフォルトは在職）
+    retiredDate: '' // 退職日
   });
   
   // UI状態
@@ -100,6 +102,8 @@ function EmployeeForm() {
           birthDate: data.birthDate || '',
           hireDate: data.hireDate || '',
           departmentCode: data.departmentCode || '', // 初期値として設定
+          isActive: data.isActive !== undefined ? data.isActive : true, // 既存データの場合は保持、なければtrue
+          retiredDate: data.retiredDate || '', // 退職日
           // 部門変換用の情報を保持
           _originalDepartmentId: data.departmentId || ''
         });
@@ -173,6 +177,16 @@ userType: ${debugInfo.userType}
         companyId: userDetails.companyId,
         updatedAt: new Date()
       };
+      
+      // 退職処理: isActiveがfalseの場合、退職日を設定
+      if (!saveData.isActive && !saveData.retiredDate) {
+        saveData.retiredDate = new Date().toISOString().split('T')[0]; // 今日の日付をYYYY-MM-DD形式で設定
+      }
+      
+      // 在職に戻る場合は退職日をクリア
+      if (saveData.isActive) {
+        saveData.retiredDate = '';
+      }
       
       if (isEditMode) {
         // 編集対象の従業員データを事前に取得してcompanyIdを確認
@@ -448,6 +462,44 @@ UID: ${result.data.uid}
                   onChange={(e) => handleInputChange('hireDate', e.target.value)}
                   className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
+              </div>
+              
+              {/* 在職状況 */}
+              <div className="border-t pt-4 mt-4">
+                <h4 className="text-md font-medium text-gray-900 mb-3">在職状況</h4>
+                
+                <div className="flex items-center space-x-4">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={employeeData.isActive}
+                      onChange={(e) => handleInputChange('isActive', e.target.checked)}
+                      className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">在職中</span>
+                  </label>
+                  {!employeeData.isActive && (
+                    <span className="text-sm text-red-600 font-medium">退職済み</span>
+                  )}
+                </div>
+                
+                {!employeeData.isActive && (
+                  <div className="mt-3">
+                    <label htmlFor="retiredDate" className="block text-sm font-medium text-gray-700">
+                      退職日
+                    </label>
+                    <input
+                      type="date"
+                      id="retiredDate"
+                      value={employeeData.retiredDate}
+                      onChange={(e) => handleInputChange('retiredDate', e.target.value)}
+                      className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      退職者の給与明細は3年間保持されますが、新しい明細作成やメール送信は停止されます。
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

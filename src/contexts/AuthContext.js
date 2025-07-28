@@ -171,6 +171,14 @@ export function AuthProvider({ children }) {
       } else {
         console.log('🚪 AuthContext: ログアウト状態 - userDetailsをクリア');
         setUserDetails(null);
+        
+        // ログアウト時にホームページにリダイレクト（携帯対応）
+        if (window.location.pathname !== '/' && 
+            window.location.pathname !== '/admin/login' && 
+            window.location.pathname !== '/employee/login') {
+          console.log('🏠 ログアウト検出 - ホームページにリダイレクト');
+          window.location.replace('/');
+        }
       }
       
       setLoading(false);

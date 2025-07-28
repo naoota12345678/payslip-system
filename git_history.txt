@@ -1,0 +1,50 @@
+40a9be4 従業員登録機能の完全修正と認証システム強化
+98ca97d Claude設定ファイルの更新
+feb4039 権限エラー修正とシステム安定化の完了
+eabaaf5 携帯印刷ボタンの反応性改善
+8c49526 従業員一括インポート機能にFirebase Auth自動作成を追加
+13e680d 賞与明細詳細画面を給与明細と完全統一：csvMappingsBonusコレクション使用
+0264805 賞与明細詳細画面を給与明細と完全に同じ実装に修正
+2e34a46 賞与明細詳細画面表示機能の修正 - 給与明細と同じアクセス権設定に統一 - リンクパスを/admin/bonus-payslipsに統一 - 賞与CSV関連機能の追加改良
+3c8c58c  合計項目移動表示の修正
+a0ed0bd CSVマッピング機能をシンプル化修正
+23f6655 fix: CSVマッピングの空のセル処理とドロップダウン表示の修正
+fe0e9a7 Refactor: CSVマッピング基本項目を大幅シンプル化
+f6c7de2 Fix: 基本項目ドロップダウンの選択保持とマッピングずれ問題を修正
+21b9afc Fix: CSVマッピング基本項目ドロップダウンで日本語項目名を表示するよう修正
+9efe424 PayslipList.jsにデバッグログを追加して給与明細一覧の問題を調査
+5302c20 fix: Change parameter extraction from destructuring to safe access
+d398a77 debug: Add detailed logging for uploadId error investigation
+5cc8f89 修正: Cloud Functions processCSV関数を完全実装、CSVマッピング設定から給与項目を直接生成、Node.js 20に更新
+226fead 修正: Firebase Storage バケット名を実際のバケット名に変更してCORS問題を解決
+113b8e5 修正: CSVアップロード画面でCSVマッピング設定から直接給与項目を生成
+1cf9a13 修正: CSVマッピング画面で項目名とヘッダー名が重複する問題を解決
+f8e3043 修正: CSVアップロード画面のエラーメッセージを更新
+f91b6b0 追加: CSVマッピング画面に項目移動機能を実装
+8a8acfe 修正: 既存CSVマッピングシステムを活用するシンプルなアプローチに変更
+e078233 機能追加: CSVアップロード画面に給与項目カテゴリ変更機能を追加
+441f8e2 シンタックスエラー修正とFirebase保存処理の強化
+00332e1 修正：従業員管理ルートの整合性確保、CSVマッピング重複エラー解決、設定保存の改善
+5411f09 従業員管理ルート追加とCSVマッピング重複チェック修正
+9b14fbe Firestore rulesを修正してcompanyユーザータイプも管理者として認識
+78c3fc0 権限エラーの詳細分析のためのデバッグログを追加
+90ebed3 Firestore rulesにcsvMappingコレクションの権限を追加
+3d0a094 CSVマッピング設定の保存読み込み処理を修正
+5bc6a1e Fix 3 major issues: 1) CSV header/display name mapping, 2) Remove duplicate save button, 3) Improve data persistence
+fb92408 Fix ItemTabs component safety for undefined mapping data
+b64ee78 Fix remaining columnIndex undefined errors in UI components
+1d72961 Fix multiple errors: add safe data handling, missing permissions, and UI safety
+6e88ac7 Fix row-based mapping error: handle undefined kyItems properly
+0565ef3 Fix row-based mapping: correct headerName and itemName assignment
+f8962bf fix: 削除されたEmployeeLoginコンポーネントへの参照を修正
+45c7280 feat: 任意の項目コードに対応したCSVマッピング機能を追加 - KY項目から項目コードに拡張 - 多様な項目コード形式に対応 (KY01, A01, ITEM01など) - UI表示を汎用的に変更 - 既存データの修正機能を追加
+5584e47 Fix admin registration issues - Use signup function instead of register for proper Firestore user creation - Set correct userType (company_admin) and role (admin) - Redirect to /admin/dashboard after successful registration - Update UI to match AdminLogin design - Fix navigation links
+6739b43 Separate admin and employee entrances - Add HomePage with role selection - Create AdminLogin and EmployeeLogin pages - Update routing structure (/admin/* and /employee/*) - Update Navigation with role-based paths
+7c78e2e Use older stable Firebase CLI version - Firebase CLI 10.9.2 with Node.js 16 - Add error handling for functions deploy
+0a123f0 Fix Firebase CLI compatibility issues - Change functions to object format - Use Node.js 18 and firebase-tools 11.30.0 - Deploy step by step for better error isolation
+514796b Fix: Use firebase-tools v13.0.0 to avoid Extensions API conflicts
+4501804 Split deploy: Separate Firestore and Functions to avoid Extensions interference
+566b85f Fix: Remove invalid --except-extensions flag
+ea93c88 Fix: Skip Firebase Extensions to resolve permission error
+1b68c38 Test complete deploy: Firebase Rules API enabled + full permissions
+967c0b0 Test deploy with Service Account User permissions

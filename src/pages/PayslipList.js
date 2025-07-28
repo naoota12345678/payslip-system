@@ -435,7 +435,23 @@ function PayslipList() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {payslipsForDate.map((payslip) => (
+                  {payslipsForDate
+                    .sort((a, b) => {
+                      // 従業員番号でソート（数値として比較）
+                      const aId = a.employeeId || '';
+                      const bId = b.employeeId || '';
+                      
+                      // 数値として解析できる場合は数値比較、そうでなければ文字列比較
+                      const aNum = parseInt(aId, 10);
+                      const bNum = parseInt(bId, 10);
+                      
+                      if (!isNaN(aNum) && !isNaN(bNum)) {
+                        return aNum - bNum;
+                      } else {
+                        return aId.localeCompare(bId);
+                      }
+                    })
+                    .map((payslip) => (
                     <tr key={payslip.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         {payslip.employeeId || 'N/A'}

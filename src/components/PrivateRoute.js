@@ -7,6 +7,27 @@ function PrivateRoute() {
   const { currentUser, userDetails, loading } = useAuth();
   const location = useLocation();
   
+  // useEffectを最初に配置（Hookのルールに従う）
+  React.useEffect(() => {
+    if (currentUser && !userDetails) {
+      const timer = setTimeout(() => {
+        if (currentUser && !userDetails) {
+          console.log('⚠️ userDetails取得がタイムアウト - ログインページにリダイレクト');
+          // 従業員向けページの場合は従業員ログインページにリダイレクト
+          if (location.pathname.startsWith('/employee/')) {
+            console.log('👷 従業員ページタイムアウト - 従業員ログインへ');
+            window.location.replace('/employee/login');
+          } else {
+            console.log('👤 管理者ページタイムアウト - 管理者ログインへ');
+            window.location.replace('/login');
+          }
+        }
+      }, 10000); // 10秒に延長
+
+      return () => clearTimeout(timer);
+    }
+  }, [currentUser, userDetails, location.pathname]);
+  
   console.log('🛡️ PrivateRoute チェック:', {
     path: location.pathname,
     loading,
@@ -40,26 +61,6 @@ function PrivateRoute() {
   // currentUserは存在するがuserDetailsがまだ読み込まれていない場合
   if (currentUser && !userDetails) {
     console.log('⏳ PrivateRoute: userDetails読み込み待機中');
-    
-    // 10秒以上待ってもuserDetailsが取得できない場合は適切なログインページにリダイレクト
-    React.useEffect(() => {
-      const timer = setTimeout(() => {
-        if (currentUser && !userDetails) {
-          console.log('⚠️ userDetails取得がタイムアウト - ログインページにリダイレクト');
-          // 従業員向けページの場合は従業員ログインページにリダイレクト
-          if (location.pathname.startsWith('/employee/')) {
-            console.log('👷 従業員ページタイムアウト - 従業員ログインへ');
-            // Navigate コンポーネントを使用してリダイレクト
-            window.location.replace('/employee/login');
-          } else {
-            console.log('👤 管理者ページタイムアウト - 管理者ログインへ');
-            window.location.replace('/login');
-          }
-        }
-      }, 10000); // 10秒に延長
-
-      return () => clearTimeout(timer);
-    }, [currentUser, userDetails, location.pathname]);
     
     return (
       <div className="flex justify-center items-center h-screen">

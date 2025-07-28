@@ -121,7 +121,14 @@ function EmployeeManagement() {
   };
 
   // ステータス表示用関数
-  const getStatusDisplay = (status) => {
+  const getStatusDisplay = (employee) => {
+    // 退職ステータスを最優先で表示
+    if (employee.isActive === false) {
+      return { text: '退職済み', color: 'bg-red-100 text-red-800' };
+    }
+    
+    // 在職者の場合、従来のステータスを表示
+    const status = employee.status;
     switch (status) {
       case 'preparation':
         return { text: '準備中', color: 'bg-gray-100 text-gray-800' };
@@ -132,7 +139,7 @@ function EmployeeManagement() {
       case 'active':
         return { text: 'アクティブ', color: 'bg-green-100 text-green-800' };
       default:
-        return { text: '準備中', color: 'bg-gray-100 text-gray-800' };
+        return { text: '在職中', color: 'bg-green-100 text-green-800' };
     }
   };
 
@@ -228,8 +235,8 @@ function EmployeeManagement() {
                     {getDepartmentName(employee.departmentCode, employee.departmentId)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusDisplay(employee.status || 'preparation').color}`}>
-                      {getStatusDisplay(employee.status || 'preparation').text}
+                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusDisplay(employee).color}`}>
+                      {getStatusDisplay(employee).text}
                     </span>
                   </td>
                   <td 
