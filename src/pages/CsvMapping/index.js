@@ -691,7 +691,7 @@ function CsvMapping() {
       />
       
       {/* マッピング設定セクション */}
-      {(parsedHeaders.length > 0 || (mappingConfig && (mappingConfig.incomeItems?.length > 0 || mappingConfig.deductionItems?.length > 0 || mappingConfig.attendanceItems?.length > 0 || mappingConfig.itemCodeItems?.length > 0))) && (
+      {(parsedHeaders.length > 0 || mappingConfig) && (
         <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
           <div className="p-6">
             <JsonImportPanel 
