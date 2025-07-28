@@ -151,7 +151,7 @@ function AdminDashboard() {
         // 総支給額計算
         let totalAmount = 0;
         monthlyPayslipsSnapshot.forEach(doc => {
-          totalAmount += doc.data().netAmount || 0;
+          totalAmount += doc.data().totalIncome || 0;
         });
         
         setStats({
@@ -248,7 +248,7 @@ function AdminDashboard() {
           <h3 className="text-sm font-medium text-gray-500 uppercase mb-1">今月の支給総額</h3>
           <p className="text-2xl font-bold text-red-600">{formatCurrency(stats.totalAmount)}</p>
           <p className="text-sm text-gray-500 mt-2">
-            今月の給与手取り総額
+            今月の給与支給総額
           </p>
         </div>
       </div>
@@ -366,7 +366,7 @@ function AdminDashboard() {
                         {formatDate(payslip.paymentDate)}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-right">
-                        {formatCurrency(payslip.netAmount)}
+                        {formatCurrency(payslip.totalIncome)}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
                         <Link
