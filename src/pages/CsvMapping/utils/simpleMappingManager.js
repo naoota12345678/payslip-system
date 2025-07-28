@@ -75,8 +75,8 @@ export const createMappingFromInput = (line1, line2) => {
     const headerName = headerNames[i] || '';    // 2行目 = headerName
     
     const itemData = {
-      headerName: headerName,  // 2行目（ヘッダー名）
-      itemName: itemName,      // 1行目（項目名）
+      headerName: headerName,  // 2行目（KYコードなど）
+      itemName: itemName,      // 1行目（日本語表示名）
       columnIndex: i,
       isVisible: true,
       id: generateItemId(headerName, i)
