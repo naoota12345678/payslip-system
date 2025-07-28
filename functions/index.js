@@ -211,6 +211,101 @@ exports.simpleTest = onCall(async (request) => {
   };
 });
 
+// 従業員のisActiveフィールドを一括修正する関数
+exports.fixEmployeeActiveStatus = onCall({ 
+  enforceAppCheck: false,
+  invoker: 'public'
+}, async (request) => {
+  console.log('🔧 従業員isActive状態修正関数が呼び出されました');
+  
+  // 認証確認
+  if (!request.auth || !request.auth.uid) {
+    throw new HttpsError('unauthenticated', 'この機能を使用するには管理者認証が必要です');
+  }
+  
+  try {
+    const { companyId } = request.data;
+    
+    if (!companyId) {
+      throw new HttpsError('invalid-argument', 'companyIdは必須です');
+    }
+    
+    // 指定した会社の全従業員を取得
+    const employeesSnapshot = await db.collection('employees')
+      .where('companyId', '==', companyId)
+      .get();
+      
+    console.log(`📊 ${employeesSnapshot.size}件の従業員データを確認中...`);
+    
+    let fixedCount = 0;
+    let skippedCount = 0;
+    const results = [];
+    
+    for (const doc of employeesSnapshot.docs) {
+      const employeeData = doc.data();
+      const docId = doc.id;
+      
+      // isActiveが既にtrueまたはfalseに設定されている場合はスキップ  
+      if (employeeData.isActive === true || employeeData.isActive === false) {
+        console.log(`⏭️  スキップ: ${employeeData.email || docId} (isActive既に設定済み: ${employeeData.isActive})`);
+        skippedCount++;
+        results.push({ 
+          email: employeeData.email || docId, 
+          status: 'skipped', 
+          reason: `isActive既に設定済み: ${employeeData.isActive}` 
+        });
+        continue;
+      }
+      
+      try {
+        // isActiveをtrueに設定（デフォルトで在職中とする）
+        await doc.ref.update({
+          isActive: true,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        
+        console.log(`✅ 修正完了: ${employeeData.email || docId} -> isActive: true`);
+        fixedCount++;
+        results.push({ 
+          email: employeeData.email || docId, 
+          status: 'fixed', 
+          isActive: true 
+        });
+        
+      } catch (updateError) {
+        console.error(`❌ 更新エラー: ${employeeData.email || docId}`, updateError.message);
+        results.push({ 
+          email: employeeData.email || docId, 
+          status: 'error', 
+          reason: updateError.message 
+        });
+        skippedCount++;
+      }
+    }
+    
+    const summary = {
+      fixed: fixedCount,
+      skipped: skippedCount,
+      total: fixedCount + skippedCount,
+      results: results
+    };
+    
+    console.log('🎯 従業員isActive修正完了:', summary);
+    
+    return {
+      success: true,
+      summary: summary
+    };
+    
+  } catch (error) {
+    console.error('❌ 従業員isActive修正エラー:', error);
+    throw new HttpsError(
+      'internal',
+      `従業員isActive修正エラー: ${error.message}`
+    );
+  }
+});
+
 // 従業員作成時にFirebase Authアカウントも作成
 // 従業員UIDを修正する一時的な関数
 exports.fixEmployeeUIDs = onCall({ 

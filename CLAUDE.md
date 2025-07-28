@@ -8,9 +8,8 @@
 3. **個別メール送信機能** - 各従業員の行に「メール送信」ボタンを追加
 4. **メールテンプレート改善** - 会社情報、メール不達対策、スマホアクセス問題対応を含む詳細なメール内容
 5. **UI実装完了** - フロントエンドのデプロイ完了
-
-### 🔧 現在対応中の問題
-**Gmail SMTP接続問題** - 個別・一括送信ともにメールが実際に送信されない
+6. **GitHub Actions自動デプロイ** - git pushで自動的にFirebase Functionsがデプロイされる仕組みを構築
+7. **メール送信機能完全動作** - 個別・一括ともに正常動作確認済み
 
 ## 技術的な実装内容
 
@@ -26,31 +25,55 @@
 - エラーハンドリングと進捗表示
 
 ### Gmail SMTP設定
+
+#### ⚠️ 重要な注意事項
+1. **Firebase Functions v2では環境変数を使用**
+   - `functions.config()`は廃止されました
+   - 環境変数（`process.env`）を使用してください
+
+2. **GitHub Secretsで管理（推奨）**
+   - `GMAIL_USER`: 送信用Gmailアドレス
+   - `GMAIL_APP_PASSWORD`: Googleアプリパスワード（16文字）
+   - GitHub Actionsで自動的に環境変数として設定されます
+
+3. **ローカル開発時**
+   - `functions/.env.local`ファイルに設定
+   ```
+   GMAIL_USER=roumu3737@gmail.com
+   GMAIL_APP_PASSWORD=16文字のアプリパスワード
+   ```
+
+4. **アプリパスワードの取得方法**
+   - Googleアカウント設定 → セキュリティ → 2段階認証プロセス
+   - アプリパスワード → 「メール」を選択して生成
+   - 生成された16文字のパスワードをコピー
+
+## 変更履歴（2025-07-28）
+
+### 解決した問題と修正内容
+
+1. **Gmail SMTP接続エラー**
+   - 原因: Firebase Functions v2では`functions.config()`が廃止
+   - 修正: 環境変数（`process.env`）を使用するよう変更
+   - nodemailer APIの誤り修正: `createTransporter` → `createTransport`
+
+2. **一括メール送信の対象者問題**
+   - 原因: 既存従業員の`isActive`フィールドが未設定
+   - 修正: Firebase Consoleで手動で`isActive: true`を設定
+   - 新規登録者は自動的に`isActive: true`が設定される
+
+3. **デプロイプロセスの改善**
+   - GitHub Actions導入により自動デプロイ実現
+   - 環境変数はGitHub Secretsで安全に管理
+
+### デプロイ方法（現在）
+
+#### GitHub経由の自動デプロイ（推奨）
 ```bash
-firebase functions:config:set gmail.user="送信用Gmail@gmail.com" gmail.app_password="16文字のアプリパスワード"
-```
-
-## 現在の問題と対処方法
-
-### 問題: メールが送信されない
-- **症状**: ブラウザでは「送信成功」と表示されるが、実際にはメールが届かず、Gmail送信済みにも残らない
-- **設定確認済み**: Gmail設定、アプリパスワード（16文字）は正しく設定済み
-
-### 最新の修正内容（未デプロイ）
-```javascript
-// Gmail SMTP接続の改善
-- 接続テスト機能追加（transporter.verify()）
-- 非同期初期化対応
-- 詳細なエラーログ追加
-- SMTP設定の詳細化（ホスト、ポート指定）
-```
-
-### 次回作業時の手順
-
-#### 1. 修正版のデプロイ
-```bash
-cd C:\Users\naoot\payslip-system
-firebase deploy --only functions
+git add -A
+git commit -m "変更内容"
+git push origin main
+# GitHub Actionsが自動的にデプロイを実行
 ```
 
 #### 2. Gmail設定テスト
@@ -137,11 +160,42 @@ Firebase Console: https://console.firebase.google.com/project/kyuyoprint/functio
 2. 別のブラウザで試行
 3. プライベートブラウジングモードで試行
 
-## 次回継続時の優先順位
+## 今後の注意事項
 
-1. **高**: Gmail SMTP接続問題の解決
-2. **中**: 一括メール送信の動作確認
-3. **低**: Sendlyへの切り替え準備
+### 🚨 Gmail設定で起きやすいエラーと対策
+
+1. **nodemailer関数名の間違い**
+   - ❌ 間違い: `nodemailer.createTransporter()`
+   - ✅ 正しい: `nodemailer.createTransport()`
+
+2. **環境変数の設定漏れ**
+   - GitHub Secretsに`GMAIL_USER`と`GMAIL_APP_PASSWORD`を必ず設定
+   - ローカルテスト時は`functions/.env.local`に記載
+
+3. **isActiveフィールドの確認**
+   - 新規従業員登録時は自動的に`isActive: true`が設定される
+   - 既存従業員でメール送信対象から漏れる場合は、Firebase Consoleで確認
+
+4. **デプロイ方法**
+   - 必ずGitHub経由でデプロイ（環境変数が確実に設定される）
+   - `git push`するだけで自動デプロイされる
+
+### メール送信テスト手順
+
+1. **個別送信テスト**
+   - 従業員管理画面で特定の従業員の「メール送信」ボタンをクリック
+   - ログで`✅ メール送信成功:`を確認
+
+2. **一括送信テスト**
+   - 「一括設定メール送信」ボタンをクリック
+   - 対象従業員数が正しいか確認（`isActive: true`の従業員のみ）
+
+### トラブル時の確認順序
+
+1. Firebase Consoleでログ確認
+2. GitHub Actionsのデプロイステータス確認
+3. 環境変数の設定確認（GitHub Secrets）
+4. `isActive`フィールドの設定確認（Firebase Console）
 
 ---
 
