@@ -34,7 +34,7 @@ const SystemMonitor = () => {
       // 2. Firestore チェック
       try {
         const testQuery = query(
-          collection(db, 'users'),
+          collection(db, 'employees'),
           orderBy('createdAt', 'desc'),
           limit(1)
         );
