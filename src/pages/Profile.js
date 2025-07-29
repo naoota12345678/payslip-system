@@ -221,64 +221,33 @@ function Profile() {
         <div className="p-6">
           <h2 className="text-lg font-semibold mb-4">パスワード変更</h2>
           
-          {passwordError && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              {passwordError}
-            </div>
-          )}
-          
-          <form onSubmit={handlePasswordChange} className="space-y-4">
-            <div>
-              <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700">
-                現在のパスワード
-              </label>
-              <input
-                id="currentPassword"
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              />
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700">
-                  新しいパスワード
-                </label>
-                <input
-                  id="newPassword"
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
               </div>
-              
-              <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                  新しいパスワード（確認）
-                </label>
-                <input
-                  id="confirmPassword"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
+              <div className="ml-3 flex-1">
+                <h3 className="text-sm font-medium text-blue-800">
+                  パスワードの変更
+                </h3>
+                <div className="mt-2 text-sm text-blue-700">
+                  <p>セキュリティのため、パスワード変更は専用ページで行います。</p>
+                </div>
+                <div className="mt-4">
+                  <div className="-mx-2 -my-1.5 flex">
+                    <a
+                      href="/employee/change-password"
+                      className="bg-blue-50 px-2 py-1.5 rounded-md text-sm font-medium text-blue-800 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      パスワード変更ページへ
+                    </a>
+                  </div>
+                </div>
               </div>
             </div>
-            
-            <div className="pt-2">
-              <button
-                type="submit"
-                disabled={loading}
-                className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:bg-green-300"
-              >
-                {loading ? '更新中...' : 'パスワードを変更'}
-              </button>
-            </div>
-          </form>
+          </div>
         </div>
       </div>
     </div>
