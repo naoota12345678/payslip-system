@@ -32,10 +32,9 @@ const BonusSimpleCSVUpload = () => {
 
   // 🔧 CSVヘッダーから新しい形式のマッピングデータを生成・保存（賞与版）
   const saveHeaderMappings = async (headers, mappingSettings) => {
-    if (!userDetails?.companyId || !headers || headers.length === 0) {
-      console.warn('⚠️ saveHeaderMappings: 必要なデータが不足しています（賞与）');
-      return;
-    }
+    // 【緊急無効化】この関数は賞与CSVアップロード時にマッピング設定を破壊するため完全無効化
+    console.log('🚫 saveHeaderMappings関数は無効化されました（賞与） - マッピング設定の保護のため');
+    return;
 
     try {
       console.log('📤 新しい形式でマッピングデータを保存中...（賞与）');

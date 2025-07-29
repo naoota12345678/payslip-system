@@ -32,10 +32,9 @@ const SimpleCSVUpload = () => {
 
   // 🔧 CSVヘッダーから新しい形式のマッピングデータを生成・保存
   const saveHeaderMappings = async (headers, mappingSettings) => {
-    if (!userDetails?.companyId || !headers || headers.length === 0) {
-      console.warn('⚠️ saveHeaderMappings: 必要なデータが不足しています');
-      return;
-    }
+    // 【緊急無効化】この関数はCSVアップロード時にマッピング設定を破壊するため完全無効化
+    console.log('🚫 saveHeaderMappings関数は無効化されました - マッピング設定の保護のため');
+    return;
 
     try {
       console.log('📤 新しい形式でマッピングデータを保存中...');
