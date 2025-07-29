@@ -50,8 +50,12 @@ function CSVMappingSettings() {
           ...doc.data()
         }));
         
-        // 表示順でソート
-        items.sort((a, b) => a.displayOrder - b.displayOrder);
+        // 表示順でソート（安全な数値チェック付き）
+        items.sort((a, b) => {
+          const orderA = (typeof a.displayOrder === 'number' && !isNaN(a.displayOrder)) ? a.displayOrder : 999;
+          const orderB = (typeof b.displayOrder === 'number' && !isNaN(b.displayOrder)) ? b.displayOrder : 999;
+          return orderA - orderB;
+        });
         console.log("Loaded payroll items:", items.length);
         setPayrollItems(items);
         
@@ -447,8 +451,12 @@ function MappingTable({ items, csvColumns, mappings, onUpdateMapping }) {
     return <p className="text-gray-500 italic">項目が登録されていません</p>;
   }
   
-  // 項目を表示順でソート
-  const sortedItems = [...items].sort((a, b) => a.displayOrder - b.displayOrder);
+  // 項目を表示順でソート（安全な数値チェック付き）
+  const sortedItems = [...items].sort((a, b) => {
+    const orderA = (typeof a.displayOrder === 'number' && !isNaN(a.displayOrder)) ? a.displayOrder : 999;
+    const orderB = (typeof b.displayOrder === 'number' && !isNaN(b.displayOrder)) ? b.displayOrder : 999;
+    return orderA - orderB;
+  });
   
   return (
     <table className="w-full border-collapse">

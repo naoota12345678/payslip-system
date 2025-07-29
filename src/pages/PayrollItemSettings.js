@@ -101,8 +101,12 @@ function PayrollItemSettings() {
           ...doc.data()
         }));
         
-        // 表示順でソート
-        items.sort((a, b) => a.displayOrder - b.displayOrder);
+        // 表示順でソート（安全な数値チェック付き）
+        items.sort((a, b) => {
+          const orderA = (typeof a.displayOrder === 'number' && !isNaN(a.displayOrder)) ? a.displayOrder : 999;
+          const orderB = (typeof b.displayOrder === 'number' && !isNaN(b.displayOrder)) ? b.displayOrder : 999;
+          return orderA - orderB;
+        });
         setPayrollItems(items);
         console.log("Loaded payroll items:", items.length);
       } catch (error) {
@@ -134,10 +138,13 @@ function PayrollItemSettings() {
 
       const newItemRef = doc(collection(db, "payrollItems"));
       
-      // 同じタイプの項目の最大表示順を取得
+      // 同じタイプの項目の最大表示順を取得（安全な数値チェック付き）
       const sameTypeItems = payrollItems.filter(item => item.type === newItem.type);
-      const maxDisplayOrder = sameTypeItems.length > 0 
-        ? Math.max(...sameTypeItems.map(item => item.displayOrder))
+      const validDisplayOrders = sameTypeItems
+        .map(item => item.displayOrder)
+        .filter(order => typeof order === 'number' && !isNaN(order));
+      const maxDisplayOrder = validDisplayOrders.length > 0 
+        ? Math.max(...validDisplayOrders)
         : -1;
       
       const newPayrollItem = {
@@ -182,10 +189,13 @@ function PayrollItemSettings() {
         return;
       }
 
-      // 同じタイプの項目の最大表示順を取得
+      // 同じタイプの項目の最大表示順を取得（安全な数値チェック付き）
       const sameTypeItems = payrollItems.filter(item => item.type === activeTab);
-      let nextDisplayOrder = sameTypeItems.length > 0 
-        ? Math.max(...sameTypeItems.map(item => item.displayOrder)) + 1
+      const validDisplayOrders = sameTypeItems
+        .map(item => item.displayOrder)
+        .filter(order => typeof order === 'number' && !isNaN(order));
+      let nextDisplayOrder = validDisplayOrders.length > 0 
+        ? Math.max(...validDisplayOrders) + 1
         : 0;
 
       // バッチ処理で一括追加

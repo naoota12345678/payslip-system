@@ -135,7 +135,23 @@ function BonusPayslipDetail() {
           ];
 
           allCategories.forEach(category => {
-            category.items.forEach((item, index) => {
+            // カテゴリ内でソート（displayOrder > columnIndex > 配列index の優先順位）
+            const sortedItems = category.items.slice().sort((a, b) => {
+              // 安全な数値変換でクラッシュを防止
+              const orderA = (typeof a.displayOrder === 'number' && !isNaN(a.displayOrder)) 
+                ? a.displayOrder 
+                : (typeof a.columnIndex === 'number' && !isNaN(a.columnIndex)) 
+                  ? a.columnIndex 
+                  : 999;
+              const orderB = (typeof b.displayOrder === 'number' && !isNaN(b.displayOrder)) 
+                ? b.displayOrder 
+                : (typeof b.columnIndex === 'number' && !isNaN(b.columnIndex)) 
+                  ? b.columnIndex 
+                  : 999;
+              return orderA - orderB;
+            });
+
+            sortedItems.forEach((item, index) => {
               // CSVデータに対応する値があるかチェック
               const value = payslipData.items[item.headerName];
               if (value === undefined || value === null) {
@@ -147,12 +163,10 @@ function BonusPayslipDetail() {
                 return;
               }
 
-                             // 表示名を決定（itemName優先、なければheaderName）
-               const displayName = (item.itemName && item.itemName.trim() !== '') 
-                 ? item.itemName 
-                 : item.headerName;
-
-
+              // 表示名を決定（itemName優先、なければheaderName）
+              const displayName = (item.itemName && item.itemName.trim() !== '') 
+                ? item.itemName 
+                : item.headerName;
 
               const processedItem = {
                 id: item.headerName,
@@ -160,7 +174,11 @@ function BonusPayslipDetail() {
                 value: value,
                 type: category.type,
                 csvColumn: item.headerName,
-                order: index
+                order: (typeof item.displayOrder === 'number' && !isNaN(item.displayOrder)) 
+                  ? item.displayOrder 
+                  : (typeof item.columnIndex === 'number' && !isNaN(item.columnIndex)) 
+                    ? item.columnIndex 
+                    : index
               };
 
               // ハードコーディングされた分類を削除し、設定に従って分類
