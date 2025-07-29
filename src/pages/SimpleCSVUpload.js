@@ -373,19 +373,22 @@ const SimpleCSVUpload = () => {
       // CSVマッピング設定は専用画面でのみ変更可能とする
       // await saveHeaderMappings(headers, mappingSettings);
       
-      // CSVアップロード情報を保存
-      const uploadData = await addDoc(collection(db, 'csvUploads'), {
-        fileName: file.name,
-        companyId: userDetails.companyId,
-        paymentDate: new Date(paymentDate),
-        paymentYear,
-        paymentMonth,
-        type: 'payslip',
-        status: 'processing',
-        recordCount: csvData.length,
-        createdAt: serverTimestamp(),
-        createdBy: userDetails.uid
-      });
+      // CSVアップロード情報を保存（csvUploads削除のためコメントアウト）
+      // const uploadData = await addDoc(collection(db, 'csvUploads'), {
+      //   fileName: file.name,
+      //   companyId: userDetails.companyId,
+      //   paymentDate: new Date(paymentDate),
+      //   paymentYear,
+      //   paymentMonth,
+      //   type: 'payslip',
+      //   status: 'processing',
+      //   recordCount: csvData.length,
+      //   createdAt: serverTimestamp(),
+      //   createdBy: userDetails.uid
+      // });
+      
+      // uploadIdを生成（Firestoreの自動生成IDの代わり）
+      const uploadData = { id: `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}` };
 
       // 各行のデータを給与明細として保存
       for (let i = 0; i < csvData.length; i++) {
@@ -687,7 +690,10 @@ const SimpleCSVUpload = () => {
         setSendNotification(false);
         setNotificationDate('');
         setSendImmediately(false);
-        document.getElementById('csvFileInput').value = '';
+        const fileInput = document.getElementById('csvFileInput');
+        if (fileInput) {
+          fileInput.value = '';
+        }
       }, 5000);
 
     } catch (error) {

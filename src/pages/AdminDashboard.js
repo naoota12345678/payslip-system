@@ -9,7 +9,7 @@ import SystemMonitor from '../components/SystemMonitor';
 function AdminDashboard() {
   const { currentUser, userDetails } = useAuth();
   const [recentPayslips, setRecentPayslips] = useState([]);
-  const [recentUploads, setRecentUploads] = useState([]);
+  // const [recentUploads, setRecentUploads] = useState([]); // csvUploads削除のためコメントアウト
   const [stats, setStats] = useState({
     totalEmployees: 0,
     totalPayslips: 0,
@@ -36,7 +36,6 @@ function AdminDashboard() {
         
         await Promise.all([
           fetchRecentPayslips(),
-          fetchRecentUploads(),
           calculateStats()
         ]);
       } catch (err) {
@@ -80,39 +79,8 @@ function AdminDashboard() {
       }
     };
     
-    // 最近のCSVアップロードを取得
-    const fetchRecentUploads = async () => {
-      try {
-        console.log('🔍 AdminDashboard: csvUploadsクエリ実行中...', userDetails.companyId);
-        const q = query(
-          collection(db, "csvUploads"),
-          where("companyId", "==", userDetails.companyId),
-          orderBy("uploadDate", "desc"),
-          limit(5)
-        );
-        
-        const querySnapshot = await getDocs(q);
-        const uploadList = [];
-        
-        querySnapshot.forEach((doc) => {
-          uploadList.push({
-            id: doc.id,
-            ...doc.data(),
-            uploadDate: doc.data().uploadDate?.toDate(),
-            paymentDate: doc.data().paymentDate?.toDate()
-          });
-        });
-        
-        setRecentUploads(uploadList);
-      } catch (err) {
-        console.error("❌ AdminDashboard: アップロードデータの取得エラー:", err);
-        console.error("エラー詳細:", {
-          code: err.code,
-          message: err.message,
-          companyId: userDetails.companyId
-        });
-      }
-    };
+    // csvUploads削除のため、この関数は無効化
+    // const fetchRecentUploads = async () => { ... };
     
     // 統計データ計算
     const calculateStats = async () => {
@@ -133,26 +101,46 @@ function AdminDashboard() {
         const allPayslipsSnapshot = await getDocs(allPayslipsQuery);
         const totalPayslips = allPayslipsSnapshot.size;
         
-        // 今月の給与明細数と総支給額
-        const now = new Date();
-        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        console.log('🔍 AdminDashboard: 今月の給与明細クエリ実行中...', {
-          companyId: userDetails.companyId,
-          firstDayOfMonth: firstDayOfMonth
-        });
-        const monthlyPayslipsQuery = query(
+        // 最新の支払日の給与明細を取得
+        console.log('🔍 AdminDashboard: 最新の支払日を検索中...');
+        const latestPaymentQuery = query(
           collection(db, "payslips"),
           where("companyId", "==", userDetails.companyId),
-          where("paymentDate", ">=", Timestamp.fromDate(firstDayOfMonth))
+          orderBy("paymentDate", "desc"),
+          limit(1)
         );
-        const monthlyPayslipsSnapshot = await getDocs(monthlyPayslipsQuery);
-        const monthlyPayslips = monthlyPayslipsSnapshot.size;
+        const latestPaymentSnapshot = await getDocs(latestPaymentQuery);
         
-        // 総支給額計算
+        let monthlyPayslips = 0;
         let totalAmount = 0;
-        monthlyPayslipsSnapshot.forEach(doc => {
-          totalAmount += doc.data().totalIncome || 0;
-        });
+        
+        if (!latestPaymentSnapshot.empty) {
+          const latestPaymentDate = latestPaymentSnapshot.docs[0].data().paymentDate;
+          console.log('🔍 AdminDashboard: 最新支払日の給与明細を取得中...', {
+            paymentDate: latestPaymentDate?.toDate()
+          });
+          
+          // 同じ支払日の全ての給与明細を取得
+          const samePaymentDateQuery = query(
+            collection(db, "payslips"),
+            where("companyId", "==", userDetails.companyId),
+            where("paymentDate", "==", latestPaymentDate)
+          );
+          const samePaymentDateSnapshot = await getDocs(samePaymentDateQuery);
+          monthlyPayslips = samePaymentDateSnapshot.size;
+          
+          // 総支給額計算
+          console.log(`🔍 AdminDashboard: 支給額を計算中... (明細数: ${samePaymentDateSnapshot.size})`);
+          samePaymentDateSnapshot.forEach(doc => {
+            const data = doc.data();
+            const income = data.totalIncome || 0;
+            totalAmount += income;
+            console.log(`従業員: ${data.employeeId}, 支給額: ${income}`);
+          });
+          console.log(`📊 最新支払日の総支給額: ${totalAmount}`);
+        } else {
+          console.log('⚠️ AdminDashboard: 給与明細データがありません');
+        }
         
         setStats({
           totalEmployees,
@@ -234,21 +222,21 @@ function AdminDashboard() {
           </p>
         </div>
         
-        {/* 今月の支給数 */}
+        {/* 最新支払日の支給数 */}
         <div className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-sm font-medium text-gray-500 uppercase mb-1">今月の支給数</h3>
+          <h3 className="text-sm font-medium text-gray-500 uppercase mb-1">最新支払日の支給数</h3>
           <p className="text-2xl font-bold text-indigo-600">{stats.monthlyPayslips}</p>
           <p className="text-sm text-gray-500 mt-2">
-            今月の給与支給件数
+            最新支払日の給与明細件数
           </p>
         </div>
         
-        {/* 今月の支給総額 */}
+        {/* 最新支払日の支給総額 */}
         <div className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-sm font-medium text-gray-500 uppercase mb-1">今月の支給総額</h3>
+          <h3 className="text-sm font-medium text-gray-500 uppercase mb-1">最新支払日の支給総額</h3>
           <p className="text-2xl font-bold text-red-600">{formatCurrency(stats.totalAmount)}</p>
           <p className="text-sm text-gray-500 mt-2">
-            今月の給与支給総額
+            最新支払日の総支給額
           </p>
         </div>
       </div>
@@ -386,70 +374,7 @@ function AdminDashboard() {
           )}
         </div>
         
-        {/* 最近のアップロード */}
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">最近のCSVアップロード</h3>
-            <Link 
-              to="/upload-history" 
-              className="text-sm text-blue-600 hover:text-blue-800"
-            >
-              履歴を表示 →
-            </Link>
-          </div>
-          
-          {recentUploads.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ファイル名
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      アップロード日
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ステータス
-                    </th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      処理件数
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {recentUploads.map((upload) => (
-                    <tr key={upload.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        {upload.fileName || 'N/A'}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        {formatDate(upload.uploadDate)}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          upload.status === 'completed' 
-                            ? 'bg-green-100 text-green-800' 
-                            : upload.status === 'error'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {upload.status === 'completed' ? '完了' : 
-                           upload.status === 'error' ? 'エラー' : '処理中'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-right">
-                        {upload.processedCount || 0}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-gray-500 text-center py-4">アップロード履歴がありません</p>
-          )}
-        </div>
+        {/* csvUploads削除のため、アップロード履歴セクションを削除 */}
       </div>
     </div>
   );

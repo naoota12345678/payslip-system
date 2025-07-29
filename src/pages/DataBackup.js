@@ -60,7 +60,7 @@ function DataBackup() {
         'users', 
         'payslips', 
         'payrollItems', 
-        'csvUploads',
+        // 'csvUploads', // 削除済み
         'departments',
         'companies'
       ];

@@ -24,7 +24,8 @@
       "Bash(rm:*)",
       "Bash(wsl:*)",
       "Bash(where git)",
-      "Bash(npm config:*)"
+      "Bash(npm config:*)",
+      "Bash(git push:*)"
     ],
     "deny": []
   }
