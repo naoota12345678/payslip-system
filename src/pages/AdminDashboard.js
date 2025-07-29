@@ -21,7 +21,7 @@ function AdminDashboard() {
 
   useEffect(() => {
     // 管理者権限チェック
-    if (!userDetails?.role === 'admin') {
+    if (userDetails?.role !== 'admin') {
       setError("このページへのアクセス権限がありません");
       setLoading(false);
       return;
