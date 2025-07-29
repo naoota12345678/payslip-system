@@ -370,9 +370,9 @@ const BonusSimpleCSVUpload = () => {
       const mappingSettings = await fetchMappingSettings();
       console.log('🔧 使用するマッピング設定（賞与）:', mappingSettings);
 
-      // 【追加】CSVヘッダーから新しい形式のマッピングデータを生成・保存
-      console.log('🧹 既存のマッピングデータをクリアして新しいデータで上書きします（賞与）');
-      await saveHeaderMappings(headers, mappingSettings);
+      // 【削除】この処理は賞与データアップロード時にマッピング設定を破壊するため削除
+      // CSVマッピング設定は専用画面でのみ変更可能とする
+      // await saveHeaderMappings(headers, mappingSettings);
 
       // 各行のデータを賞与明細として保存
       for (let i = 0; i < csvData.length; i++) {
