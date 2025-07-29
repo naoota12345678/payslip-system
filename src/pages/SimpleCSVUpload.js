@@ -370,9 +370,10 @@ const SimpleCSVUpload = () => {
       const mappingSettings = await fetchMappingSettings();
       console.log('🔧 使用するマッピング設定:', mappingSettings);
 
-      // 【追加】CSVヘッダーから新しい形式のマッピングデータを生成・保存
-      console.log('🧹 既存のマッピングデータをクリアして新しいデータで上書きします');
-      await saveHeaderMappings(headers, mappingSettings);
+      // 【無効化】CSVヘッダーから新しい形式のマッピングデータを生成・保存
+      // この処理は既存のマッピング設定を破壊する可能性があるため無効化
+      // console.log('🧹 既存のマッピングデータをクリアして新しいデータで上書きします');
+      // await saveHeaderMappings(headers, mappingSettings);
       
       // CSVアップロード情報を保存
       const uploadData = await addDoc(collection(db, 'csvUploads'), {
