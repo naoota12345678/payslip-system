@@ -370,9 +370,8 @@ const SimpleCSVUpload = () => {
       const mappingSettings = await fetchMappingSettings();
       console.log('🔧 使用するマッピング設定:', mappingSettings);
 
-      // 【無効化】CSVヘッダーから新しい形式のマッピングデータを生成・保存
-      // この処理は既存のマッピング設定を破壊する可能性があるため無効化
-      // console.log('🧹 既存のマッピングデータをクリアして新しいデータで上書きします');
+      // 【削除】この処理は給与データアップロード時にマッピング設定を破壊するため削除
+      // CSVマッピング設定は専用画面でのみ変更可能とする
       // await saveHeaderMappings(headers, mappingSettings);
       
       // CSVアップロード情報を保存
