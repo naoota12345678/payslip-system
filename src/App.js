@@ -320,14 +320,6 @@ function HomePage() {
           </Link>
         </div>
         
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-500">
-            初回利用の管理者の方は
-            <Link to="/admin/register" className="text-blue-600 hover:underline ml-1">
-              こちらから登録
-            </Link>
-          </p>
-        </div>
       </div>
     </div>
   );
