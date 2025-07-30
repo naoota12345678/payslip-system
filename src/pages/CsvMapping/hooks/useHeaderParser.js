@@ -29,7 +29,7 @@ export const useHeaderParser = (
   const [rowBasedInput, setRowBasedInput] = useState('');
   const [parsedHeaders, setParsedHeaders] = useState([]);
   const [kyMappingMode, setKyMappingMode] = useState(false);
-  const [rowMappingMode, setRowMappingMode] = useState(false);
+  const [rowMappingMode, setRowMappingMode] = useState(true); // デフォルトで行ベースマッピングモードを有効
 
   // 初期マッピング設定がある場合はヘッダー情報を復元
   useEffect(() => {
