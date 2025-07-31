@@ -3,7 +3,6 @@ import React from 'react';
 
 function PayslipPreview({ payslipData, showDetailedInfo = false, isBonus = false }) {
   // PayslipDetailで既に分類済みの項目を使用
-  
 
 
   // 金額フォーマット関数
