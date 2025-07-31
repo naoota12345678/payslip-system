@@ -262,7 +262,8 @@ const BonusSimpleCSVUpload = () => {
         departmentCodeColumn,
         simpleMapping,
         itemCategories,
-        visibilitySettings
+        visibilitySettings,
+        mainFields: data.mainFields || {} // mainFieldsも返す
       };
 
       console.log('✅ 賞与マッピング設定取得完了:', {
@@ -511,12 +512,43 @@ const BonusSimpleCSVUpload = () => {
           'employeeIdが空': !employeeId
         });
 
+        // 基本項目の値を取得（mainFieldsマッピングを使用）
+        let employeeName = '';
+        let paymentDateValue = '';
+        let identificationCode = '';
+        
+        if (mappingSettings.mainFields) {
+          // 従業員名を取得
+          if (mappingSettings.mainFields.employeeName && mappingSettings.mainFields.employeeName.headerName) {
+            employeeName = rowData[mappingSettings.mainFields.employeeName.headerName] || '';
+            console.log(`👤 従業員名取得（賞与）: カラム "${mappingSettings.mainFields.employeeName.headerName}" → "${employeeName}"`);
+          }
+          
+          // 支給年月を取得
+          if (mappingSettings.mainFields.paymentDate && mappingSettings.mainFields.paymentDate.headerName) {
+            paymentDateValue = rowData[mappingSettings.mainFields.paymentDate.headerName] || '';
+            console.log(`📅 支給年月取得（賞与）: カラム "${mappingSettings.mainFields.paymentDate.headerName}" → "${paymentDateValue}"`);
+          }
+          
+          // 識別コードを取得
+          if (mappingSettings.mainFields.identificationCode && mappingSettings.mainFields.identificationCode.headerName) {
+            identificationCode = rowData[mappingSettings.mainFields.identificationCode.headerName] || '';
+            console.log(`🔖 識別コード取得（賞与）: カラム "${mappingSettings.mainFields.identificationCode.headerName}" → "${identificationCode}"`);
+          }
+        }
+
         // 賞与明細データを構築（給与/賞与分離対応）
         const bonusPayslipData = {
           companyId: userDetails.companyId,
           userId: userId, // userIdのみで運用（新設計）
-          employeeId: employeeId, // 【追加】従業員IDを保存
-          departmentCode: departmentCode, // 【追加】部門コードを保存
+          employeeId: employeeId, // 従業員IDを保存
+          departmentCode: departmentCode, // 部門コードを保存
+          
+          // 基本項目の値を保存（表示用）
+          employeeCode: employeeId, // 従業員コード（従業員IDと同じ）
+          employeeName: employeeName, // 従業員名
+          identificationCode: identificationCode, // 識別コード
+          
           month: paymentMonth, // 選択された月
           year: paymentYear, // 選択された年
           paymentDate: new Date(paymentDate), // 選択された支払日
