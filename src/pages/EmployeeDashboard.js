@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { db } from '../firebase';
-import { collection, query, where, orderBy, limit, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, getDocs, Timestamp, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 
 function EmployeeDashboard() {
@@ -26,46 +26,47 @@ function EmployeeDashboard() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const fetchPayslipData = async () => {
-      console.log('=== EmployeeDashboard fetchPayslipData 開始 ===');
-      console.log('currentUser:', currentUser ? currentUser.email : 'null');
-      console.log('userDetails:', userDetails);
-      
-      if (!currentUser || !userDetails) {
-        console.log('❌ currentUser または userDetails が null - データ取得をスキップ');
-        return;
-      }
-      
-      try {
-        setLoading(true);
-        setError('');
-        
-        console.log('🔍 給与明細検索条件:');
-        console.log('  - employeeId:', userDetails.employeeId);
-        console.log('  - companyId:', userDetails.companyId);
-        
-        // 自分の給与明細のみ取得（全件、最新順）
-        const q = query(
-          collection(db, "payslips"),
-          where("employeeId", "==", userDetails.employeeId),
-          where("companyId", "==", userDetails.companyId),
-          orderBy("paymentDate", "desc")
-        );
-        
-        console.log('📋 Firestore クエリ実行中...');
-        const querySnapshot = await getDocs(q);
-        console.log('📋 クエリ結果:', querySnapshot.size, '件');
+    console.log('=== EmployeeDashboard useEffect 開始 ===');
+    console.log('currentUser:', currentUser ? currentUser.email : 'null');
+    console.log('userDetails:', userDetails);
+    
+    if (!currentUser || !userDetails) {
+      console.log('❌ currentUser または userDetails が null - データ取得をスキップ');
+      setLoading(false);
+      return;
+    }
+    
+    setLoading(true);
+    setError('');
+    
+    console.log('🔍 給与明細検索条件:');
+    console.log('  - employeeId:', userDetails.employeeId);
+    console.log('  - companyId:', userDetails.companyId);
+    
+    // リアルタイムリスナーを設定（給与明細）
+    const q = query(
+      collection(db, "payslips"),
+      where("employeeId", "==", userDetails.employeeId),
+      where("companyId", "==", userDetails.companyId),
+      orderBy("paymentDate", "desc")
+    );
+    
+    console.log('📋 リアルタイムリスナーを設定中...');
+    const unsubscribe = onSnapshot(q, 
+      (querySnapshot) => {
+        console.log('🔄 給与明細データが更新されました:', querySnapshot.size, '件');
         
         const payslipList = [];
-        
         querySnapshot.forEach((doc) => {
           const docData = doc.data();
-          console.log('  - 給与明細:', doc.id, docData.paymentDate?.toDate().toLocaleDateString('ja-JP'));
-          payslipList.push({
-            id: doc.id,
-            ...docData,
-            paymentDate: docData.paymentDate?.toDate() // Timestamp→Date変換
-          });
+          // 給与のみを表示（賞与は除外）
+          if (!docData.payslipType || docData.payslipType === 'salary') {
+            payslipList.push({
+              id: doc.id,
+              ...docData,
+              paymentDate: docData.paymentDate?.toDate() // Timestamp→Date変換
+            });
+          }
         });
         
         console.log('✅ 取得した給与明細数:', payslipList.length);
@@ -77,8 +78,21 @@ function EmployeeDashboard() {
           console.log('📋 最新の給与明細:', payslipList[0].paymentDate?.toLocaleDateString('ja-JP'));
         } else {
           console.log('⚠️ 給与明細が見つかりませんでした');
+          setLatestPayslip(null);
         }
         
+        setLoading(false);
+      },
+      (error) => {
+        console.error("給与データのリアルタイム取得エラー:", error);
+        setError(`給与データの取得中にエラーが発生しました: ${error.message}`);
+        setLoading(false);
+      }
+    );
+    
+    // 初回ロード時のみ実行する処理
+    const fetchInitialData = async () => {
+      try {
         // 賞与明細も取得
         await fetchBonusPayslips();
         
@@ -88,13 +102,7 @@ function EmployeeDashboard() {
         // 集計データの計算
         await calculateStats();
       } catch (err) {
-        console.error("給与データの取得エラー:", err);
-        console.error("エラーコード:", err.code);
-        console.error("エラーメッセージ:", err.message);
-        setError(`給与データの取得中にエラーが発生しました: ${err.message}`);
-      } finally {
-        setLoading(false);
-        console.log('=== EmployeeDashboard fetchPayslipData 完了 ===');
+        console.error("初期データの取得エラー:", err);
       }
     };
     
@@ -244,7 +252,13 @@ function EmployeeDashboard() {
       }
     };
 
-    fetchPayslipData();
+    fetchInitialData();
+    
+    // クリーンアップ関数（コンポーネントがアンマウントされる時にリスナーを解除）
+    return () => {
+      console.log('🔌 リアルタイムリスナーを解除');
+      unsubscribe();
+    };
   }, [currentUser, userDetails]);
 
   // 日付を整形する関数
