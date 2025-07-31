@@ -4,13 +4,6 @@ import React from 'react';
 function PayslipPreview({ payslipData, showDetailedInfo = false, isBonus = false }) {
   // PayslipDetailで既に分類済みの項目を使用
   
-  // デバッグ: 各項目の内容を確認
-  console.log('📊 PayslipPreview - 受け取ったデータ:');
-  console.log('支給項目:', payslipData?.incomeItems);
-  console.log('控除項目:', payslipData?.deductionItems);
-  console.log('勤怠項目:', payslipData?.attendanceItems);
-  console.log('その他項目:', payslipData?.otherItems);
-
 
 
   // 金額フォーマット関数
@@ -23,12 +16,24 @@ function PayslipPreview({ payslipData, showDetailedInfo = false, isBonus = false
     }).format(amount);
   };
 
-  // 勤怠項目用フォーマット関数（小数点第2位まで表示）
+  // 勤怠項目用フォーマット関数（時間フォーマットまたは小数点第2位まで表示）
   const formatAttendanceValue = (value) => {
-    if (value === undefined || value === null || value === '') return '0.00';
+    if (value === undefined || value === null || value === '') return '';
+    
+    // 時間フォーマット（HH:MM:SS形式）の場合はHH:MM形式に変換
+    if (typeof value === 'string' && /^\d+:\d{2}:\d{2}$/.test(value)) {
+      const parts = value.split(':');
+      return `${parts[0]}:${parts[1]}`; // 時:分のみ表示
+    }
+    
+    // 数値の場合は小数点第2位まで表示
     const numValue = parseFloat(value);
-    if (isNaN(numValue)) return value; // 数値でない場合はそのまま表示
-    return numValue.toFixed(2); // 小数点第2位まで表示
+    if (!isNaN(numValue)) {
+      return numValue.toFixed(2);
+    }
+    
+    // その他の場合はそのまま表示
+    return value;
   };
 
   // 日付フォーマット関数

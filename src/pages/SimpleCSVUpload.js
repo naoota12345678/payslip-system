@@ -613,10 +613,10 @@ const SimpleCSVUpload = () => {
             const category = mappingSettings.itemCategories[header] || 'other';
             const isVisible = mappingSettings.visibilitySettings[header] !== false; // デフォルトは表示
             
-            // 部門コード、従業員コード、従業員氏名などの文字列項目は文字列として保持
+            // 部門コード、従業員コード、従業員氏名、勤怠項目などの文字列項目は文字列として保持
             const isStringField = ['部門コード', '部署コード', '従業員コード', '従業員氏名', '氏名', '社員番号', '社員ID', '識別コード'].some(field => 
               header.includes(field) || displayName.includes(field)
-            );
+            ) || category === 'attendance'; // 勤怠項目は文字列として処理
             
             // 数値に変換を試行（文字列フィールド以外で空白でない場合のみ）
             let finalValue;
