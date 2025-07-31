@@ -27,7 +27,8 @@
       "Bash(npm config:*)",
       "Bash(git push:*)",
       "WebFetch(domain:aglead.co.jp)",
-      "WebFetch(domain:www.sma9.jp)"
+      "WebFetch(domain:www.sma9.jp)",
+      "Bash(diff:*)"
     ],
     "deny": []
   }
