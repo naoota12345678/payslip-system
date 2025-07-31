@@ -17,22 +17,37 @@ function PayslipPreview({ payslipData, showDetailedInfo = false, isBonus = false
 
   // 勤怠項目用フォーマット関数（時間フォーマットまたは小数点第2位まで表示）
   const formatAttendanceValue = (value) => {
-    if (value === undefined || value === null || value === '') return '';
-    
-    // 時間フォーマット（HH:MM:SS形式）の場合はHH:MM形式に変換
-    if (typeof value === 'string' && /^\d+:\d{2}:\d{2}$/.test(value)) {
-      const parts = value.split(':');
-      return `${parts[0]}:${parts[1]}`; // 時:分のみ表示
+    try {
+      console.log('🔍 formatAttendanceValue called with:', value, typeof value);
+      
+      if (value === undefined || value === null || value === '') {
+        console.log('  → 空の値として処理');
+        return '';
+      }
+      
+      // 時間フォーマット（HH:MM:SS形式）の場合はHH:MM形式に変換
+      if (typeof value === 'string' && /^\d+:\d{2}:\d{2}$/.test(value)) {
+        const parts = value.split(':');
+        const result = `${parts[0]}:${parts[1]}`;
+        console.log('  → 時間フォーマットとして処理:', result);
+        return result;
+      }
+      
+      // 数値の場合は小数点第2位まで表示
+      const numValue = parseFloat(value);
+      if (!isNaN(numValue)) {
+        const result = numValue.toFixed(2);
+        console.log('  → 数値として処理:', result);
+        return result;
+      }
+      
+      // その他の場合はそのまま表示
+      console.log('  → そのまま表示:', value);
+      return value;
+    } catch (error) {
+      console.error('❌ formatAttendanceValue でエラー:', error, 'value:', value);
+      return String(value) || '';
     }
-    
-    // 数値の場合は小数点第2位まで表示
-    const numValue = parseFloat(value);
-    if (!isNaN(numValue)) {
-      return numValue.toFixed(2);
-    }
-    
-    // その他の場合はそのまま表示
-    return value;
   };
 
   // 日付フォーマット関数
