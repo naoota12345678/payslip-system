@@ -7,18 +7,27 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
   console.log('🔥 MainFieldsSection: 受け取ったmappingConfig:', mappingConfig);
   
   const safeMainFields = mappingConfig?.mainFields || {};
+  
+  // すべての項目を収集（itemCodeItemsが主要な保存場所）
   const allItems = [
+    ...(mappingConfig?.itemCodeItems || []),
     ...(mappingConfig?.incomeItems || []),
     ...(mappingConfig?.deductionItems || []),
     ...(mappingConfig?.attendanceItems || []),
-    ...(mappingConfig?.itemCodeItems || []),
     ...(mappingConfig?.kyItems || [])
-  ];
+  ].filter(item => item && item.headerName); // headerNameがある項目のみ使用
   
-  console.log('🔥 MainFieldsSection: allItemsの最初の3個:', allItems.slice(0, 3));
+  console.log('🔥 MainFieldsSection: allItems数:', allItems.length);
+  console.log('🔥 MainFieldsSection: allItemsの最初の5個:', allItems.slice(0, 5));
   
-  // データ構造はそのまま使用（自動修正は行わない）
-  const fixedItems = allItems;
+  // 重複を除去（同じheaderNameの項目は最初のものを使用）
+  const uniqueItemsMap = new Map();
+  allItems.forEach(item => {
+    if (!uniqueItemsMap.has(item.headerName)) {
+      uniqueItemsMap.set(item.headerName, item);
+    }
+  });
+  const fixedItems = Array.from(uniqueItemsMap.values());
   
   console.log('🔧 アイテムをそのまま使用（最初の3個）:', fixedItems.slice(0, 3));
   
@@ -150,6 +159,38 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
             <select
               value={getSymbolFromMainField(safeMainFields.netSalary)}
               onChange={(e) => updateMainFieldMapping('netSalary', e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">選択してください</option>
+              {availableSymbols.map((symbol, index) => (
+                <option key={index} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              部門コード
+            </label>
+            <select
+              value={getSymbolFromMainField(safeMainFields.departmentCode)}
+              onChange={(e) => updateMainFieldMapping('departmentCode', e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">選択してください</option>
+              {availableSymbols.map((symbol, index) => (
+                <option key={index} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              支給年月
+            </label>
+            <select
+              value={getSymbolFromMainField(safeMainFields.paymentDate)}
+              onChange={(e) => updateMainFieldMapping('paymentDate', e.target.value)}
               className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">選択してください</option>

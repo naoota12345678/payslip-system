@@ -137,9 +137,9 @@ const useFileUpload = (userDetails, currentUser) => {
       }
       
       // Cloud Storageにアップロード（進捗状況追跡付き）
-      const storageRef = ref(storage, `payslips/${userDetails.companyId}/${uniqueFileName}`);
+      const storageRef = ref(storage, `bonusPayslips/${userDetails.companyId}/${uniqueFileName}`);
       if (debugMode) {
-        console.log('[Debug] ストレージ参照パス:', `payslips/${userDetails.companyId}/${uniqueFileName}`);
+        console.log('[Debug] ストレージ参照パス:', `bonusPayslips/${userDetails.companyId}/${uniqueFileName}`);
       }
       
       // メタデータを設定
@@ -225,7 +225,7 @@ const useFileUpload = (userDetails, currentUser) => {
                           // CSVマッピング設定を取得
             let mappingConfig = null;
             try {
-              const mappingDoc = await getDoc(doc(db, 'csvMappings', userDetails.companyId));
+              const mappingDoc = await getDoc(doc(db, 'csvMappingsBonus', userDetails.companyId));
               if (mappingDoc.exists()) {
                 mappingConfig = mappingDoc.data();
                 console.log('[Debug] CSVマッピング設定を取得:', mappingConfig);
