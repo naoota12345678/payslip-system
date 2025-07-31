@@ -23,6 +23,14 @@ function PayslipPreview({ payslipData, showDetailedInfo = false, isBonus = false
     }).format(amount);
   };
 
+  // 勤怠項目用フォーマット関数（小数点第2位まで表示）
+  const formatAttendanceValue = (value) => {
+    if (value === undefined || value === null || value === '') return '0.00';
+    const numValue = parseFloat(value);
+    if (isNaN(numValue)) return value; // 数値でない場合はそのまま表示
+    return numValue.toFixed(2); // 小数点第2位まで表示
+  };
+
   // 日付フォーマット関数
   const formatDate = (date) => {
     if (!date) return 'N/A';
@@ -122,7 +130,7 @@ function PayslipPreview({ payslipData, showDetailedInfo = false, isBonus = false
                 .map((item, index) => (
                 <div key={index} className="flex justify-between text-xs print:text-[0.6rem] py-1 print:py-0.5 border-b border-gray-100 last:border-b-0">
                   <span>{item.name}</span>
-                  <span>{item.value}</span>
+                  <span>{formatAttendanceValue(item.value)}</span>
                 </div>
               ))
             ) : (

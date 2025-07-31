@@ -192,6 +192,14 @@ const PayslipPrintView = ({
     }).format(numAmount);
   };
 
+  // 勤怠項目用フォーマット関数（小数点第2位まで表示）
+  const formatAttendanceValue = (value) => {
+    if (value === undefined || value === null || value === '') return '0.00';
+    const numValue = parseFloat(value);
+    if (isNaN(numValue)) return value; // 数値でない場合はそのまま表示
+    return numValue.toFixed(2); // 小数点第2位まで表示
+  };
+
   // 項目の表示名を取得
   const getDisplayName = (itemKey) => {
     return itemNameMapping[itemKey] || itemKey;
@@ -479,7 +487,7 @@ const PayslipPrintView = ({
                   }}>
                     {item.value === '' || item.value === null ? 
                       <span style={{ fontStyle: 'italic', color: '#666' }}>-</span> :
-                      item.value
+                      formatAttendanceValue(item.value)
                     }
                   </td>
                 </tr>
