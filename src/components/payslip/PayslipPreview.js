@@ -11,6 +11,18 @@ function PayslipPreview({ payslipData, showDetailedInfo = false, isBonus = false
   console.log('勤怠項目:', payslipData?.attendanceItems);
   console.log('その他項目:', payslipData?.otherItems);
 
+  // 🔍 勤怠項目の詳細デバッグ
+  if (payslipData?.attendanceItems?.length > 0) {
+    console.log('🔍 勤怠項目の詳細分析:');
+    payslipData.attendanceItems.forEach((item, index) => {
+      console.log(`  ${index}: name="${item.name}", value="${item.value}", type=${typeof item.value}`);
+      console.log(`  フォーマット前: "${item.value}"`);
+      const formatted = formatAttendanceValue(item.value);
+      console.log(`  フォーマット後: "${formatted}"`);
+      console.log('  ---');
+    });
+  }
+
 
 
   // 金額フォーマット関数
