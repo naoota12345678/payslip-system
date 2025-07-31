@@ -83,7 +83,7 @@ function EmployeeManagement() {
 
   // 従業員を削除
   const deleteEmployee = async (employeeId) => {
-    if (!window.confirm("本当に削除しますか？")) {
+    if (!window.confirm("本当に削除しますか？\n\n注意：この従業員に関連するすべての給与明細・賞与明細も削除されます。")) {
       return;
     }
     
@@ -95,9 +95,53 @@ function EmployeeManagement() {
       console.log("管理者userType:", userDetails?.userType);
       console.log("================");
       
-      await deleteDoc(doc(db, "employees", employeeId));
+      // 削除する従業員の情報を取得
+      const employeeToDelete = employees.find(emp => emp.id === employeeId);
+      if (!employeeToDelete) {
+        throw new Error("従業員が見つかりません");
+      }
+      
+      // バッチ処理で関連データを削除
+      const batch = writeBatch(db);
+      
+      // 1. 従業員を削除
+      batch.delete(doc(db, "employees", employeeId));
+      
+      // 2. 関連する給与明細を検索して削除
+      const payslipsQuery = query(
+        collection(db, "payslips"),
+        where("companyId", "==", userDetails.companyId),
+        where("employeeId", "==", employeeToDelete.employeeId)
+      );
+      
+      const payslipsSnapshot = await getDocs(payslipsQuery);
+      console.log(`削除する給与明細数: ${payslipsSnapshot.size}`);
+      
+      payslipsSnapshot.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+      
+      // 3. userIdがある場合は、それでも検索（互換性のため）
+      if (employeeToDelete.userId) {
+        const payslipsByUserIdQuery = query(
+          collection(db, "payslips"),
+          where("companyId", "==", userDetails.companyId),
+          where("userId", "==", employeeToDelete.userId)
+        );
+        
+        const payslipsByUserIdSnapshot = await getDocs(payslipsByUserIdQuery);
+        console.log(`userIdで見つかった追加の給与明細数: ${payslipsByUserIdSnapshot.size}`);
+        
+        payslipsByUserIdSnapshot.forEach((doc) => {
+          batch.delete(doc.ref);
+        });
+      }
+      
+      // バッチ実行
+      await batch.commit();
+      
       setEmployees(employees.filter(emp => emp.id !== employeeId));
-      setSuccess("従業員を削除しました");
+      setSuccess("従業員と関連する給与明細を削除しました");
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
       console.error("従業員削除エラー:", error);
