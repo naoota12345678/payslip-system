@@ -25,10 +25,10 @@ function PayslipPreview({ payslipData, showDetailedInfo = false, isBonus = false
         return '';
       }
       
-      // 時間フォーマット（HH:MM:SS形式）の場合はHH:MM形式に変換
-      if (typeof value === 'string' && /^\d+:\d{2}:\d{2}$/.test(value)) {
+      // 時間フォーマット（HH:MM形式またはHH:MM:SS形式）の場合
+      if (typeof value === 'string' && /^\d+:\d{2}(:\d{2})?$/.test(value)) {
         const parts = value.split(':');
-        const result = `${parts[0]}:${parts[1]}`;
+        const result = `${parts[0]}:${parts[1]}`; // HH:MM形式で統一
         console.log('  → 時間フォーマットとして処理:', result);
         return result;
       }

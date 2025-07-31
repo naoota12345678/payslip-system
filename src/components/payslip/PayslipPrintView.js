@@ -196,10 +196,10 @@ const PayslipPrintView = ({
   const formatAttendanceValue = (value) => {
     if (value === undefined || value === null || value === '') return '';
     
-    // 時間フォーマット（HH:MM:SS形式）の場合はHH:MM形式に変換
-    if (typeof value === 'string' && /^\d+:\d{2}:\d{2}$/.test(value)) {
+    // 時間フォーマット（HH:MM形式またはHH:MM:SS形式）の場合
+    if (typeof value === 'string' && /^\d+:\d{2}(:\d{2})?$/.test(value)) {
       const parts = value.split(':');
-      return `${parts[0]}:${parts[1]}`; // 時:分のみ表示
+      return `${parts[0]}:${parts[1]}`; // HH:MM形式で統一
     }
     
     // 数値の場合は小数点第2位まで表示
