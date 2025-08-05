@@ -14,49 +14,47 @@ function BonusPayslipList() {
   const [expandedDates, setExpandedDates] = useState(new Set()); // 展開された支払い日
   const [deletingDate, setDeletingDate] = useState(null); // 削除処理中の支払い日
 
-  // ユーザー名を取得する関数（userId統一設計版）
+  // 従業員情報を取得する関数（employeeIdベース）
   const fetchEmployeeNames = useCallback(async (payslipList) => {
     if (!userDetails?.companyId) {
       return {};
     }
     
-    // userIdのリストを抽出
-    const userIds = [...new Set(payslipList.map(p => p.userId).filter(Boolean))];
+    // employeeIdのリストを抽出
+    const employeeIds = [...new Set(payslipList.map(p => p.employeeId).filter(Boolean))];
     
-    if (userIds.length === 0) {
+    if (employeeIds.length === 0) {
       return {};
     }
     
     try {
+      // 会社の全従業員情報を一度に取得
+      const employeesQuery = query(
+        collection(db, 'employees'),
+        where('companyId', '==', userDetails.companyId)
+      );
       
+      const employeesSnapshot = await getDocs(employeesQuery);
       const nameMap = {};
       
-      // 各userIdから直接ユーザー情報を取得
-      for (const userId of userIds) {
-        try {
-          const employeeDoc = await getDoc(doc(db, 'employees', userId));
-          if (employeeDoc.exists()) {
-            const employeeData = employeeDoc.data();
-            
-            // 同じ会社の従業員のみ処理
-            if (employeeData.companyId === userDetails.companyId) {
-              nameMap[userId] = {
-                displayName: employeeData.name || employeeData.displayName || '名前なし',
-                employeeNumber: employeeData.employeeNumber || employeeData.employeeId || 'N/A',
-                department: employeeData.department || ''
-              };
-              
-
-            }
-          }
-        } catch (userError) {
-          // エラーをサイレントに処理
+      employeesSnapshot.forEach((doc) => {
+        const employeeData = doc.data();
+        const empId = employeeData.employeeId;
+        
+        // payslipListに含まれるemployeeIdのみ処理
+        if (empId && employeeIds.includes(empId)) {
+          nameMap[empId] = {
+            displayName: employeeData.name || employeeData.displayName || '名前なし',
+            employeeNumber: employeeData.employeeNumber || employeeData.employeeId || 'N/A',
+            department: employeeData.department || ''
+          };
         }
-      }
+      });
       
       return nameMap;
       
     } catch (error) {
+      console.error('従業員情報取得エラー:', error);
       return {};
     }
   }, [userDetails]);
@@ -140,8 +138,8 @@ function BonusPayslipList() {
     // 各日付内の賞与明細を従業員番号順でソート
     Object.values(grouped).forEach(group => {
       group.payslips.sort((a, b) => {
-        const employeeA = employeeNames[a.userId]?.employeeNumber || a.employeeId || '';
-        const employeeB = employeeNames[b.userId]?.employeeNumber || b.employeeId || '';
+        const employeeA = employeeNames[a.employeeId]?.employeeNumber || a.employeeId || '';
+        const employeeB = employeeNames[b.employeeId]?.employeeNumber || b.employeeId || '';
         
         // 従業員番号を文字列として比較（数値の場合は数値として比較）
         const numA = parseFloat(employeeA);
@@ -222,8 +220,8 @@ function BonusPayslipList() {
 
   // 従業員名を取得する関数
   const getEmployeeName = (payslip) => {
-    if (payslip.userId && employeeNames[payslip.userId]) {
-      const userInfo = employeeNames[payslip.userId];
+    if (payslip.employeeId && employeeNames[payslip.employeeId]) {
+      const userInfo = employeeNames[payslip.employeeId];
       return `${userInfo.displayName} (${userInfo.employeeNumber})`;
     }
     return '不明なユーザー';
