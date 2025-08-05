@@ -83,9 +83,10 @@ const ItemMappingTable = ({
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 表示
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              {/* 一時的に無効化 - 0値表示機能 */}
+              {/* <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 0値表示
-              </th>
+              </th> */}
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 移動
               </th>
@@ -123,7 +124,8 @@ const ItemMappingTable = ({
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                   />
                 </td>
-                <td className="px-6 py-2 whitespace-nowrap text-sm">
+                {/* 一時的に無効化 - 0値表示機能 */}
+                {/* <td className="px-6 py-2 whitespace-nowrap text-sm">
                   <input
                     type="checkbox"
                     checked={item.showZeroValue || false}
@@ -131,7 +133,7 @@ const ItemMappingTable = ({
                     className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
                     title="値が0の場合でも給与明細に表示する場合はチェックしてください"
                   />
-                </td>
+                </td> */}
                 <td className="px-6 py-2 whitespace-nowrap text-sm">
                   <div className="flex space-x-2">
                     <select

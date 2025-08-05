@@ -29,7 +29,8 @@
       "WebFetch(domain:aglead.co.jp)",
       "WebFetch(domain:www.sma9.jp)",
       "Bash(diff:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(gh workflow:*)"
     ],
     "deny": []
   }

@@ -12,7 +12,7 @@ const ItemTabs = ({
   parsedHeaders,
   onUpdateItemName,
   onUpdateItemVisibility,
-  onUpdateItemZeroDisplay,
+  // onUpdateItemZeroDisplay, // 一時的に無効化
   onRemoveItem,
   onMoveItem,
   onAddItem
@@ -89,7 +89,7 @@ const ItemTabs = ({
           items={safeIncomeItems}
           onUpdateItemName={onUpdateItemName}
           onUpdateItemVisibility={onUpdateItemVisibility}
-          onUpdateItemZeroDisplay={onUpdateItemZeroDisplay}
+          // onUpdateItemZeroDisplay={onUpdateItemZeroDisplay} // 一時的に無効化
           onRemoveItem={onRemoveItem}
           onMoveItem={onMoveItem}
           availableHeaders={parsedHeaders}
@@ -105,7 +105,7 @@ const ItemTabs = ({
           items={safeDeductionItems}
           onUpdateItemName={onUpdateItemName}
           onUpdateItemVisibility={onUpdateItemVisibility}
-          onUpdateItemZeroDisplay={onUpdateItemZeroDisplay}
+          // onUpdateItemZeroDisplay={onUpdateItemZeroDisplay} // 一時的に無効化
           onRemoveItem={onRemoveItem}
           onMoveItem={onMoveItem}
           availableHeaders={parsedHeaders}
@@ -121,7 +121,7 @@ const ItemTabs = ({
           items={safeAttendanceItems}
           onUpdateItemName={onUpdateItemName}
           onUpdateItemVisibility={onUpdateItemVisibility}
-          onUpdateItemZeroDisplay={onUpdateItemZeroDisplay}
+          // onUpdateItemZeroDisplay={onUpdateItemZeroDisplay} // 一時的に無効化
           onRemoveItem={onRemoveItem}
           onMoveItem={onMoveItem}
           availableHeaders={parsedHeaders}
@@ -137,7 +137,7 @@ const ItemTabs = ({
           items={safeTotalItems}
           onUpdateItemName={onUpdateItemName}
           onUpdateItemVisibility={onUpdateItemVisibility}
-          onUpdateItemZeroDisplay={onUpdateItemZeroDisplay}
+          // onUpdateItemZeroDisplay={onUpdateItemZeroDisplay} // 一時的に無効化
           onRemoveItem={onRemoveItem}
           onMoveItem={onMoveItem}
           availableHeaders={parsedHeaders}
@@ -153,7 +153,7 @@ const ItemTabs = ({
           items={safeItemCodeItems}
           onUpdateItemName={onUpdateItemName}
           onUpdateItemVisibility={onUpdateItemVisibility}
-          onUpdateItemZeroDisplay={onUpdateItemZeroDisplay}
+          // onUpdateItemZeroDisplay={onUpdateItemZeroDisplay} // 一時的に無効化
           onRemoveItem={onRemoveItem}
           onMoveItem={onMoveItem}
           availableHeaders={parsedHeaders}

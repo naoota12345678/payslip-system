@@ -58,6 +58,7 @@ export const createDirectMappingFromTwoLines = (line1, line2) => {
               itemName: itemName,
       itemCode: itemCode,
       isVisible: true,
+      showZeroValue: false, // デフォルトで0値を非表示
       id: `item_${i}_${itemCode.replace(/[^a-zA-Z0-9]/g, '_')}`
     };
     
@@ -143,6 +144,7 @@ export const addItemToCategory = (category, headerName, parsedHeaders, currentMa
     headerName,
     itemName: '', // ユーザーが手動で項目名を入力する
     isVisible: category !== 'kyItems', // KY項目以外はデフォルトで表示
+    showZeroValue: false, // デフォルトで0値を非表示
     id: itemId // ID属性を追加
   };
   
@@ -179,6 +181,27 @@ export const updateItemVisibility = (category, index, isVisible, currentMapping)
   newItems[index] = {
     ...newItems[index],
     isVisible
+  };
+  
+  return {
+    ...currentMapping,
+    [category]: newItems
+  };
+};
+
+/**
+ * 項目の0値表示設定を更新
+ * @param {string} category - 項目カテゴリ
+ * @param {number} index - 更新する項目のインデックス
+ * @param {boolean} showZeroValue - 0値を表示するかどうか
+ * @param {Object} currentMapping - 現在のマッピング設定
+ * @returns {Object} 更新されたマッピング設定
+ */
+export const updateItemZeroDisplay = (category, index, showZeroValue, currentMapping) => {
+  const newItems = [...currentMapping[category]];
+  newItems[index] = {
+    ...newItems[index],
+    showZeroValue
   };
   
   return {
