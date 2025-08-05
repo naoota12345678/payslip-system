@@ -159,6 +159,18 @@ userType: ${debugInfo.userType}
 編集モード: ${debugInfo.isEditMode}
 対象ID: ${debugInfo.employeeId}`);
     
+    // 権限チェック（名前変更の場合）
+    if (isEditMode && userDetails?.role !== 'admin') {
+      // 元の従業員データと比較して名前が変更されているかチェック
+      const originalEmployeeDoc = await getDoc(doc(db, 'employees', employeeId));
+      const originalData = originalEmployeeDoc.data();
+      
+      if (originalData && originalData.name !== employeeData.name) {
+        setError('従業員の名前変更は管理者のみ実行できます。');
+        return;
+      }
+    }
+    
     // 入力検証
     if (!employeeData.name || !employeeData.employeeId || !employeeData.email) {
       setError('氏名、従業員ID、メールアドレスは必須項目です');
@@ -312,15 +324,29 @@ UID: ${result.data.uid}
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-gray-700">
                   氏名 <span className="text-red-500">*</span>
+                  {userDetails?.role !== 'admin' && (
+                    <span className="ml-2 text-xs text-gray-500">（管理者のみ編集可能）</span>
+                  )}
                 </label>
                 <input
                   type="text"
                   id="name"
                   value={employeeData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
-                  className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  className={`mt-1 block w-full rounded-md border shadow-sm py-2 px-3 sm:text-sm ${
+                    userDetails?.role !== 'admin' 
+                      ? 'border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed' 
+                      : 'border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500'
+                  }`}
                   required
+                  disabled={userDetails?.role !== 'admin'}
+                  readOnly={userDetails?.role !== 'admin'}
                 />
+                {userDetails?.role !== 'admin' && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    名前の変更は管理者にお問い合わせください。給与明細の正確性のため、従業員による名前変更は制限されています。
+                  </p>
+                )}
               </div>
               
               <div>
