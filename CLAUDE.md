@@ -406,16 +406,61 @@ src/
 └── firebase.js (Storage設定)
 ```
 
+## 追加修正（2025-08-05 午後）
+
+### ✅ 賞与明細一覧の従業員名表示問題修正
+
+**問題**: 賞与明細一覧で従業員名が「不明なユーザー」と表示
+**原因**: `userId`ベースで従業員情報を取得していたが、実際は`employeeId`を使用
+**修正**: `employeeId`ベースに統一（給与明細と同じロジック）
+
+**変更ファイル**: `src/pages/BonusPayslipList.js`
+- fetchEmployeeNames関数の修正
+- getEmployeeName関数の修正  
+- ソート処理の修正
+
+### ✅ 重複メール送信機能の整理
+
+**問題**: 給与・賞与アップロード画面で2つのメール送信機能が重複
+- 古い「メール通知設定」（アップロード中）
+- 新しい「PayslipNotificationUI」（アップロード後）
+
+**修正**: PayslipNotificationUIに統一
+**変更ファイル**: 
+- `src/pages/SimpleCSVUpload.js`: 古いメール通知設定を削除
+- `src/pages/BonusSimpleCSVUpload.js`: 古いメール通知設定を削除
+
+**効果**:
+- UI/UXの統一
+- 給与・賞与画面で同じ操作感
+- より安全で確実なメール送信フロー
+
+### 🔧 技術的詳細
+
+**データフィールド統一**:
+```javascript
+// 修正前（問題）
+payslip.userId && employeeNames[payslip.userId]
+
+// 修正後（統一）
+payslip.employeeId && employeeNames[payslip.employeeId]
+```
+
+**メール送信フロー統一**:
+```
+CSVアップロード → データ保存完了 → PayslipNotificationUI表示 → メール送信操作
+```
+
 ---
 
-**最終更新**: 2025-08-05
+**最終更新**: 2025-08-05 午後
 **作成者**: Claude Code Assistant  
 **プロジェクト**: 給与明細システム (kyuyoprint)
 **システム名**: 「そのままWeb明細」
 
 ### 💾 Git履歴（最新3件）
 ```
-b228375 PDF配信機能のメニュー統合完了
-79a89a7 MAPPING_GUIDE.mdに0値表示制御機能の仕様を追加  
-7425699 第2段階: デフォルトで0値項目を非表示に変更
+2ddb32f 給与・賞与アップロード画面の重複メール送信機能を修正
+cf146dd 賞与明細一覧の従業員名表示問題を修正
+89b8aa4 CLAUDE.mdに今回の開発経緯を追記
 ```
