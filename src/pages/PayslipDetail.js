@@ -200,7 +200,7 @@ function PayslipDetail() {
           otherItems,
           companyName: companyName,
           departmentName: departmentName,
-          employeeName: payslipData.employeeName || employeeName // payslipDataに保存された従業員名を優先
+          employeeName: employeeName // 常に最新の従業員名を使用
         });
 
         // 閲覧ログを記録（まだ記録していなければ）
@@ -209,12 +209,11 @@ function PayslipDetail() {
         //   logPayslipView(payslipId);
         // }
         
-        // 従業員名を取得（payslipDataに保存されていない場合のみ）
-        if (!payslipData.employeeName && payslipData.employeeId) {
+        // 従業員名を取得（常に最新の従業員情報から取得）
+        if (payslipData.employeeId) {
           fetchEmployeeName(payslipData.employeeId);
-        } else if (payslipData.employeeName) {
-          setEmployeeName(payslipData.employeeName);
-          console.log('✅ payslipDataから従業員名を取得:', payslipData.employeeName);
+        } else {
+          setEmployeeName('N/A');
         }
         
         // 会社名を取得
