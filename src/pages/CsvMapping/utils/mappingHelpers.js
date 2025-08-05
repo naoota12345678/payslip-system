@@ -58,7 +58,7 @@ export const createDirectMappingFromTwoLines = (line1, line2) => {
               itemName: itemName,
       itemCode: itemCode,
       isVisible: true,
-      showZeroValue: false, // デフォルトで0値を非表示
+      showZeroValue: false, // デフォルトで0値を非表示（ユーザー要望）
       id: `item_${i}_${itemCode.replace(/[^a-zA-Z0-9]/g, '_')}`
     };
     
@@ -144,7 +144,7 @@ export const addItemToCategory = (category, headerName, parsedHeaders, currentMa
     headerName,
     itemName: '', // ユーザーが手動で項目名を入力する
     isVisible: category !== 'kyItems', // KY項目以外はデフォルトで表示
-    showZeroValue: false, // デフォルトで0値を非表示
+    showZeroValue: false, // デフォルトで0値を非表示（ユーザー要望）
     id: itemId // ID属性を追加
   };
   

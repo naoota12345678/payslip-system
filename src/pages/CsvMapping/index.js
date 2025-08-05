@@ -24,7 +24,7 @@ import {
   // updateMainFieldMapping, 
   updateItemName, 
   updateItemVisibility, 
-  // updateItemZeroDisplay, // 一時的に無効化
+  updateItemZeroDisplay,
   addItemToCategory, 
   removeItemFromCategory,
   moveItemBetweenCategories,
@@ -199,10 +199,10 @@ function CsvMapping() {
     });
   }, []);
   
-  // 項目の0値表示設定を更新するハンドラ（一時的に無効化）
-  // const handleUpdateItemZeroDisplay = useCallback((category, index, showZeroValue) => {
-  //   setMappingConfig(prev => updateItemZeroDisplay(category, index, showZeroValue, prev));
-  // }, []);
+  // 項目の0値表示設定を更新するハンドラ
+  const handleUpdateItemZeroDisplay = useCallback((category, index, showZeroValue) => {
+    setMappingConfig(prev => updateItemZeroDisplay(category, index, showZeroValue, prev));
+  }, []);
   
   // 項目の追加ハンドラ
   const handleAddItem = useCallback((category, headerName) => {
@@ -721,7 +721,7 @@ function CsvMapping() {
               parsedHeaders={parsedHeaders}
               onUpdateItemName={handleUpdateItemName}
               onUpdateItemVisibility={handleUpdateItemVisibility}
-              // onUpdateItemZeroDisplay={handleUpdateItemZeroDisplay} // 一時的に無効化
+              onUpdateItemZeroDisplay={handleUpdateItemZeroDisplay}
               onRemoveItem={handleRemoveItem}
               onMoveItem={handleMoveItem}
               onAddItem={handleAddItem}
