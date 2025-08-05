@@ -1092,6 +1092,18 @@ exports.processCSV = onCall(async (request) => {
       processingStartedAt: getServerTimestamp()
     });
     
+    // CSVマッピング設定を取得
+    await logDebug(uploadId, 'CSVマッピング設定を取得開始');
+    const mappingRef = db.collection('csvMappings').doc(companyId);
+    const mappingDoc = await mappingRef.get();
+    
+    if (!mappingDoc.exists) {
+      throw new HttpsError('not-found', 'CSVマッピング設定が見つかりません');
+    }
+    
+    const mappingData = mappingDoc.data();
+    await logDebug(uploadId, 'マッピング設定を取得', { itemsCount: Object.keys(mappingData).length });
+    
     // CSVマッピング設定から給与項目を生成
     await logDebug(uploadId, 'CSVマッピングから給与項目を生成開始');
     const payrollItems = await generatePayrollItemsFromMappings(companyId);
@@ -1151,13 +1163,13 @@ exports.processCSV = onCall(async (request) => {
               createdAt: getServerTimestamp(),
               items: {},
               // アップロード時のマッピング設定を保存
-              originalMapping: {
+              originalMapping: mappingData ? {
                 incomeItems: mappingData.incomeItems || [],
                 deductionItems: mappingData.deductionItems || [],
                 attendanceItems: mappingData.attendanceItems || [],
                 totalItems: mappingData.totalItems || [],
                 timestamp: getServerTimestamp()
-              }
+              } : null
             };
             
             // 従業員ID/番号の取得
