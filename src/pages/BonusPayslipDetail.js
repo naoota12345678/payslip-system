@@ -174,7 +174,7 @@ function BonusPayslipDetail() {
                 value: value,
                 type: category.type,
                 csvColumn: item.headerName,
-                showZeroValue: item.showZeroValue !== undefined ? item.showZeroValue : true, // 既存データ互換性: デフォルトで表示
+                showZeroValue: item.showZeroValue !== undefined ? item.showZeroValue : false, // デフォルトで0値非表示
                 order: (typeof item.displayOrder === 'number' && !isNaN(item.displayOrder)) 
                   ? item.displayOrder 
                   : (typeof item.columnIndex === 'number' && !isNaN(item.columnIndex)) 
