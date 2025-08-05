@@ -339,8 +339,8 @@ UID: ${result.data.uid}
                       : 'border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500'
                   }`}
                   required
-//                  disabled={userDetails?.role !== 'admin'}
-//                  readOnly={userDetails?.role !== 'admin'}
+                  disabled={userDetails?.role !== 'admin'}
+                  readOnly={userDetails?.role !== 'admin'}
                 />
                 {userDetails?.role !== 'admin' && (
                   <p className="mt-1 text-xs text-gray-500">
