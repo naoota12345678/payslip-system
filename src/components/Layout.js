@@ -50,6 +50,10 @@ function Layout() {
       setPageTitle('通知設定');
     } else if (path === '/profile') {
       setPageTitle('プロフィール');
+    } else if (path === '/admin/pdf-delivery') {
+      setPageTitle('PDF配信管理');
+    } else if (path === '/employee/documents') {
+      setPageTitle('書類一覧');
     } else {
       setPageTitle('');
     }

@@ -59,6 +59,10 @@ import DepartmentSettings from './pages/DepartmentSettings';
 import NotificationSettings from './pages/NotificationSettings';
 import DataBackup from './pages/DataBackup';
 
+// PDF配信関連
+import PdfDeliveryManagement from './pages/admin/PdfDelivery';
+import EmployeeDocuments from './pages/employee/Documents';
+
 // エラーページ
 import NotFound from './pages/NotFound';
 
@@ -224,6 +228,9 @@ function App() {
               <Route path="payslips/:payslipId" element={<PayslipDetail />} />
               <Route path="payslips/:payslipId/print" element={<PayslipPrint />} />
               
+              {/* PDF配信管理 */}
+              <Route path="pdf-delivery" element={<PdfDeliveryManagement />} />
+              
               {/* 賞与明細管理 */}
               <Route path="bonus-upload" element={<BonusCSVUpload />} />
               <Route path="bonus-csv-mapping" element={<BonusCsvMapping />} />
@@ -251,6 +258,9 @@ function App() {
               <Route path="payslips" element={<PayslipList />} />
               <Route path="payslips/:payslipId" element={<PayslipDetail />} />
               <Route path="payslips/:payslipId/print" element={<PayslipPrint />} />
+              
+              {/* 書類一覧 */}
+              <Route path="documents" element={<EmployeeDocuments />} />
               
               {/* 賞与明細閲覧 */}
               <Route path="bonus-payslips" element={<BonusPayslipList />} />
