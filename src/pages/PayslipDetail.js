@@ -269,7 +269,12 @@ function PayslipDetail() {
       
       if (!employeesSnapshot.empty) {
         const employeeData = employeesSnapshot.docs[0].data();
-        const employeeName = employeeData.name || 'N/A';
+        // フォールバック機能：複数のフィールドから名前を取得
+        const employeeName = employeeData.name || 
+                            employeeData.displayName || 
+                            employeeData.email?.split('@')[0] || 
+                            `従業員${employeeId}` || 
+                            'N/A';
         
         console.log('従業員データ取得成功:', {
           name: employeeName,
