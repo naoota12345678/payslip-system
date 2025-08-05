@@ -131,7 +131,11 @@ function PayslipPreview({ payslipData, showDetailedInfo = false, isBonus = false
             {(() => {
               const filteredItems = (payslipData.attendanceItems || [])
                 .filter(item => {
-                  // 0値項目を非表示
+                  // 既存データ保護: showZeroValueが未定義の場合は従来通り表示（0値でも表示）
+                  if (item.showZeroValue === undefined) return true;
+                  // 新機能: showZeroValueがtrueの場合は0値でも表示
+                  if (item.showZeroValue === true) return true;
+                  // showZeroValueがfalseの場合のみ0値を非表示
                   if (item.value === 0 || item.value === '0' || item.value === '0.00') return false;
                   if (item.value === '' || item.value === null || item.value === undefined) return false;
                   return true;
@@ -164,7 +168,11 @@ function PayslipPreview({ payslipData, showDetailedInfo = false, isBonus = false
             {(() => {
               const filteredItems = (payslipData.incomeItems || [])
                 .filter(item => {
-                  // 0値項目を非表示
+                  // 既存データ保護: showZeroValueが未定義の場合は従来通り表示（0値でも表示）
+                  if (item.showZeroValue === undefined) return true;
+                  // 新機能: showZeroValueがtrueの場合は0値でも表示
+                  if (item.showZeroValue === true) return true;
+                  // showZeroValueがfalseの場合のみ0値を非表示
                   if (item.value === 0 || item.value === '0') return false;
                   if (item.value === '' || item.value === null || item.value === undefined) return false;
                   return true;
@@ -199,7 +207,11 @@ function PayslipPreview({ payslipData, showDetailedInfo = false, isBonus = false
             {(() => {
               const filteredItems = (payslipData.deductionItems || [])
                 .filter(item => {
-                  // 0値項目を非表示
+                  // 既存データ保護: showZeroValueが未定義の場合は従来通り表示（0値でも表示）
+                  if (item.showZeroValue === undefined) return true;
+                  // 新機能: showZeroValueがtrueの場合は0値でも表示
+                  if (item.showZeroValue === true) return true;
+                  // showZeroValueがfalseの場合のみ0値を非表示
                   if (item.value === 0 || item.value === '0') return false;
                   if (item.value === '' || item.value === null || item.value === undefined) return false;
                   return true;
@@ -235,7 +247,11 @@ function PayslipPreview({ payslipData, showDetailedInfo = false, isBonus = false
             {(() => {
               const filteredItems = (payslipData.otherItems || [])
                 .filter(item => {
-                  // 0値項目を非表示
+                  // 既存データ保護: showZeroValueが未定義の場合は従来通り表示（0値でも表示）
+                  if (item.showZeroValue === undefined) return true;
+                  // 新機能: showZeroValueがtrueの場合は0値でも表示
+                  if (item.showZeroValue === true) return true;
+                  // showZeroValueがfalseの場合のみ0値を非表示
                   if (item.value === 0 || item.value === '0') return false;
                   if (item.value === '' || item.value === null || item.value === undefined) return false;
                   return true;
