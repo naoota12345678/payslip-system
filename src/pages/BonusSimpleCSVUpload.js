@@ -22,10 +22,6 @@ const BonusSimpleCSVUpload = () => {
   const [departmentCodeColumn, setDepartmentCodeColumn] = useState('');
   // 賞与専用（給与機能は分離済み）
   
-  // メール通知設定
-  const [sendNotification, setSendNotification] = useState(false);
-  const [notificationDate, setNotificationDate] = useState('');
-  const [sendImmediately, setSendImmediately] = useState(false);
   
   // アップロード完了後の状態
   const [uploadedData, setUploadedData] = useState(null);
