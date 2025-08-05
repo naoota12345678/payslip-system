@@ -247,17 +247,175 @@ const [rowMappingMode, setRowMappingMode] = useState(true); // デフォルト�
 - 適切な権限でのアカウント作成
 - セキュリティ向上
 
-### 🎯 次回実装予定
+## 0値表示制御機能（2025-08-05）
 
-**賃金台帳機能**
-- **目的**: 個人ページから賃金台帳を生成・閲覧
-- **データソース**: 既存の給与明細データ活用
-- **表示形式**: 月別・年間集計、印刷対応
-- **安全性**: 読み取り専用、既存機能への影響なし
+### ✅ 完了した作業
+
+**1. 0値項目の表示制御機能実装**
+- **実装日**: 2025-08-05
+- **概要**: 給与明細で0円の項目をデフォルトで非表示にする機能を追加
+- **変更ファイル**:
+  - `src/components/payslip/PayslipPreview.js`: 0値項目の表示制御
+  - `src/pages/PayslipDetail.js`: showZeroValueプロパティの追加
+  - `src/pages/CsvMapping/components/ItemMappingTable.js`: 「0値表示」チェックボックス列追加
+  - `src/pages/CsvMapping/utils/mappingHelpers.js`: updateItemZeroDisplay関数追加
+  - `MAPPING_GUIDE.md`: 機能仕様書を更新
+
+**2. 仕様詳細**
+```javascript
+// デフォルト動作: 0値項目は非表示
+if (item.showZeroValue === true) return true; // チェック時のみ表示
+// undefined含むデフォルトは0値を非表示
+```
+
+**3. 安全性への配慮**
+- 既存の給与明細データに影響しない段階的実装
+- 項目名は固定化で既存データ保護
+- CSVマッピング設定で項目ごとに制御可能
+
+## PDF配信システム（2025-08-05）
+
+### ✅ Phase1完了: 読み取り専用テスト版
+
+**1. システム設計**
+- **配信タイプ**: 
+  - 一斉配信 (broadcast): 全従業員に同一ファイル
+  - 個別配信 (individual): 特定従業員にファイル指定
+  - 一括個別配信 (bulk_individual): ファイル名で従業員番号マッチング
+- **保存期間**: 2年間（自動削除）
+- **ファイル制限**: 50-400KB推奨、PDF形式
+- **コスト試算**: 約1,230円/年（200名企業想定）
+
+**2. 実装完了ファイル**
+
+**バックエンド準備**:
+- `src/firebase.js`: Firebase Storage設定済み
+- Firebase Storageバケット: `kyuyoprint.firebasestorage.app`
+
+**フロントエンド**:
+- `src/pages/admin/PdfDelivery.js`: 管理者向けPDF配信管理画面
+- `src/pages/employee/Documents.js`: 従業員向け書類一覧画面
+- `src/App.js`: ルート設定追加
+- `src/components/Navigation.js`: メニュー項目追加
+- `src/components/Layout.js`: ページタイトル設定
+
+**3. UI機能（読み取り専用）**
+```javascript
+// 管理者画面
+- 配信済み書類の一覧表示
+- 配信タイプ・日付・状態の確認
+- テスト会社判定機能
+
+// 従業員画面  
+- 自分宛の書類一覧表示
+- 一斉配信と個人宛書類の区別
+- ファイル表示・ダウンロード機能
+```
+
+**4. テスト環境**
+- 本番環境でテスト会社を使用（認証問題回避）
+- `userDetails.companyId.includes('test-')`でテスト判定
+- 既存機能への影響なし
+
+### 🔧 技術的な実装詳細
+
+**Firebase Storage設定**:
+```javascript
+// firebase.js
+const storage = getStorage(app);
+// ストレージバケット: kyuyoprint.firebasestorage.app
+```
+
+**メニュー統合**:
+```javascript
+// Navigation.js
+{/* 管理者向け */}
+<Link to="/admin/pdf-delivery">PDF配信管理</Link>
+
+{/* 従業員向け */}
+{!isAdmin && (
+  <Link to="/employee/documents">書類一覧</Link>
+)}
+```
+
+**データ構造想定**:
+```javascript
+// documents collection
+{
+  companyId: string,
+  title: string,
+  type: 'broadcast' | 'individual' | 'bulk_individual',
+  status: 'active' | 'deleted',
+  uploadedAt: timestamp,
+  fileUrl: string, // broadcast用
+  assignments: { // individual/bulk_individual用
+    [employeeId]: {
+      fileUrl: string,
+      fileName: string
+    }
+  }
+}
+```
+
+### 🎯 Phase2実装予定
+
+**ファイルアップロード機能**:
+- PDF形式チェック
+- ファイルサイズ制限（50-400KB推奨）
+- Firebase Storageへの保存
+
+**配信機能**:
+1. **一斉配信**: 単一ファイルを全従業員に配信
+2. **個別配信**: 従業員選択＋ファイル指定
+3. **一括個別配信**: ファイル名で従業員番号自動マッチング
+
+**自動化機能**:
+- メール通知（配信時）
+- 2年後自動削除（Lifecycle Rules）
+- 閲覧状況tracking
+
+**管理機能**:
+- 配信履歴管理
+- ファイル削除・更新
+- 統計・レポート
+
+### 📝 開発運用ルール
+
+**テスト方針**:
+- 本番環境でテスト会社使用（Firebase認証制約のため）
+- 既存機能への影響を最小化
+- 段階的リリース（読み取り専用→フル機能）
+
+**デプロイ方法**:
+```bash
+git add -A
+git commit -m "変更内容"
+git push origin main
+# GitHub Actionsで自動デプロイ
+```
+
+**ファイル構成**:
+```
+src/
+├── pages/
+│   ├── admin/PdfDelivery.js (管理者画面)
+│   └── employee/Documents.js (従業員画面)
+├── components/
+│   ├── Navigation.js (メニュー)
+│   └── Layout.js (ページタイトル)
+└── firebase.js (Storage設定)
+```
 
 ---
 
-**最終更新**: 2025-07-30
+**最終更新**: 2025-08-05
 **作成者**: Claude Code Assistant  
 **プロジェクト**: 給与明細システム (kyuyoprint)
 **システム名**: 「そのままWeb明細」
+
+### 💾 Git履歴（最新3件）
+```
+b228375 PDF配信機能のメニュー統合完了
+79a89a7 MAPPING_GUIDE.mdに0値表示制御機能の仕様を追加  
+7425699 第2段階: デフォルトで0値項目を非表示に変更
+```
