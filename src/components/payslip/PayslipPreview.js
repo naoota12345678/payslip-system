@@ -128,20 +128,30 @@ function PayslipPreview({ payslipData, showDetailedInfo = false, isBonus = false
             勤怠
           </div>
           <div className="p-2 print:p-1">
-            {payslipData.attendanceItems && payslipData.attendanceItems.length > 0 ? (
-              payslipData.attendanceItems
-                .sort((a, b) => (a.order || 0) - (b.order || 0))
-                .map((item, index) => (
+            {(() => {
+              const filteredItems = (payslipData.attendanceItems || [])
+                .filter(item => {
+                  // 0値項目を非表示
+                  if (item.value === 0 || item.value === '0' || item.value === '0.00') return false;
+                  if (item.value === '' || item.value === null || item.value === undefined) return false;
+                  return true;
+                });
+              
+              return filteredItems.length > 0 ? (
+                filteredItems
+                  .sort((a, b) => (a.order || 0) - (b.order || 0))
+                  .map((item, index) => (
                 <div key={index} className="flex justify-between text-xs print:text-[0.6rem] py-1 print:py-0.5 border-b border-gray-100 last:border-b-0">
                   <span>{item.name}</span>
                   <span>{formatAttendanceValue(item.value)}</span>
                 </div>
-              ))
-            ) : (
-              <div className="text-xs print:text-[0.6rem] text-gray-500 text-center py-2 print:py-1">
-                データなし
-              </div>
-            )}
+                  ))
+              ) : (
+                <div className="text-xs print:text-[0.6rem] text-gray-500 text-center py-2 print:py-1">
+                  データなし
+                </div>
+              );
+            })()}
           </div>
         </div>
 
@@ -151,22 +161,32 @@ function PayslipPreview({ payslipData, showDetailedInfo = false, isBonus = false
             支給
           </div>
           <div className="p-2 print:p-1">
-            {payslipData.incomeItems && payslipData.incomeItems.length > 0 ? (
-              payslipData.incomeItems
-                .sort((a, b) => (a.order || 0) - (b.order || 0))
-                .map((item, index) => (
+            {(() => {
+              const filteredItems = (payslipData.incomeItems || [])
+                .filter(item => {
+                  // 0値項目を非表示
+                  if (item.value === 0 || item.value === '0') return false;
+                  if (item.value === '' || item.value === null || item.value === undefined) return false;
+                  return true;
+                });
+              
+              return filteredItems.length > 0 ? (
+                filteredItems
+                  .sort((a, b) => (a.order || 0) - (b.order || 0))
+                  .map((item, index) => (
                 <div key={index} className="flex justify-between text-xs print:text-[0.6rem] py-1 print:py-0.5 border-b border-gray-100 last:border-b-0">
                   <span>{item.name}</span>
                   <span className="text-right">
                     {typeof item.value === 'number' ? formatCurrency(item.value) : item.value}
                   </span>
                 </div>
-              ))
-            ) : (
-              <div className="text-xs print:text-[0.6rem] text-gray-500 text-center py-2 print:py-1">
-                データなし
-              </div>
-            )}
+                  ))
+              ) : (
+                <div className="text-xs print:text-[0.6rem] text-gray-500 text-center py-2 print:py-1">
+                  データなし
+                </div>
+              );
+            })()}
           </div>
         </div>
 
@@ -176,22 +196,32 @@ function PayslipPreview({ payslipData, showDetailedInfo = false, isBonus = false
             控除
           </div>
           <div className="p-2 print:p-1">
-            {payslipData.deductionItems && payslipData.deductionItems.length > 0 ? (
-              payslipData.deductionItems
-                .sort((a, b) => (a.order || 0) - (b.order || 0))
-                .map((item, index) => (
+            {(() => {
+              const filteredItems = (payslipData.deductionItems || [])
+                .filter(item => {
+                  // 0値項目を非表示
+                  if (item.value === 0 || item.value === '0') return false;
+                  if (item.value === '' || item.value === null || item.value === undefined) return false;
+                  return true;
+                });
+              
+              return filteredItems.length > 0 ? (
+                filteredItems
+                  .sort((a, b) => (a.order || 0) - (b.order || 0))
+                  .map((item, index) => (
                 <div key={index} className="flex justify-between text-xs print:text-[0.6rem] py-1 print:py-0.5 border-b border-gray-100 last:border-b-0">
                   <span>{item.name}</span>
                   <span className="text-right">
                     {typeof item.value === 'number' ? formatCurrency(item.value) : item.value}
                   </span>
                 </div>
-              ))
-            ) : (
-              <div className="text-xs print:text-[0.6rem] text-gray-500 text-center py-2 print:py-1">
-                データなし
-              </div>
-            )}
+                  ))
+              ) : (
+                <div className="text-xs print:text-[0.6rem] text-gray-500 text-center py-2 print:py-1">
+                  データなし
+                </div>
+              );
+            })()}
           </div>
         </div>
 
@@ -202,22 +232,32 @@ function PayslipPreview({ payslipData, showDetailedInfo = false, isBonus = false
           </div>
           <div className="p-2 print:p-1">
             {/* CSVの合計データをそのまま表示 */}
-            {payslipData.otherItems && payslipData.otherItems.length > 0 ? (
-              payslipData.otherItems
-                .sort((a, b) => (a.order || 0) - (b.order || 0))
-                .map((item, index) => (
+            {(() => {
+              const filteredItems = (payslipData.otherItems || [])
+                .filter(item => {
+                  // 0値項目を非表示
+                  if (item.value === 0 || item.value === '0') return false;
+                  if (item.value === '' || item.value === null || item.value === undefined) return false;
+                  return true;
+                });
+              
+              return filteredItems.length > 0 ? (
+                filteredItems
+                  .sort((a, b) => (a.order || 0) - (b.order || 0))
+                  .map((item, index) => (
                 <div key={index} className="flex justify-between text-xs print:text-[0.6rem] py-1 print:py-0.5 border-b border-gray-100 last:border-b-0">
                   <span>{item.name}</span>
                   <span className="text-right">
                     {typeof item.value === 'number' ? formatCurrency(item.value) : item.value}
                   </span>
                 </div>
-              ))
-            ) : (
-              <div className="text-xs print:text-[0.6rem] text-gray-500 text-center py-2 print:py-1">
-                データなし
-              </div>
-            )}
+                  ))
+              ) : (
+                <div className="text-xs print:text-[0.6rem] text-gray-500 text-center py-2 print:py-1">
+                  データなし
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
