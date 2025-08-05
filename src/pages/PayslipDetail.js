@@ -251,11 +251,9 @@ function PayslipDetail() {
   // 従業員名を取得する関数（シンプル版）
   const fetchEmployeeName = async (employeeId) => {
     try {
-      console.log('🔍 従業員名取得開始:', employeeId);
-      console.log('🏢 会社ID:', userDetails.companyId);
+      console.log('従業員名取得開始:', employeeId);
       
       if (!employeeId) {
-        console.log('❌ employeeIdが空のためN/Aを設定');
         setEmployeeName('N/A');
         return;
       }
@@ -267,25 +265,11 @@ function PayslipDetail() {
         where("employeeId", "==", employeeId)
       );
       
-      console.log('🔍 検索条件:', {
-        companyId: userDetails.companyId,
-        employeeId: employeeId
-      });
-      
       const employeesSnapshot = await getDocs(employeesQuery);
-      console.log('📊 検索結果:', employeesSnapshot.size, '件');
       
       if (!employeesSnapshot.empty) {
         const employeeData = employeesSnapshot.docs[0].data();
         const employeeName = employeeData.name || 'N/A';
-        
-        console.log('✅ 従業員データ取得成功:', {
-          docId: employeesSnapshot.docs[0].id,
-          employeeId: employeeData.employeeId,
-          name: employeeData.name,
-          companyId: employeeData.companyId,
-          allFields: Object.keys(employeeData)
-        });
         
         console.log('従業員データ取得成功:', {
           name: employeeName,
@@ -305,27 +289,7 @@ function PayslipDetail() {
           setDepartmentName(''); // 空欄（ブランク）
         }
       } else {
-        console.log('❌ 従業員が見つかりません:', employeeId);
-        console.log('🔍 デバッグ: employeesコレクション全体を確認...');
-        
-        // デバッグ：全従業員データを確認
-        const allEmployeesQuery = query(
-          collection(db, "employees"),
-          where("companyId", "==", userDetails.companyId)
-        );
-        const allEmployeesSnapshot = await getDocs(allEmployeesQuery);
-        
-        console.log('📊 会社の全従業員数:', allEmployeesSnapshot.size);
-        allEmployeesSnapshot.docs.forEach((doc, index) => {
-          const data = doc.data();
-          console.log(`👤 従業員${index + 1}:`, {
-            docId: doc.id,
-            employeeId: data.employeeId,
-            name: data.name,
-            companyId: data.companyId
-          });
-        });
-        
+        console.log('従業員が見つかりません:', employeeId);
         setEmployeeName('N/A');
         setDepartmentName(''); // 空欄（ブランク）
       }
