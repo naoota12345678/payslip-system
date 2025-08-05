@@ -25,7 +25,7 @@ function Profile() {
   useEffect(() => {
     if (currentUser && userDetails) {
       setEmail(currentUser.email || '');
-      setDisplayName(userDetails.displayName || '');
+      setDisplayName(userDetails.name || userDetails.displayName || '');
       setPhone(userDetails.phone || '');
       setPosition(userDetails.position || '');
     }
