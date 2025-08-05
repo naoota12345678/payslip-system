@@ -1149,7 +1149,15 @@ exports.processCSV = onCall(async (request) => {
               paymentDate: admin.firestore.Timestamp.fromDate(uploadData.paymentDate.toDate()),
               uploadId: uploadId,
               createdAt: getServerTimestamp(),
-              items: {}
+              items: {},
+              // アップロード時のマッピング設定を保存
+              originalMapping: {
+                incomeItems: mappingData.incomeItems || [],
+                deductionItems: mappingData.deductionItems || [],
+                attendanceItems: mappingData.attendanceItems || [],
+                totalItems: mappingData.totalItems || [],
+                timestamp: getServerTimestamp()
+              }
             };
             
             // 従業員ID/番号の取得

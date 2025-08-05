@@ -80,9 +80,15 @@ function PayslipDetail() {
           return;
         }
 
-        // マッピング設定を取得
+        // マッピング設定を取得（過去の明細は保存時の設定を優先）
         let currentMappingConfig = null;
-        if (payslipData.companyId || userDetails?.companyId) {
+        if (payslipData.originalMapping) {
+          // 過去の明細：保存時のマッピング設定を使用
+          console.log('📋 保存時のマッピング設定を使用:', payslipData.originalMapping.timestamp);
+          currentMappingConfig = payslipData.originalMapping;
+        } else if (payslipData.companyId || userDetails?.companyId) {
+          // 新しい明細またはマッピング未保存：現在の設定を使用
+          console.log('📋 現在のマッピング設定を使用');
           currentMappingConfig = await fetchMappingConfigSync(payslipData.companyId || userDetails.companyId);
         }
 
