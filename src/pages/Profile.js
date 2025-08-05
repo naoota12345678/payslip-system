@@ -42,7 +42,7 @@ function Profile() {
       setMessage('');
       setLoading(true);
       
-      // 従業員情報をFirestoreで更新
+      // 従業員情報をFirestoreで更新（名前は除外）
       const employeeQuery = query(
         collection(db, 'employees'),
         where('uid', '==', currentUser.uid)
@@ -52,7 +52,7 @@ function Profile() {
       if (!employeeSnapshot.empty) {
         const employeeDocRef = doc(db, 'employees', employeeSnapshot.docs[0].id);
         await updateDoc(employeeDocRef, {
-          name: displayName,
+          // name: displayName, // 名前の更新を無効化
           phone,
           position,
           updatedAt: new Date()
@@ -167,15 +167,20 @@ function Profile() {
               
               <div>
                 <label htmlFor="displayName" className="block text-sm font-medium text-gray-700">
-                  表示名
+                  表示名（管理者のみ編集可能）
                 </label>
                 <input
                   id="displayName"
                   type="text"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  className="mt-1 block w-full border border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed rounded-md shadow-sm py-2 px-3 sm:text-sm"
+                  disabled
+                  readOnly
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  名前の変更は管理者にお問い合わせください。給与明細の正確性のため、従業員による名前変更は制限されています。
+                </p>
               </div>
               
               <div>
