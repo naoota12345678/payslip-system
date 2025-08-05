@@ -12,6 +12,7 @@ const ItemTabs = ({
   parsedHeaders,
   onUpdateItemName,
   onUpdateItemVisibility,
+  onUpdateItemZeroDisplay,
   onRemoveItem,
   onMoveItem,
   onAddItem
@@ -88,6 +89,7 @@ const ItemTabs = ({
           items={safeIncomeItems}
           onUpdateItemName={onUpdateItemName}
           onUpdateItemVisibility={onUpdateItemVisibility}
+          onUpdateItemZeroDisplay={onUpdateItemZeroDisplay}
           onRemoveItem={onRemoveItem}
           onMoveItem={onMoveItem}
           availableHeaders={parsedHeaders}
@@ -103,6 +105,7 @@ const ItemTabs = ({
           items={safeDeductionItems}
           onUpdateItemName={onUpdateItemName}
           onUpdateItemVisibility={onUpdateItemVisibility}
+          onUpdateItemZeroDisplay={onUpdateItemZeroDisplay}
           onRemoveItem={onRemoveItem}
           onMoveItem={onMoveItem}
           availableHeaders={parsedHeaders}
@@ -118,6 +121,7 @@ const ItemTabs = ({
           items={safeAttendanceItems}
           onUpdateItemName={onUpdateItemName}
           onUpdateItemVisibility={onUpdateItemVisibility}
+          onUpdateItemZeroDisplay={onUpdateItemZeroDisplay}
           onRemoveItem={onRemoveItem}
           onMoveItem={onMoveItem}
           availableHeaders={parsedHeaders}
@@ -133,6 +137,7 @@ const ItemTabs = ({
           items={safeTotalItems}
           onUpdateItemName={onUpdateItemName}
           onUpdateItemVisibility={onUpdateItemVisibility}
+          onUpdateItemZeroDisplay={onUpdateItemZeroDisplay}
           onRemoveItem={onRemoveItem}
           onMoveItem={onMoveItem}
           availableHeaders={parsedHeaders}
@@ -148,6 +153,7 @@ const ItemTabs = ({
           items={safeItemCodeItems}
           onUpdateItemName={onUpdateItemName}
           onUpdateItemVisibility={onUpdateItemVisibility}
+          onUpdateItemZeroDisplay={onUpdateItemZeroDisplay}
           onRemoveItem={onRemoveItem}
           onMoveItem={onMoveItem}
           availableHeaders={parsedHeaders}
