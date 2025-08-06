@@ -370,6 +370,9 @@ const BonusSimpleCSVUpload = () => {
       // CSVマッピング設定は専用画面でのみ変更可能とする
       // await saveHeaderMappings(headers, mappingSettings);
 
+      // アップロードIDを生成（全行で共通）
+      const uploadId = `bonus_upload_${Date.now()}`;
+
       // 各行のデータを賞与明細として保存
       for (let i = 0; i < csvData.length; i++) {
         const rowData = csvData[i];
@@ -549,6 +552,7 @@ const BonusSimpleCSVUpload = () => {
           year: paymentYear, // 選択された年
           paymentDate: new Date(paymentDate), // 選択された支払日
           payslipType: 'bonus', // 賞与専用
+          uploadId: uploadId, // メール送信用
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
           
@@ -644,17 +648,17 @@ const BonusSimpleCSVUpload = () => {
       
       // アップロード完了データを保存
       setUploadedData({
-        uploadId: `bonus_upload_${Date.now()}`,
+        uploadId: uploadId, // 共通のuploadIdを使用
         paymentDate: paymentDate,
         count: csvData.length
       });
       
-      // 保存後にデータをクリア
+      // 保存後にデータをクリア（メール送信UIを表示するため即座にプレビューを非表示）
+      setShowPreview(false);
       setTimeout(() => {
         setFile(null);
         setCsvData([]);
         setHeaders([]);
-        setShowPreview(false);
         setMessage('');
         document.getElementById('csvFileInput').value = '';
       }, 3000);
