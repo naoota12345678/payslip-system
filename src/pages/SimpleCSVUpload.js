@@ -675,9 +675,6 @@ const SimpleCSVUpload = () => {
         setHeaders([]);
         setShowPreview(false);
         setMessage('');
-        setSendNotification(false);
-        setNotificationDate('');
-        setSendImmediately(false);
         const fileInput = document.getElementById('csvFileInput');
         if (fileInput) {
           fileInput.value = '';
