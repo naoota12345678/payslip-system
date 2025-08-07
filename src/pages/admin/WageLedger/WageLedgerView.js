@@ -15,7 +15,8 @@ function WageLedgerView() {
   const [employeeInfo, setEmployeeInfo] = useState(null);
   const [mappingConfig, setMappingConfig] = useState(null);
 
-  // URLパラメータから期間と従業員情報を取得
+  // URLパラメータから期間、従業員情報、タイプを取得
+  const ledgerType = searchParams.get('type') || 'salary';
   const startYear = parseInt(searchParams.get('startYear'));
   const startMonth = parseInt(searchParams.get('startMonth'));
   const endYear = parseInt(searchParams.get('endYear'));
@@ -156,74 +157,77 @@ function WageLedgerView() {
         const startDate = new Date(startYear, startMonth - 1, 1);
         const endDate = new Date(endYear, endMonth, 0);
         
-        console.log('🔍 賃金台帳詳細データ取得開始');
+        console.log('🔍 賃金台帳詳細データ取得開始', `タイプ: ${ledgerType}`);
         console.log('従業員ID:', employeeId);
         console.log('期間:', startDate.toISOString().split('T')[0], '〜', endDate.toISOString().split('T')[0]);
         
-        // 給与明細データを取得
-        const payslipsQuery = query(
-          collection(db, 'payslips'),
-          where('companyId', '==', userDetails.companyId),
-          where('employeeId', '==', employeeId),
-          where('paymentDate', '>=', startDate),
-          where('paymentDate', '<=', endDate),
-          orderBy('paymentDate', 'asc')
-        );
+        let allPayslips = [];
         
-        // 賞与明細データを取得
-        const bonusQuery = query(
-          collection(db, 'bonusPayslips'),
-          where('companyId', '==', userDetails.companyId),
-          where('employeeId', '==', employeeId),
-          where('paymentDate', '>=', startDate),
-          where('paymentDate', '<=', endDate),
-          orderBy('paymentDate', 'asc')
-        );
+        if (ledgerType === 'bonus') {
+          // 賞与賃金台帳の場合：賞与明細のみ取得
+          const bonusQuery = query(
+            collection(db, 'bonusPayslips'),
+            where('companyId', '==', userDetails.companyId),
+            where('employeeId', '==', employeeId),
+            where('paymentDate', '>=', startDate),
+            where('paymentDate', '<=', endDate),
+            orderBy('paymentDate', 'asc')
+          );
+          
+          const bonusSnapshot = await getDocs(bonusQuery);
+          const bonusPayslips = bonusSnapshot.docs.map(doc => ({
+            id: doc.id,
+            type: 'bonus',
+            ...doc.data()
+          }));
+          
+          allPayslips = bonusPayslips;
+          console.log('🎁 該当する賞与明細:', bonusPayslips.length, '件');
+        } else {
+          // 給与賃金台帳の場合：給与明細のみ取得
+          const payslipsQuery = query(
+            collection(db, 'payslips'),
+            where('companyId', '==', userDetails.companyId),
+            where('employeeId', '==', employeeId),
+            where('paymentDate', '>=', startDate),
+            where('paymentDate', '<=', endDate),
+            orderBy('paymentDate', 'asc')
+          );
+          
+          const payslipsSnapshot = await getDocs(payslipsQuery);
+          const payslips = payslipsSnapshot.docs.map(doc => ({
+            id: doc.id,
+            type: 'salary',
+            ...doc.data()
+          }));
+          
+          allPayslips = payslips;
+          console.log('📄 該当する給与明細:', payslips.length, '件');
+        }
         
-        // 並行して取得
-        const [payslipsSnapshot, bonusSnapshot] = await Promise.all([
-          getDocs(payslipsQuery),
-          getDocs(bonusQuery)
-        ]);
-        
-        const payslips = payslipsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          type: 'salary',
-          ...doc.data()
-        }));
-        
-        const bonusPayslips = bonusSnapshot.docs.map(doc => ({
-          id: doc.id,
-          type: 'bonus',
-          ...doc.data()
-        }));
-        
-        // 給与と賞与を統合
-        const allPayslips = [...payslips, ...bonusPayslips].sort((a, b) => {
+        // 日付順でソート
+        allPayslips.sort((a, b) => {
           const dateA = a.paymentDate?.toDate ? a.paymentDate.toDate() : new Date(a.paymentDate);
           const dateB = b.paymentDate?.toDate ? b.paymentDate.toDate() : new Date(b.paymentDate);
           return dateA - dateB;
         });
         
-        console.log('📄 該当する給与明細:', payslips.length, '件');
-        console.log('🎁 該当する賞与明細:', bonusPayslips.length, '件');
-        console.log('📊 合計データ:', allPayslips.length, '件');
+        console.log('📊 対象データ合計:', allPayslips.length, '件');
 
-        // マッピング設定を取得（給与・賞与両方）
-        const salaryMappingConfig = await fetchMappingConfigSync(userDetails.companyId);
-        const bonusMappingConfig = await fetchBonusMappingConfigSync(userDetails.companyId);
+        // タイプに応じて必要なマッピング設定のみ取得
+        let mappingConfig;
+        if (ledgerType === 'bonus') {
+          mappingConfig = await fetchBonusMappingConfigSync(userDetails.companyId);
+          console.log('📋 賞与マッピング設定取得結果:', mappingConfig ? '✅あり' : '❌なし');
+        } else {
+          mappingConfig = await fetchMappingConfigSync(userDetails.companyId);
+          console.log('📋 給与マッピング設定取得結果:', mappingConfig ? '✅あり' : '❌なし');
+        }
         
-        console.log('📋 マッピング設定取得結果:');
-        console.log('- 給与マッピング:', salaryMappingConfig ? '✅あり' : '❌なし');
-        console.log('- 賞与マッピング:', bonusMappingConfig ? '✅あり' : '❌なし');
-        
-        // 各給与明細データを分類処理
+        // 各明細データを分類処理
         const processedPayslips = allPayslips.map(payslip => {
-          // データタイプに応じてマッピング設定を選択
-          const currentMappingConfig = payslip.type === 'bonus' ? bonusMappingConfig : salaryMappingConfig;
-          
           const { incomeItems, deductionItems, attendanceItems, otherItems } = 
-            classifyItemsForWageLedger(payslip, currentMappingConfig);
+            classifyItemsForWageLedger(payslip, mappingConfig);
           
           return {
             ...payslip,
@@ -465,19 +469,24 @@ function WageLedgerView() {
             賃金台帳
           </span>
           <span className="mx-2 text-gray-400">›</span>
-          <span className="text-gray-500 cursor-pointer" onClick={() => navigate('/admin/wage-ledger/period-select')}>
-            期間選択
+          <span className="text-gray-500 cursor-pointer" onClick={() => navigate(`/admin/wage-ledger/period-select?type=${ledgerType}`)}>
+            {ledgerType === 'bonus' ? '賞与' : '給与'}期間選択
           </span>
           <span className="mx-2 text-gray-400">›</span>
           <span className="text-gray-500 cursor-pointer" onClick={() => navigate(`/admin/wage-ledger/employees?${searchParams.toString()}`)}>
             従業員選択
           </span>
           <span className="mx-2 text-gray-400">›</span>
-          <span className="text-blue-600 font-medium">賃金台帳</span>
+          <span className="text-blue-600 font-medium">{ledgerType === 'bonus' ? '賞与' : '給与'}賃金台帳</span>
         </nav>
-        <h1 className="text-2xl font-bold text-gray-900">賃金台帳</h1>
+        <div className="flex items-center space-x-3 mb-2">
+          <div className={`w-3 h-3 rounded-full ${ledgerType === 'bonus' ? 'bg-green-500' : 'bg-blue-500'}`}></div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {ledgerType === 'bonus' ? '賞与' : '給与'}賃金台帳
+          </h1>
+        </div>
         <p className="text-gray-600 mt-2">
-          {employeeName}さんの賃金台帳（{formatPeriod()}）
+          {employeeName}さんの{ledgerType === 'bonus' ? '賞与' : '給与'}賃金台帳（{formatPeriod()}）
         </p>
       </div>
 
@@ -511,8 +520,12 @@ function WageLedgerView() {
       {/* 賃金台帳テーブル（マトリックス形式） */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-900">賃金台帳（項目別表示）</h2>
-          <p className="text-sm text-gray-600 mt-1">横軸：各月、縦軸：給与明細の実際の項目</p>
+          <h2 className="text-lg font-medium text-gray-900">
+            {ledgerType === 'bonus' ? '賞与' : '給与'}賃金台帳（項目別表示）
+          </h2>
+          <p className="text-sm text-gray-600 mt-1">
+            横軸：各月、縦軸：{ledgerType === 'bonus' ? '賞与明細' : '給与明細'}の実際の項目
+          </p>
         </div>
         
         <div className="overflow-x-auto">

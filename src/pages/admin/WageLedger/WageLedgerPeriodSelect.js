@@ -1,9 +1,11 @@
 // src/pages/admin/WageLedger/WageLedgerPeriodSelect.js
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 function WageLedgerPeriodSelect() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const ledgerType = searchParams.get('type') || 'salary'; // デフォルトは給与
   const [startYear, setStartYear] = useState(new Date().getFullYear());
   const [startMonth, setStartMonth] = useState(1);
   const [endYear, setEndYear] = useState(new Date().getFullYear());
@@ -46,8 +48,9 @@ function WageLedgerPeriodSelect() {
 
   const handleNext = () => {
     if (validatePeriod()) {
-      // URLパラメータで期間を渡す
+      // URLパラメータで期間とタイプを渡す
       const params = new URLSearchParams({
+        type: ledgerType,
         startYear: startYear.toString(),
         startMonth: startMonth.toString(),
         endYear: endYear.toString(),
@@ -68,13 +71,22 @@ function WageLedgerPeriodSelect() {
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6">
         <nav className="text-sm breadcrumbs mb-4">
-          <span className="text-gray-500">賃金台帳</span>
+          <span className="text-gray-500 cursor-pointer" onClick={() => navigate('/admin/wage-ledger')}>
+            賃金台帳
+          </span>
           <span className="mx-2 text-gray-400">›</span>
-          <span className="text-blue-600 font-medium">期間選択</span>
+          <span className="text-blue-600 font-medium">
+            {ledgerType === 'bonus' ? '賞与' : '給与'}賃金台帳・期間選択
+          </span>
         </nav>
-        <h1 className="text-2xl font-bold text-gray-900">期間選択</h1>
+        <div className="flex items-center space-x-3 mb-2">
+          <div className={`w-3 h-3 rounded-full ${ledgerType === 'bonus' ? 'bg-green-500' : 'bg-blue-500'}`}></div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {ledgerType === 'bonus' ? '賞与' : '給与'}賃金台帳 - 期間選択
+          </h1>
+        </div>
         <p className="text-gray-600 mt-2">
-          賃金台帳を作成する期間を選択してください（最大12ヶ月）
+          {ledgerType === 'bonus' ? '賞与' : '給与'}賃金台帳を作成する期間を選択してください（最大12ヶ月）
         </p>
       </div>
 

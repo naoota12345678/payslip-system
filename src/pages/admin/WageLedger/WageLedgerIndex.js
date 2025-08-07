@@ -14,32 +14,64 @@ function WageLedgerIndex() {
         </p>
       </div>
 
-      {/* メインアクション */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="text-center">
-          <div className="mb-6">
-            <div className="mx-auto w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-              <svg className="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
+      {/* 賃金台帳タイプ選択 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* 給与賃金台帳 */}
+        <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
+          <div className="text-center">
+            <div className="mb-4">
+              <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-3">
+                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                給与賃金台帳
+              </h2>
+              <p className="text-gray-600 mb-4">
+                月次給与明細データから作成される賃金台帳です。
+                <br />
+                基本給、残業代、各種手当・控除項目を表示します。
+              </p>
             </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">
-              賃金台帳を作成
-            </h2>
-            <p className="text-gray-600 mb-6">
-              期間と従業員を選択して、法定様式に準拠した賃金台帳を生成できます。
-              <br />
-              最大12ヶ月間の期間を指定可能です。
-            </p>
+            
+            <button
+              onClick={() => navigate('/admin/wage-ledger/period-select?type=salary')}
+              className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              給与賃金台帳を作成
+            </button>
           </div>
-          
-          <button
-            onClick={() => navigate('/admin/wage-ledger/period-select')}
-            className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-          >
-            期間を選択して開始
-          </button>
+        </div>
+
+        {/* 賞与賃金台帳 */}
+        <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
+          <div className="text-center">
+            <div className="mb-4">
+              <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-3">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                        d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                賞与賃金台帳
+              </h2>
+              <p className="text-gray-600 mb-4">
+                賞与明細データから作成される賃金台帳です。
+                <br />
+                賞与額、社会保険料控除等の項目を表示します。
+              </p>
+            </div>
+            
+            <button
+              onClick={() => navigate('/admin/wage-ledger/period-select?type=bonus')}
+              className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+            >
+              賞与賃金台帳を作成
+            </button>
+          </div>
         </div>
       </div>
 
