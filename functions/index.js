@@ -1997,6 +1997,11 @@ exports.sendBulkInvitationEmails = onCall({
   }
   
   try {
+    // Gmail設定を初期化（個別送信と同じ方法で）
+    console.log('🔧 Gmail設定を初期化中...');
+    const gmailInitialized = await initializeGmail();
+    console.log('Gmail初期化結果:', gmailInitialized);
+    
     const { companyId } = request.data;
     
     if (!companyId) {
@@ -2005,20 +2010,35 @@ exports.sendBulkInvitationEmails = onCall({
     
     console.log(`📧 会社ID ${companyId} の全アクティブ従業員に招待メールを送信開始`);
     
-    // アクティブな従業員を取得
+    // アクティブな従業員を取得（isActiveがtrueまたは未設定の場合も含む）
     const employeesSnapshot = await db.collection('employees')
       .where('companyId', '==', companyId)
-      .where('isActive', '==', true) // 在職者のみ
       .get();
     
-    if (employeesSnapshot.empty) {
+    // isActiveフィールドで手動フィルタリング（未設定の場合もアクティブとみなす）
+    const activeEmployees = [];
+    employeesSnapshot.forEach(doc => {
+      const data = doc.data();
+      // isActiveが未設定（undefined）またはtrueの場合を含める
+      if (data.isActive !== false) {
+        activeEmployees.push(doc);
+      }
+    });
+    
+    if (activeEmployees.length === 0) {
+      console.error('❌ アクティブな従業員が見つかりません');
+      console.log('全従業員データ:', employeesSnapshot.docs.map(doc => ({
+        employeeId: doc.data().employeeId,
+        isActive: doc.data().isActive,
+        email: doc.data().email
+      })));
       throw new HttpsError('not-found', 'アクティブな従業員が見つかりません');
     }
     
-    console.log(`👥 対象従業員数: ${employeesSnapshot.size}件`);
+    console.log(`👥 対象従業員数: ${activeEmployees.length}件`);
     
     // 従業員リストをログに出力（デバッグ用）
-    const employeesList = employeesSnapshot.docs.map(doc => {
+    const employeesList = activeEmployees.map(doc => {
       const data = doc.data();
       return {
         employeeId: data.employeeId,
@@ -2034,7 +2054,7 @@ exports.sendBulkInvitationEmails = onCall({
     let failCount = 0;
     
     // 各従業員に招待メール送信
-    for (const employeeDoc of employeesSnapshot.docs) {
+    for (const employeeDoc of activeEmployees) {
       const employeeData = employeeDoc.data();
       
       try {
@@ -2121,7 +2141,7 @@ exports.sendBulkInvitationEmails = onCall({
     
     return {
       success: true,
-      totalCount: employeesSnapshot.size,
+      totalCount: activeEmployees.length,
       successCount,
       failCount,
       results,
