@@ -2355,7 +2355,6 @@ const createDocumentNotificationEmailContent = (employeeName, documentTitle) => 
     </div>
     
     <div class="content">
-      <p>いつもお疲れ様です。</p>
       <p><strong>${employeeName}</strong> 様</p>
       
       <p>新しい書類が配信されましたのでお知らせいたします。</p>
