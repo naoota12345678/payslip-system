@@ -23,19 +23,38 @@ function WageLedgerEmployeeList() {
   useEffect(() => {
     const fetchData = async () => {
       if (!userDetails?.companyId) return;
+      
+      // URLパラメータの検証
+      if (isNaN(startYear) || isNaN(startMonth) || isNaN(endYear) || isNaN(endMonth)) {
+        console.error('❌ URLパラメータが無効です:', { startYear, startMonth, endYear, endMonth });
+        setError('期間の設定が正しくありません。期間選択からやり直してください。');
+        setLoading(false);
+        return;
+      }
 
       try {
         setLoading(true);
+        setError(''); // エラーをクリア
         
         // 期間の開始日と終了日を計算（useEffect内で実行）
         const startDate = new Date(startYear, startMonth - 1, 1);
         const endDate = new Date(endYear, endMonth, 0); // 月末日
         
+        // 日付の妥当性チェック
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+          console.error('❌ 日付計算エラー:', { startYear, startMonth, endYear, endMonth });
+          setError('期間の日付が正しくありません。');
+          setLoading(false);
+          return;
+        }
+        
         console.log('🔍 賃金台帳データ取得開始');
+        console.log('URLパラメータ:', { startYear, startMonth, endYear, endMonth });
         console.log('期間:', startDate.toISOString().split('T')[0], '〜', endDate.toISOString().split('T')[0]);
         console.log('会社ID:', userDetails.companyId);
         
         // 期間内の給与明細データを取得
+        console.log('📄 Firestoreクエリ実行中...');
         const payslipsQuery = query(
           collection(db, 'payslips'),
           where('companyId', '==', userDetails.companyId),
@@ -43,7 +62,15 @@ function WageLedgerEmployeeList() {
           where('payDate', '<=', endDate.toISOString().split('T')[0])
         );
         
-        const payslipsSnapshot = await getDocs(payslipsQuery);
+        console.log('📄 payslipsクエリ実行中...');
+        const payslipsSnapshot = await Promise.race([
+          getDocs(payslipsQuery),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('payslipsクエリタイムアウト（30秒）')), 30000)
+          )
+        ]);
+        console.log('📄 payslipsクエリ完了. 取得数:', payslipsSnapshot.size);
+        
         const payslips = payslipsSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
@@ -65,18 +92,27 @@ function WageLedgerEmployeeList() {
         setPayslipData(employeePayslips);
 
         // 従業員マスタデータを取得
+        console.log('👤 従業員データクエリ実行中...');
         const employeesQuery = query(
           collection(db, 'employees'),
           where('companyId', '==', userDetails.companyId)
         );
         
-        const employeesSnapshot = await getDocs(employeesQuery);
+        const employeesSnapshot = await Promise.race([
+          getDocs(employeesQuery),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('従業員データクエリタイムアウト（30秒）')), 30000)
+          )
+        ]);
+        console.log('👤 従業員データクエリ完了. 取得数:', employeesSnapshot.size);
+        
         const employeesData = employeesSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
         
         console.log('👤 全従業員数:', employeesData.length);
+        console.log('👤 従業員データサンプル:', employeesData.slice(0, 3));
 
         // 期間内に給与明細があるアクティブな従業員のみフィルタリング
         const activeEmployeesWithPayslips = employeesData.filter(employee => {
