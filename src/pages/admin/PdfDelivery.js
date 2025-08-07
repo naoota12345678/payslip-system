@@ -731,24 +731,42 @@ function PdfDeliveryManagement() {
                   <div className="mb-3">
                     <label className="block">
                       <span className="text-xs text-gray-600 mb-1 block">📄 複数ファイル選択（Ctrl+Aで全選択可）</span>
-                      <input
-                        type="file"
-                        accept=".pdf"
-                        multiple
-                        onChange={handleBulkFileSelect}
-                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
-                      />
+                      <div className="relative">
+                        <input
+                          type="file"
+                          accept=".pdf"
+                          multiple
+                          onChange={handleBulkFileSelect}
+                          id="file-multiple"
+                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                        />
+                      </div>
                     </label>
                   </div>
                   <div className="mb-3">
                     <label className="block">
                       <span className="text-xs text-gray-600 mb-1 block">📁 フォルダ選択（フォルダ内のPDFを一括選択）</span>
-                      <input
-                        type="file"
-                        webkitdirectory=""
-                        onChange={handleBulkFileSelect}
-                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
-                      />
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => document.getElementById('folder-select').click()}
+                          className="px-4 py-2 bg-purple-50 text-purple-700 rounded-full text-sm font-semibold hover:bg-purple-100"
+                        >
+                          ファイル選択
+                        </button>
+                        <input
+                          type="file"
+                          webkitdirectory=""
+                          onChange={handleBulkFileSelect}
+                          id="folder-select"
+                          className="hidden"
+                        />
+                        {selectedFiles.length > 0 && (
+                          <span className="ml-3 text-sm text-gray-600">
+                            {selectedFiles.length}個のファイルが選択されています
+                          </span>
+                        )}
+                      </div>
                     </label>
                   </div>
                   <p className="mt-1 text-xs text-gray-500">
