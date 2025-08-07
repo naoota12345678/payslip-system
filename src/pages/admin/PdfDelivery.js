@@ -344,13 +344,13 @@ function PdfDeliveryManagement() {
             </p>
           </div>
           
-          {/* 個別配信ボタン */}
+          {/* PDF配信ボタン */}
           <button 
             className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
             onClick={() => setShowUploadModal(true)}
             disabled={uploading}
           >
-            個別配信
+            📄 PDF配信
           </button>
         </div>
 
@@ -466,7 +466,7 @@ function PdfDeliveryManagement() {
             <div className="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
               <div className="mt-3">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-medium text-gray-900">個別配信 - 新規書類アップロード</h3>
+                  <h3 className="text-lg font-medium text-gray-900">📄 PDF書類配信 - アップロード</h3>
                   <button 
                     onClick={() => setShowUploadModal(false)}
                     className="text-gray-400 hover:text-gray-600"
@@ -545,22 +545,29 @@ function PdfDeliveryManagement() {
                       ))
                     )}
                   </div>
-                  <div className="mt-2 flex gap-2">
+                  <div className="mt-2 flex gap-2 items-center">
                     <button
                       type="button"
                       onClick={() => setSelectedEmployees(employees.map(emp => emp.employeeId))}
-                      className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                      className="flex-1 px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
                     >
-                      全選択
+                      🌐 全員選択 ({employees.length}名)
                     </button>
                     <button
                       type="button"
                       onClick={() => setSelectedEmployees([])}
-                      className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                      className="px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 text-sm"
                     >
                       全解除
                     </button>
                   </div>
+                  
+                  {/* 一斉配信の説明 */}
+                  {selectedEmployees.length === employees.length && employees.length > 0 && (
+                    <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
+                      💡 <strong>一斉配信モード:</strong> 全従業員 ({employees.length}名) に同じ書類が配信されます
+                    </div>
+                  )}
                 </div>
 
                 {/* アクションボタン */}
@@ -577,7 +584,10 @@ function PdfDeliveryManagement() {
                     disabled={!selectedFile || !documentTitle || selectedEmployees.length === 0 || uploading}
                     className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
                   >
-                    {uploading ? '配信中...' : '配信実行'}
+                    {uploading ? '配信中...' : 
+                     selectedEmployees.length === employees.length && employees.length > 0 ?
+                     `📢 一斉配信実行 (${selectedEmployees.length}名)` :
+                     `📄 個別配信実行 (${selectedEmployees.length}名)`}
                   </button>
                 </div>
               </div>
