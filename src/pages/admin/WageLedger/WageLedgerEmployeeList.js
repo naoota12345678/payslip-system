@@ -114,20 +114,18 @@ function WageLedgerEmployeeList() {
         console.log('👤 全従業員数:', employeesData.length);
         console.log('👤 従業員データサンプル:', employeesData.slice(0, 3));
 
-        // アクティブな従業員を全て表示（給与明細の有無に関係なく）
-        // 賃金台帳画面でブランク行表示する
-        const activeEmployees = employeesData.filter(employee => {
-          return employee.isActive !== false; // 退職者のみ除外
-        });
+        // 全従業員を表示（退職者含む）
+        // 賃金台帳は法定帳簿のため退職者も期間中の在籍記録が必要
+        const allEmployees = employeesData;
         
         console.log('📊 給与明細データ詳細:', Object.keys(employeePayslips).map(empId => ({
           employeeId: empId,
           payslipCount: employeePayslips[empId]?.length || 0
         })));
         
-        console.log('✅ 該当従業員数:', activeEmployees.length);
+        console.log('✅ 該当従業員数:', allEmployees.length);
 
-        setEmployees(activeEmployees);
+        setEmployees(allEmployees);
         setLoading(false);
       } catch (err) {
         console.error('❌ データ取得エラー:', err);
@@ -236,6 +234,11 @@ function WageLedgerEmployeeList() {
                         <span className="ml-3 px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">
                           {employee.employeeId}
                         </span>
+                        {employee.isActive === false && (
+                          <span className="ml-2 px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded">
+                            退職済み
+                          </span>
+                        )}
                       </div>
                       <div className="mt-1 flex items-center text-sm text-gray-500">
                         <span>{employee.email}</span>
@@ -243,6 +246,12 @@ function WageLedgerEmployeeList() {
                           <>
                             <span className="mx-2">•</span>
                             <span>{employee.departmentCode}</span>
+                          </>
+                        )}
+                        {employee.isActive === false && employee.retiredDate && (
+                          <>
+                            <span className="mx-2">•</span>
+                            <span>退職日: {employee.retiredDate}</span>
                           </>
                         )}
                       </div>
