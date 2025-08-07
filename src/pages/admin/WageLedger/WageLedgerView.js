@@ -38,7 +38,6 @@ function WageLedgerView() {
         console.log('期間:', startDate.toISOString().split('T')[0], '〜', endDate.toISOString().split('T')[0]);
         
         // 従業員の給与明細データを取得
-        // paymentDateフィールドを使用（DateオブジェクトまたはTimestamp）
         const payslipsQuery = query(
           collection(db, 'payslips'),
           where('companyId', '==', userDetails.companyId),
@@ -51,11 +50,39 @@ function WageLedgerView() {
         const payslipsSnapshot = await getDocs(payslipsQuery);
         const payslips = payslipsSnapshot.docs.map(doc => ({
           id: doc.id,
+          type: 'payslip', // 給与明細としてマーク
           ...doc.data()
         }));
         
+        // 賞与明細データも取得（賃金台帳に含める）
+        const bonusPayslipsQuery = query(
+          collection(db, 'bonusPayslips'),
+          where('companyId', '==', userDetails.companyId),
+          where('employeeId', '==', employeeId),
+          where('paymentDate', '>=', startDate),
+          where('paymentDate', '<=', endDate),
+          orderBy('paymentDate', 'asc')
+        );
+        
+        const bonusPayslipsSnapshot = await getDocs(bonusPayslipsQuery);
+        const bonusPayslips = bonusPayslipsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          type: 'bonus', // 賞与明細としてマーク
+          ...doc.data()
+        }));
+        
+        // 給与と賞与を結合して日付順にソート
+        const allPayslips = [...payslips, ...bonusPayslips].sort((a, b) => {
+          const dateA = a.paymentDate?.toDate ? a.paymentDate.toDate() : new Date(a.paymentDate);
+          const dateB = b.paymentDate?.toDate ? b.paymentDate.toDate() : new Date(b.paymentDate);
+          return dateA - dateB;
+        });
+        
         console.log('📄 該当する給与明細:', payslips.length, '件');
-        setPayslipData(payslips);
+        console.log('🎁 該当する賞与明細:', bonusPayslips.length, '件');
+        console.log('📊 合計データ:', allPayslips.length, '件');
+        
+        setPayslipData(allPayslips);
 
         // 従業員情報を取得
         const employeeQuery = query(
@@ -83,8 +110,18 @@ function WageLedgerView() {
 
   // 給与明細データを賃金台帳形式に変換
   const formatPayslipForWageLedger = (payslip) => {
-    // 給与明細の詳細データを解析
-    const details = payslip.details || {};
+    // 給与明細の詳細データを解析 - 実際のデータ構造に合わせて修正
+    const items = payslip.items || {};
+    const itemCategories = payslip.itemCategories || {};
+    
+    console.log('🔍 賃金台帳フォーマット変換:', {
+      payslipId: payslip.id,
+      type: payslip.type || 'payslip',
+      itemsKeys: Object.keys(items),
+      totalIncome: payslip.totalIncome,
+      totalDeduction: payslip.totalDeduction,
+      netAmount: payslip.netAmount
+    });
     
     // 基本給の計算（各種手当を除く基本的な支給額）
     let basicWage = 0;
@@ -92,54 +129,94 @@ function WageLedgerView() {
     let allowances = 0;
     let totalGross = 0;
     let totalDeductions = 0;
-    let netPay = payslip.netPay || 0;
+    let netAmount = payslip.netAmount || 0;
 
-    // 詳細データから項目を分類
-    Object.entries(details).forEach(([key, item]) => {
-      const amount = parseFloat(item.amount || 0);
+    // 実際のデータ構造に合わせて項目を分類
+    Object.entries(items).forEach(([key, value]) => {
+      // 数値への変換
+      const numericValue = typeof value === 'number' ? value : parseFloat(value || 0);
+      const amount = isNaN(numericValue) ? 0 : numericValue;
       
-      if (item.category === 'income') {
+      // 項目カテゴリを取得
+      const category = itemCategories[key];
+      
+      console.log(`🔍 項目分析: ${key} = ${value} (種別: ${category}, 金額: ${amount})`);
+      
+      if (category === 'income') {
         totalGross += amount;
         
         // 項目名で分類
-        if (key.includes('基本給') || key.includes('基準内賃金')) {
+        if (key.includes('基本給') || key.includes('基準内賃金') || key.includes('基本給与')) {
           basicWage += amount;
-        } else if (key.includes('残業') || key.includes('時間外')) {
+        } else if (key.includes('残業') || key.includes('時間外') || key.includes('オーバータイム')) {
           overtime += amount;
         } else {
           allowances += amount;
         }
-      } else if (item.category === 'deduction') {
+      } else if (category === 'deduction') {
         totalDeductions += amount;
       }
     });
 
-    // 総支給額がない場合は詳細から計算
+    // 総支給額がない場合は保存された合計から取得または詳細から計算
     if (totalGross === 0) {
-      totalGross = payslip.grossPay || basicWage + overtime + allowances;
+      totalGross = payslip.totalIncome || basicWage + overtime + allowances;
     }
+    
+    // 控除合計がない場合は保存された合計から取得
+    if (totalDeductions === 0) {
+      totalDeductions = payslip.totalDeduction || 0;
+    }
+    
+    console.log('📊 金額集計結果:', {
+      basicWage,
+      overtime,
+      allowances,
+      totalGross,
+      totalDeductions,
+      netAmount,
+      calculatedNet: totalGross - totalDeductions
+    });
 
-    // 勤怠情報の取得
-    const workingDays = details['出勤日数']?.amount || 
-                       details['勤務日数']?.amount || 
+    // 勤怠情報の取得 - 実際のデータ構造に合わせて修正
+    const getAttendanceValue = (fieldName) => {
+      const value = items[fieldName];
+      return typeof value === 'number' ? value : parseFloat(value || 0) || 0;
+    };
+    
+    const workingDays = getAttendanceValue('出勤日数') || 
+                       getAttendanceValue('勤務日数') || 
+                       getAttendanceValue('所定労働日数') || 
                        22; // デフォルト値
 
-    const workingHours = details['労働時間']?.amount || 
-                        details['勤務時間']?.amount || 
+    const workingHours = getAttendanceValue('労働時間') || 
+                        getAttendanceValue('勤務時間') || 
+                        getAttendanceValue('所定労働時間') || 
                         workingDays * 8; // デフォルト値
 
-    const overtimeHours = details['残業時間']?.amount || 
-                         details['時間外労働時間']?.amount || 
+    const overtimeHours = getAttendanceValue('残業時間') || 
+                         getAttendanceValue('時間外労働時間') || 
+                         getAttendanceValue('時間外時間') ||
                          0;
+                         
+    console.log('🕰️ 勤怠情報:', {
+      workingDays,
+      workingHours,
+      overtimeHours,
+      availableKeys: Object.keys(items).filter(k => 
+        k.includes('時間') || k.includes('日数') || k.includes('勤務') || k.includes('労働')
+      )
+    });
 
     return {
-      payDate: payslip.payDate,
+      payDate: payslip.paymentDate, // paymentDateフィールドを使用
+      type: payslip.type || 'payslip', // 給与/賞与の区別
       basicWage: Math.floor(basicWage),
       overtime: Math.floor(overtime),
       allowances: Math.floor(allowances),
       totalGross: Math.floor(totalGross),
       totalDeductions: Math.floor(totalDeductions),
-      netPay: Math.floor(netPay),
+      netPay: Math.floor(netAmount),
       workingDays: workingDays,
       workingHours: workingHours,
       overtimeHours: overtimeHours
@@ -367,6 +444,9 @@ function WageLedgerView() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   年月
                 </th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  種別
+                </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   基本給
                 </th>
@@ -402,6 +482,17 @@ function WageLedgerView() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {data.displayText}
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                    {data.hasData ? (
+                      <span className={`px-2 py-1 text-xs rounded-full ${
+                        data.type === 'bonus' 
+                          ? 'bg-orange-100 text-orange-800' 
+                          : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {data.type === 'bonus' ? '賞与' : '給与'}
+                      </span>
+                    ) : '-'}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
                     {data.hasData ? `¥${formatCurrency(data.basicWage)}` : '-'}
                   </td>
@@ -435,6 +526,9 @@ function WageLedgerView() {
               <tr className="bg-gray-100 font-medium">
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
                   合計
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-bold">
+                  -
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-bold">
                   ¥{formatCurrency(totals.basicWage)}
