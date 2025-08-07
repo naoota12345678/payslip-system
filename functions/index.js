@@ -2219,3 +2219,198 @@ exports.scheduledEmailNotifications = onSchedule({
     });
   }
 });
+
+// PDF配信通知メール送信関数
+exports.sendDocumentDeliveryNotification = onCall({
+  enforceAppCheck: false,
+  invoker: 'public'
+}, async (request) => {
+  console.log('📄 PDF配信通知メール送信開始');
+  
+  // 認証確認
+  if (!request.auth || !request.auth.uid) {
+    throw new HttpsError('unauthenticated', 'この機能を使用するには認証が必要です');
+  }
+  
+  try {
+    const { documentId, documentTitle, recipientEmployeeIds } = request.data;
+    
+    if (!documentId || !documentTitle || !recipientEmployeeIds || recipientEmployeeIds.length === 0) {
+      throw new HttpsError('invalid-argument', 'documentId、documentTitle、recipientEmployeeIdsが必要です');
+    }
+    
+    console.log(`📄 配信通知対象: ${recipientEmployeeIds.length}名`);
+    
+    // 対象従業員のメールアドレスを取得
+    const employees = [];
+    for (const employeeId of recipientEmployeeIds) {
+      const employeeSnapshot = await db.collection('employees')
+        .where('employeeId', '==', employeeId)
+        .limit(1)
+        .get();
+      
+      if (!employeeSnapshot.empty) {
+        const employeeData = employeeSnapshot.docs[0].data();
+        if (employeeData.email && employeeData.isActive) {
+          employees.push({
+            employeeId: employeeData.employeeId,
+            name: employeeData.name,
+            email: employeeData.email
+          });
+        }
+      }
+    }
+    
+    if (employees.length === 0) {
+      throw new HttpsError('not-found', '通知対象の従業員が見つかりません');
+    }
+    
+    console.log(`📧 メール送信対象: ${employees.length}名`);
+    
+    // メール送信処理
+    const results = [];
+    let successCount = 0;
+    let failCount = 0;
+    
+    for (const employee of employees) {
+      try {
+        const subject = `【書類配信通知】${documentTitle}`;
+        const htmlContent = createDocumentNotificationEmailContent(employee.name, documentTitle);
+        
+        const result = await sendEmail(employee.email, subject, htmlContent);
+        
+        if (result.success) {
+          successCount++;
+          console.log(`✅ 通知メール送信成功: ${employee.name} (${employee.email})`);
+        } else {
+          failCount++;
+          console.log(`❌ 通知メール送信失敗: ${employee.name} (${employee.email}) - ${result.error}`);
+        }
+        
+        results.push({
+          employeeId: employee.employeeId,
+          name: employee.name,
+          email: employee.email,
+          success: result.success,
+          error: result.success ? null : result.error
+        });
+        
+      } catch (employeeError) {
+        failCount++;
+        console.error(`❌ 従業員通知エラー (${employee.employeeId}):`, employeeError);
+        
+        results.push({
+          employeeId: employee.employeeId,
+          name: employee.name,
+          email: employee.email,
+          success: false,
+          error: employeeError.message
+        });
+      }
+    }
+    
+    console.log(`📄 PDF配信通知完了: 成功 ${successCount}件、失敗 ${failCount}件`);
+    
+    return {
+      success: true,
+      documentTitle,
+      totalCount: employees.length,
+      successCount,
+      failCount,
+      results,
+      message: `配信通知送信完了: 成功 ${successCount}件、失敗 ${failCount}件`
+    };
+    
+  } catch (error) {
+    console.error('❌ PDF配信通知送信エラー:', error);
+    throw new HttpsError('internal', `配信通知送信中にエラーが発生しました: ${error.message}`);
+  }
+});
+
+// PDF配信通知メールテンプレート
+const createDocumentNotificationEmailContent = (employeeName, documentTitle) => {
+  const systemUrl = 'https://kyuyoprint.web.app';
+  const supportEmail = 'roumu3737@gmail.com';
+  
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    .container { max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif; }
+    .header { background-color: #4A90E2; color: white; padding: 20px; text-align: center; }
+    .content { padding: 30px; background-color: #ffffff; }
+    .document-info { background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #4A90E2; }
+    .cta-button { background-color: #4A90E2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 20px 0; }
+    .footer { background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #666; }
+    .important { color: #d9534f; font-weight: bold; }
+    .company-info { margin: 20px 0; padding: 15px; background-color: #e8f4fd; border-radius: 5px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📄 書類配信のお知らせ</h1>
+    </div>
+    
+    <div class="content">
+      <p>いつもお疲れ様です。</p>
+      <p><strong>${employeeName}</strong> 様</p>
+      
+      <p>新しい書類が配信されましたのでお知らせいたします。</p>
+      
+      <div class="document-info">
+        <h3>📋 配信書類</h3>
+        <p><strong>書類名：</strong>${documentTitle}</p>
+        <p><strong>配信日時：</strong>${new Date().toLocaleDateString('ja-JP')} ${new Date().toLocaleTimeString('ja-JP')}</p>
+      </div>
+      
+      <p class="important">⚠️ 重要：この書類は重要な書類です。必ずご確認ください。</p>
+      
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${systemUrl}/employee/documents" class="cta-button">📱 書類を確認する</a>
+      </div>
+      
+      <h3>📱 書類の確認方法</h3>
+      <ol>
+        <li>上記の「書類を確認する」ボタンをクリック</li>
+        <li>ログイン画面でメールアドレスとパスワードを入力</li>
+        <li>「書類一覧」画面で配信された書類を確認</li>
+      </ol>
+      
+      <h3>🔗 直接アクセスURL</h3>
+      <p>ブックマークに追加していただくと便利です：<br>
+      <a href="${systemUrl}">${systemUrl}</a></p>
+      
+      <div class="company-info">
+        <h4>💼 お問い合わせ</h4>
+        <p><strong>合同会社グレースコンサルティング</strong><br>
+        メール：<a href="mailto:${supportEmail}">${supportEmail}</a></p>
+      </div>
+      
+      <h3>📧 メールが届かない場合</h3>
+      <ul>
+        <li>迷惑メールフォルダをご確認ください</li>
+        <li><strong>${supportEmail}</strong> を連絡先に追加してください</li>
+        <li>システムに直接アクセス：<a href="${systemUrl}">${systemUrl}</a></li>
+      </ul>
+      
+      <h3>📱 スマートフォンで見られない場合</h3>
+      <ul>
+        <li>コンテンツブロッカー（広告ブロック）を一時的に無効にしてください</li>
+        <li>別のブラウザアプリをお試しください</li>
+        <li>プライベートブラウジングモードをお試しください</li>
+      </ul>
+    </div>
+    
+    <div class="footer">
+      <p>このメールは自動送信されています。返信はできません。</p>
+      <p>お問い合わせは <a href="mailto:${supportEmail}">${supportEmail}</a> までお願いいたします。</p>
+      <p>&copy; 合同会社グレースコンサルティング「そのままWeb明細」</p>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+};

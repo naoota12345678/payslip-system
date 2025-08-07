@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { collection, query, where, getDocs, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../../firebase';
+import { httpsCallable } from 'firebase/functions';
+import { db, storage, functions } from '../../firebase';
 
 function PdfDeliveryManagement() {
   const { userDetails, currentUser } = useAuth();
@@ -163,7 +164,22 @@ function PdfDeliveryManagement() {
         totalRecipients: selectedEmployees.length
       };
 
-      await addDoc(collection(db, 'documents'), documentData);
+      const docRef = await addDoc(collection(db, 'documents'), documentData);
+
+      // メール通知送信
+      try {
+        const sendNotification = httpsCallable(functions, 'sendDocumentDeliveryNotification');
+        const notificationResult = await sendNotification({
+          documentId: docRef.id,
+          documentTitle: documentTitle,
+          recipientEmployeeIds: selectedEmployees
+        });
+        
+        console.log('📧 通知メール送信結果:', notificationResult.data);
+      } catch (emailError) {
+        console.error('📧 通知メール送信エラー:', emailError);
+        // メール送信失敗は配信成功を妨げない
+      }
 
       // リセット
       setShowUploadModal(false);
