@@ -37,7 +37,7 @@ function WageLedgerView() {
         console.log('従業員ID:', employeeId);
         console.log('期間:', startDate.toISOString().split('T')[0], '〜', endDate.toISOString().split('T')[0]);
         
-        // 従業員の給与明細データを取得
+        // 給与明細データを取得
         const payslipsQuery = query(
           collection(db, 'payslips'),
           where('companyId', '==', userDetails.companyId),
@@ -47,15 +47,8 @@ function WageLedgerView() {
           orderBy('paymentDate', 'asc')
         );
         
-        const payslipsSnapshot = await getDocs(payslipsQuery);
-        const payslips = payslipsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          type: 'payslip', // 給与明細としてマーク
-          ...doc.data()
-        }));
-        
-        // 賞与明細データも取得（賃金台帳に含める）
-        const bonusPayslipsQuery = query(
+        // 賞与明細データを取得
+        const bonusQuery = query(
           collection(db, 'bonusPayslips'),
           where('companyId', '==', userDetails.companyId),
           where('employeeId', '==', employeeId),
@@ -64,14 +57,25 @@ function WageLedgerView() {
           orderBy('paymentDate', 'asc')
         );
         
-        const bonusPayslipsSnapshot = await getDocs(bonusPayslipsQuery);
-        const bonusPayslips = bonusPayslipsSnapshot.docs.map(doc => ({
+        // 並行して取得
+        const [payslipsSnapshot, bonusSnapshot] = await Promise.all([
+          getDocs(payslipsQuery),
+          getDocs(bonusQuery)
+        ]);
+        
+        const payslips = payslipsSnapshot.docs.map(doc => ({
           id: doc.id,
-          type: 'bonus', // 賞与明細としてマーク
+          type: 'salary',
           ...doc.data()
         }));
         
-        // 給与と賞与を結合して日付順にソート
+        const bonusPayslips = bonusSnapshot.docs.map(doc => ({
+          id: doc.id,
+          type: 'bonus',
+          ...doc.data()
+        }));
+        
+        // 給与と賞与を統合
         const allPayslips = [...payslips, ...bonusPayslips].sort((a, b) => {
           const dateA = a.paymentDate?.toDate ? a.paymentDate.toDate() : new Date(a.paymentDate);
           const dateB = b.paymentDate?.toDate ? b.paymentDate.toDate() : new Date(b.paymentDate);
@@ -108,134 +112,6 @@ function WageLedgerView() {
     fetchWageLedgerData();
   }, [userDetails, employeeId, startYear, startMonth, endYear, endMonth]);
 
-  // 給与明細データを賃金台帳形式に変換
-  const formatPayslipForWageLedger = (payslip) => {
-    // 給与明細の詳細データを解析 - 実際のデータ構造に合わせて修正
-    const items = payslip.items || {};
-    const itemCategories = payslip.itemCategories || {};
-    
-    console.log('🔍 賃金台帳フォーマット変換:', {
-      payslipId: payslip.id,
-      type: payslip.type || 'payslip',
-      itemsKeys: Object.keys(items),
-      totalIncome: payslip.totalIncome,
-      totalDeduction: payslip.totalDeduction,
-      netAmount: payslip.netAmount
-    });
-    
-    // 基本給の計算（各種手当を除く基本的な支給額）
-    let basicWage = 0;
-    let overtime = 0;
-    let allowances = 0;
-    let totalGross = 0;
-    let totalDeductions = 0;
-    let netAmount = payslip.netAmount || 0;
-
-    // 実際のデータ構造に合わせて項目を分類
-    Object.entries(items).forEach(([key, value]) => {
-      // 数値への変換
-      const numericValue = typeof value === 'number' ? value : parseFloat(value || 0);
-      const amount = isNaN(numericValue) ? 0 : numericValue;
-      
-      // 項目カテゴリを取得
-      const category = itemCategories[key];
-      
-      console.log(`🔍 項目分析: ${key} = ${value} (種別: ${category}, 金額: ${amount})`);
-      
-      if (category === 'income') {
-        totalGross += amount;
-        
-        // 項目名で分類
-        if (key.includes('基本給') || key.includes('基準内賃金') || key.includes('基本給与')) {
-          basicWage += amount;
-        } else if (key.includes('残業') || key.includes('時間外') || key.includes('オーバータイム')) {
-          overtime += amount;
-        } else {
-          allowances += amount;
-        }
-      } else if (category === 'deduction') {
-        totalDeductions += amount;
-      }
-    });
-
-    // 総支給額がない場合は保存された合計から取得または詳細から計算
-    if (totalGross === 0) {
-      totalGross = payslip.totalIncome || basicWage + overtime + allowances;
-    }
-    
-    // 控除合計がない場合は保存された合計から取得
-    if (totalDeductions === 0) {
-      totalDeductions = payslip.totalDeduction || 0;
-    }
-    
-    console.log('📊 金額集計結果:', {
-      basicWage,
-      overtime,
-      allowances,
-      totalGross,
-      totalDeductions,
-      netAmount,
-      calculatedNet: totalGross - totalDeductions
-    });
-
-    // 勤怠情報の取得 - 実際のデータ構造に合わせて修正
-    const getAttendanceValue = (fieldName) => {
-      const value = items[fieldName];
-      return typeof value === 'number' ? value : parseFloat(value || 0) || 0;
-    };
-    
-    const workingDays = getAttendanceValue('出勤日数') || 
-                       getAttendanceValue('勤務日数') || 
-                       getAttendanceValue('所定労働日数') || 
-                       22; // デフォルト値
-
-    const workingHours = getAttendanceValue('労働時間') || 
-                        getAttendanceValue('勤務時間') || 
-                        getAttendanceValue('所定労働時間') || 
-                        workingDays * 8; // デフォルト値
-
-    const overtimeHours = getAttendanceValue('残業時間') || 
-                         getAttendanceValue('時間外労働時間') || 
-                         getAttendanceValue('時間外時間') ||
-                         0;
-                         
-    console.log('🕰️ 勤怠情報:', {
-      workingDays,
-      workingHours,
-      overtimeHours,
-      availableKeys: Object.keys(items).filter(k => 
-        k.includes('時間') || k.includes('日数') || k.includes('勤務') || k.includes('労働')
-      )
-    });
-
-    return {
-      payDate: payslip.paymentDate, // paymentDateフィールドを使用
-      type: payslip.type || 'payslip', // 給与/賞与の区別
-      basicWage: Math.floor(basicWage),
-      overtime: Math.floor(overtime),
-      allowances: Math.floor(allowances),
-      totalGross: Math.floor(totalGross),
-      totalDeductions: Math.floor(totalDeductions),
-      netPay: Math.floor(netAmount),
-      workingDays: workingDays,
-      workingHours: workingHours,
-      overtimeHours: overtimeHours
-    };
-  };
-
-  const formatPeriod = () => {
-    return `${startYear}年${startMonth}月 〜 ${endYear}年${endMonth}月`;
-  };
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('ja-JP').format(amount);
-  };
-
-  const formatMonth = (payDate) => {
-    const date = new Date(payDate);
-    return `${date.getFullYear()}年${date.getMonth() + 1}月`;
-  };
-
   // 期間中の全ての月を生成する関数
   const generateAllMonthsInPeriod = () => {
     const months = [];
@@ -265,17 +141,14 @@ function WageLedgerView() {
     const payslipMap = {};
     
     payslipData.forEach(payslip => {
-      // paymentDateはDateオブジェクトまたはFirestore Timestampの可能性がある
       let payDate;
       if (payslip.paymentDate) {
-        // Firestore Timestampの場合
         if (payslip.paymentDate.toDate) {
           payDate = payslip.paymentDate.toDate();
         } else {
           payDate = new Date(payslip.paymentDate);
         }
       } else if (payslip.year && payslip.month) {
-        // year/monthフィールドから日付を生成
         payDate = new Date(payslip.year, payslip.month - 1, 1);
       } else {
         console.warn('給与明細の日付が取得できません:', payslip);
@@ -289,71 +162,78 @@ function WageLedgerView() {
     return payslipMap;
   };
 
-  // 期間中の全月の賃金台帳データを生成（ブランク月含む）
-  const generateCompleteWageLedgerData = () => {
+  // 期間中の全項目をマトリックス形式で生成
+  const generateItemMatrix = () => {
     const allMonths = generateAllMonthsInPeriod();
     const payslipMap = getPayslipByMonth();
     
-    return allMonths.map(month => {
-      const payslip = payslipMap[month.monthKey];
-      
-      if (payslip) {
-        // データがある月は通常の処理
-        return {
-          ...formatPayslipForWageLedger(payslip),
-          displayText: month.displayText,
-          hasData: true
-        };
-      } else {
-        // データがない月はブランクデータ
-        return {
-          payDate: `${month.year}-${month.month.toString().padStart(2, '0')}-01`,
-          basicWage: 0,
-          overtime: 0,
-          allowances: 0,
-          totalGross: 0,
-          totalDeductions: 0,
-          netPay: 0,
-          workingDays: 0,
-          workingHours: 0,
-          overtimeHours: 0,
-          displayText: month.displayText,
-          hasData: false
-        };
-      }
+    // 全期間の全項目を収集
+    const allItemsSet = new Set();
+    payslipData.forEach(payslip => {
+      const items = payslip.items || {};
+      Object.keys(items).forEach(key => allItemsSet.add(key));
     });
+    
+    const allItems = Array.from(allItemsSet).sort();
+    console.log('📋 全項目一覧:', allItems);
+    
+    // マトリックスデータを生成
+    const matrix = allItems.map(itemName => {
+      const row = {
+        itemName,
+        months: {}
+      };
+      
+      allMonths.forEach(month => {
+        const payslip = payslipMap[month.monthKey];
+        if (payslip && payslip.items && payslip.items[itemName] !== undefined) {
+          const value = payslip.items[itemName];
+          const category = (payslip.itemCategories && payslip.itemCategories[itemName]) || 'other';
+          const numericValue = typeof value === 'number' ? value : parseFloat(value || 0);
+          
+          row.months[month.monthKey] = {
+            value: numericValue,
+            category,
+            type: payslip.type || 'salary',
+            hasData: true
+          };
+        } else {
+          row.months[month.monthKey] = {
+            value: 0,
+            category: 'other',
+            type: 'salary',
+            hasData: false
+          };
+        }
+      });
+      
+      return row;
+    });
+    
+    return { matrix, allMonths, allItems };
   };
 
   const getTotals = () => {
-    const completeData = generateCompleteWageLedgerData();
-    const totals = completeData.reduce((acc, data) => {
-      if (data.hasData) {
-        return {
-          basicWage: acc.basicWage + data.basicWage,
-          overtime: acc.overtime + data.overtime,
-          allowances: acc.allowances + data.allowances,
-          totalGross: acc.totalGross + data.totalGross,
-          totalDeductions: acc.totalDeductions + data.totalDeductions,
-          netPay: acc.netPay + data.netPay,
-          workingDays: acc.workingDays + data.workingDays,
-          workingHours: acc.workingHours + data.workingHours,
-          overtimeHours: acc.overtimeHours + data.overtimeHours
-        };
-      }
-      return acc;
-    }, {
-      basicWage: 0,
-      overtime: 0,
-      allowances: 0,
-      totalGross: 0,
-      totalDeductions: 0,
-      netPay: 0,
-      workingDays: 0,
-      workingHours: 0,
-      overtimeHours: 0
+    const { matrix, allMonths } = generateItemMatrix();
+    const totals = {};
+    
+    matrix.forEach(row => {
+      const itemTotal = allMonths.reduce((sum, month) => {
+        const monthData = row.months[month.monthKey];
+        return sum + (monthData.hasData ? monthData.value : 0);
+      }, 0);
+      totals[row.itemName] = itemTotal;
     });
-
+    
     return totals;
+  };
+
+  const formatPeriod = () => {
+    return `${startYear}年${startMonth}月 〜 ${endYear}年${endMonth}月`;
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('ja-JP').format(amount);
   };
 
   if (loading) {
@@ -377,6 +257,7 @@ function WageLedgerView() {
     );
   }
 
+  const { matrix, allMonths } = generateItemMatrix();
   const totals = getTotals();
 
   return (
@@ -431,133 +312,102 @@ function WageLedgerView() {
         </div>
       </div>
 
-      {/* 賃金台帳テーブル */}
+      {/* 賃金台帳テーブル（マトリックス形式） */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-900">賃金台帳（法定様式準拠）</h2>
+          <h2 className="text-lg font-medium text-gray-900">賃金台帳（項目別表示）</h2>
+          <p className="text-sm text-gray-600 mt-1">横軸：各月、縦軸：給与明細の実際の項目</p>
         </div>
         
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  年月
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50">
+                  項目名
                 </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  種別
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  基本給
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  残業代
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  諸手当
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  総支給額
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  控除計
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  実支給額
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  出勤日数
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  労働時間
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  残業時間
+                {allMonths.map(month => (
+                  <th key={month.monthKey} className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <div className="transform -rotate-45 origin-bottom-left">
+                      {month.month}月
+                    </div>
+                  </th>
+                ))}
+                <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-100">
+                  合計
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {generateCompleteWageLedgerData().map((data, index) => (
-                <tr key={index} className={data.hasData ? "hover:bg-gray-50" : "hover:bg-gray-50 bg-gray-25"}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {data.displayText}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
-                    {data.hasData ? (
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        data.type === 'bonus' 
-                          ? 'bg-orange-100 text-orange-800' 
-                          : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        {data.type === 'bonus' ? '賞与' : '給与'}
+              {matrix.map((row, index) => (
+                <tr key={row.itemName} className="hover:bg-gray-50">
+                  <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white border-r">
+                    <div className="flex items-center">
+                      <span className="truncate max-w-32" title={row.itemName}>
+                        {row.itemName}
                       </span>
-                    ) : '-'}
+                      {(() => {
+                        // どの月かのカテゴリーを取得
+                        const sampleMonth = allMonths.find(month => row.months[month.monthKey]?.hasData);
+                        const category = sampleMonth ? row.months[sampleMonth.monthKey].category : 'other';
+                        
+                        if (category === 'income') {
+                          return <span className="ml-2 px-1 py-0.5 text-xs bg-green-100 text-green-600 rounded">支給</span>;
+                        } else if (category === 'deduction') {
+                          return <span className="ml-2 px-1 py-0.5 text-xs bg-red-100 text-red-600 rounded">控除</span>;
+                        }
+                        return null;
+                      })()}
+                    </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                    {data.hasData ? `¥${formatCurrency(data.basicWage)}` : '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                    {data.hasData ? `¥${formatCurrency(data.overtime)}` : '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                    {data.hasData ? `¥${formatCurrency(data.allowances)}` : '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-medium">
-                    {data.hasData ? `¥${formatCurrency(data.totalGross)}` : '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-red-600">
-                    {data.hasData ? `¥${formatCurrency(data.totalDeductions)}` : '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-blue-600 font-medium">
-                    {data.hasData ? `¥${formatCurrency(data.netAmount)}` : '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                    {data.hasData && data.workingDays > 0 ? `${data.workingDays}日` : '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                    {data.hasData && data.workingHours > 0 ? `${data.workingHours}h` : '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                    {data.hasData && data.overtimeHours > 0 ? `${data.overtimeHours}h` : '-'}
+                  {allMonths.map(month => {
+                    const monthData = row.months[month.monthKey];
+                    const value = monthData.value;
+                    const hasData = monthData.hasData;
+                    const isBonus = monthData.type === 'bonus';
+                    
+                    return (
+                      <td key={month.monthKey} className="px-3 py-2 whitespace-nowrap text-sm text-right">
+                        <div className="flex flex-col items-end">
+                          {hasData && value !== 0 ? (
+                            <>
+                              <span className={`font-medium ${
+                                monthData.category === 'income' ? 'text-gray-900' : 
+                                monthData.category === 'deduction' ? 'text-red-600' : 'text-gray-600'
+                              }`}>
+                                ¥{formatCurrency(value)}
+                              </span>
+                              {isBonus && (
+                                <span className="text-xs px-1 py-0.5 bg-orange-100 text-orange-600 rounded mt-1">
+                                  賞与
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </div>
+                      </td>
+                    );
+                  })}
+                  <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-bold bg-gray-50">
+                    {totals[row.itemName] !== 0 ? (
+                      <span className={`${
+                        (() => {
+                          const sampleMonth = allMonths.find(month => row.months[month.monthKey]?.hasData);
+                          const category = sampleMonth ? row.months[sampleMonth.monthKey].category : 'other';
+                          return category === 'income' ? 'text-gray-900' : 
+                                 category === 'deduction' ? 'text-red-600' : 'text-gray-600';
+                        })()
+                      }`}>
+                        ¥{formatCurrency(totals[row.itemName])}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
                   </td>
                 </tr>
               ))}
-              {/* 合計行 */}
-              <tr className="bg-gray-100 font-medium">
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-                  合計
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-bold">
-                  -
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-bold">
-                  ¥{formatCurrency(totals.basicWage)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-bold">
-                  ¥{formatCurrency(totals.overtime)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-bold">
-                  ¥{formatCurrency(totals.allowances)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-bold">
-                  ¥{formatCurrency(totals.totalGross)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-red-600 font-bold">
-                  ¥{formatCurrency(totals.totalDeductions)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-blue-600 font-bold">
-                  ¥{formatCurrency(totals.netAmount)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-bold">
-                  {totals.workingDays > 0 ? `${totals.workingDays}日` : '-'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-bold">
-                  {totals.workingHours > 0 ? `${totals.workingHours}h` : '-'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-bold">
-                  {totals.overtimeHours > 0 ? `${totals.overtimeHours}h` : '-'}
-                </td>
-              </tr>
             </tbody>
           </table>
         </div>

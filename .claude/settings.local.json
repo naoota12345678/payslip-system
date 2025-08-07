@@ -36,7 +36,8 @@
       "Bash(gh secret:*)",
       "Bash(mkdir:*)",
       "Bash(gsutil lifecycle set:*)",
-      "Bash(gcloud config:*)"
+      "Bash(gcloud config:*)",
+      "Bash(cp:*)"
     ],
     "deny": []
   }
