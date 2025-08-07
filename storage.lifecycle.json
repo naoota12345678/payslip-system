@@ -1,0 +1,18 @@
+{
+  "lifecycle": {
+    "rule": [
+      {
+        "action": {
+          "type": "Delete"
+        },
+        "condition": {
+          "age": 730,
+          "matchesPrefix": [
+            "documents/",
+            "pdf-delivery/"
+          ]
+        }
+      }
+    ]
+  }
+}

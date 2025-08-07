@@ -22,16 +22,20 @@ function WageLedgerView() {
   const employeeId = searchParams.get('employeeId');
   const employeeName = searchParams.get('employeeName');
 
-  // 期間の開始日と終了日を計算
-  const startDate = new Date(startYear, startMonth - 1, 1);
-  const endDate = new Date(endYear, endMonth, 0);
-
   useEffect(() => {
     const fetchWageLedgerData = async () => {
       if (!userDetails?.companyId || !employeeId) return;
 
       try {
         setLoading(true);
+        
+        // 期間の開始日と終了日を計算（useEffect内で実行）
+        const startDate = new Date(startYear, startMonth - 1, 1);
+        const endDate = new Date(endYear, endMonth, 0);
+        
+        console.log('🔍 賃金台帳詳細データ取得開始');
+        console.log('従業員ID:', employeeId);
+        console.log('期間:', startDate.toISOString().split('T')[0], '〜', endDate.toISOString().split('T')[0]);
         
         // 従業員の給与明細データを取得
         const payslipsQuery = query(
@@ -48,7 +52,8 @@ function WageLedgerView() {
           id: doc.id,
           ...doc.data()
         }));
-
+        
+        console.log('📄 該当する給与明細:', payslips.length, '件');
         setPayslipData(payslips);
 
         // 従業員情報を取得
@@ -61,18 +66,19 @@ function WageLedgerView() {
         const employeeSnapshot = await getDocs(employeeQuery);
         if (!employeeSnapshot.empty) {
           setEmployeeInfo(employeeSnapshot.docs[0].data());
+          console.log('👤 従業員情報取得完了');
         }
 
         setLoading(false);
       } catch (err) {
-        console.error('賃金台帳データ取得エラー:', err);
+        console.error('❌ 賃金台帳データ取得エラー:', err);
         setError('データの取得中にエラーが発生しました');
         setLoading(false);
       }
     };
 
     fetchWageLedgerData();
-  }, [userDetails, employeeId, startDate, endDate]);
+  }, [userDetails, employeeId, startYear, startMonth, endYear, endMonth]);
 
   // 給与明細データを賃金台帳形式に変換
   const formatPayslipForWageLedger = (payslip) => {

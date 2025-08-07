@@ -20,16 +20,20 @@ function WageLedgerEmployeeList() {
   const endYear = parseInt(searchParams.get('endYear'));
   const endMonth = parseInt(searchParams.get('endMonth'));
 
-  // 期間の開始日と終了日を計算
-  const startDate = new Date(startYear, startMonth - 1, 1);
-  const endDate = new Date(endYear, endMonth, 0); // 月末日
-
   useEffect(() => {
     const fetchData = async () => {
       if (!userDetails?.companyId) return;
 
       try {
         setLoading(true);
+        
+        // 期間の開始日と終了日を計算（useEffect内で実行）
+        const startDate = new Date(startYear, startMonth - 1, 1);
+        const endDate = new Date(endYear, endMonth, 0); // 月末日
+        
+        console.log('🔍 賃金台帳データ取得開始');
+        console.log('期間:', startDate.toISOString().split('T')[0], '〜', endDate.toISOString().split('T')[0]);
+        console.log('会社ID:', userDetails.companyId);
         
         // 期間内の給与明細データを取得
         const payslipsQuery = query(
@@ -44,6 +48,8 @@ function WageLedgerEmployeeList() {
           id: doc.id,
           ...doc.data()
         }));
+        
+        console.log('📄 取得した給与明細:', payslips.length, '件');
 
         // 従業員ごとに給与明細をグループ化
         const employeePayslips = {};
@@ -55,6 +61,7 @@ function WageLedgerEmployeeList() {
           employeePayslips[employeeId].push(payslip);
         });
 
+        console.log('👥 給与明細がある従業員数:', Object.keys(employeePayslips).length);
         setPayslipData(employeePayslips);
 
         // 従業員マスタデータを取得
@@ -68,6 +75,8 @@ function WageLedgerEmployeeList() {
           id: doc.id,
           ...doc.data()
         }));
+        
+        console.log('👤 全従業員数:', employeesData.length);
 
         // 期間内に給与明細があるアクティブな従業員のみフィルタリング
         const activeEmployeesWithPayslips = employeesData.filter(employee => {
@@ -75,18 +84,20 @@ function WageLedgerEmployeeList() {
                  employeePayslips[employee.employeeId].length > 0 &&
                  employee.isActive !== false; // 退職者を除外
         });
+        
+        console.log('✅ 該当従業員数:', activeEmployeesWithPayslips.length);
 
         setEmployees(activeEmployeesWithPayslips);
         setLoading(false);
       } catch (err) {
-        console.error('データ取得エラー:', err);
+        console.error('❌ データ取得エラー:', err);
         setError('データの取得中にエラーが発生しました');
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [userDetails, startDate, endDate]);
+  }, [userDetails, startYear, startMonth, endYear, endMonth]);
 
   const handleEmployeeSelect = (employee) => {
     const params = new URLSearchParams({

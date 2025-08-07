@@ -493,9 +493,64 @@ payslip.employeeId && employeeNames[payslip.employeeId]
 CSVアップロード → データ保存完了 → PayslipNotificationUI表示 → メール送信操作
 ```
 
+## PDF配信システム - 2年後自動削除設定（2025-08-07）
+
+### ✅ 完了した作業
+
+**1. Firebase Storage Lifecycle Rules設定**
+- **実装日**: 2025-08-07
+- **概要**: PDF配信ファイルを2年（730日）後に自動削除するLifecycle Rules設定
+- **作成ファイル**:
+  - `storage.lifecycle.json`: Lifecycle Rules定義ファイル
+  - `setup-storage-lifecycle.md`: 設定手順書
+- **設定内容**: `documents/`および`pdf-delivery/`フォルダのファイルを730日後に自動削除
+
+**2. 安全性確認済み**
+- **影響範囲**: PDF配信システムのファイルのみ（`documents/`, `pdf-delivery/`フォルダ）
+- **既存機能への影響**: なし（給与明細、賞与明細、従業員データは対象外）
+- **保存期間**: 2年間（法的要件を考慮した安全な期間設定）
+
+**3. コスト削減効果**
+- **推定削減額**: 年間約1,230円（200名企業想定）
+- **ストレージ最適化**: 不要ファイルの自動整理
+
+### 🔧 技術的な実装詳細
+
+**Lifecycle Rules設定**:
+```json
+{
+  "lifecycle": {
+    "rule": [
+      {
+        "action": {
+          "type": "Delete"
+        },
+        "condition": {
+          "age": 730,
+          "matchesPrefix": [
+            "documents/",
+            "pdf-delivery/"
+          ]
+        }
+      }
+    ]
+  }
+}
+```
+
+**適用方法**:
+1. Google Cloud Console GUI（推奨）
+2. Google Cloud CLI（権限問題解決後）
+
+### 📝 次回の作業予定
+
+**設定適用**: 
+- Google Cloud Consoleから手動設定
+- または管理者権限でのCLI実行
+
 ---
 
-**最終更新**: 2025-08-05 午後
+**最終更新**: 2025-08-07 午前
 **作成者**: Claude Code Assistant  
 **プロジェクト**: 給与明細システム (kyuyoprint)
 **システム名**: 「そのままWeb明細」

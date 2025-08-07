@@ -34,7 +34,9 @@
       "Bash(gh run list:*)",
       "WebFetch(domain:github.com)",
       "Bash(gh secret:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(gsutil lifecycle set:*)",
+      "Bash(gcloud config:*)"
     ],
     "deny": []
   }
