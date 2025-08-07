@@ -1,7 +1,7 @@
 // src/pages/EmployeeManagement.js
 import React, { useState, useEffect } from 'react';
 import { db, functions } from '../firebase';
-import { collection, doc, getDocs, deleteDoc, query, where, writeBatch } from 'firebase/firestore';
+import { collection, doc, getDocs, deleteDoc, updateDoc, query, where, writeBatch } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
