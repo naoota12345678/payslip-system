@@ -54,11 +54,10 @@ function EmployeeManagement() {
         console.log("Loaded departments:", departmentsData.length);
         setDepartments(departmentsData);
         
-        // 従業員データを取得（在職者のみ）
+        // 従業員データを取得（全従業員）
         const employeesQuery = query(
           collection(db, "employees"),
-          where("companyId", "==", companyId),
-          where("isActive", "!=", false) // 退職者を除外（isActive=falseは除外、undefined/trueは含む）
+          where("companyId", "==", companyId)
         );
         
         const employeesSnapshot = await getDocs(employeesQuery);
