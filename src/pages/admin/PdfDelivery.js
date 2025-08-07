@@ -52,10 +52,15 @@ function PdfDeliveryManagement() {
 
   useEffect(() => {
     const fetchDocuments = async () => {
-      if (!userDetails?.companyId) return;
+      if (!userDetails?.companyId) {
+        console.log('❌ companyIdが見つかりません:', userDetails);
+        return;
+      }
 
       try {
         setLoading(true);
+        console.log('📄 配信履歴取得開始 - companyId:', userDetails.companyId);
+        
         const q = query(
           collection(db, 'documents'),
           where('companyId', '==', userDetails.companyId),
@@ -63,11 +68,16 @@ function PdfDeliveryManagement() {
         );
         
         const querySnapshot = await getDocs(q);
+        console.log('📄 Firestore検索結果:', querySnapshot.size, '件');
+        
         const docs = [];
         querySnapshot.forEach((doc) => {
-          docs.push({ id: doc.id, ...doc.data() });
+          const data = doc.data();
+          console.log('📄 取得書類:', { id: doc.id, title: data.title, type: data.type, uploadedAt: data.uploadedAt });
+          docs.push({ id: doc.id, ...data });
         });
         
+        console.log('📄 最終書類リスト:', docs);
         setDocuments(docs);
       } catch (err) {
         console.error('ドキュメント取得エラー:', err);
@@ -187,8 +197,11 @@ function PdfDeliveryManagement() {
       setDocumentTitle('');
       setSelectedEmployees([]);
 
-      // ドキュメント一覧を再取得
-      window.location.reload();
+      // ドキュメント一覧を再取得（リロードではなく関数呼び出し）
+      console.log('📄 配信完了 - 履歴を再取得します');
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000); // 1秒後にリロード（データベース同期待ち）
 
     } catch (err) {
       console.error('個別配信エラー:', err);
