@@ -1,7 +1,7 @@
 // src/pages/admin/PdfDelivery.js
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { collection, query, where, getDocs, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
 import { db, storage, functions } from '../../firebase';
@@ -19,6 +19,11 @@ function PdfDeliveryManagement() {
   const [selectedEmployees, setSelectedEmployees] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [uploading, setUploading] = useState(false);
+  
+  // 詳細表示関連の状態
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState(null);
+  const [cancelling, setCancelling] = useState(false);
 
   // テスト会社かどうかのチェック
   const isTestCompany = userDetails?.companyId?.includes('test-') || false;
@@ -211,6 +216,45 @@ function PdfDeliveryManagement() {
     }
   };
 
+  // 配信取り消し処理
+  const handleCancelDelivery = async (documentId, documentTitle) => {
+    if (!confirm(`「${documentTitle}」の配信を取り消しますか？\n\n取り消し後は従業員から見えなくなります。`)) {
+      return;
+    }
+
+    try {
+      setCancelling(true);
+      
+      // ドキュメントのstatusをcancelledに更新
+      const docRef = doc(db, 'documents', documentId);
+      await updateDoc(docRef, {
+        status: 'cancelled',
+        cancelledAt: serverTimestamp(),
+        cancelledBy: userDetails.employeeId || currentUser.uid
+      });
+
+      console.log('📄 配信取り消し完了:', documentId);
+      
+      // 画面を更新
+      setShowDetailModal(false);
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+      
+    } catch (err) {
+      console.error('配信取り消しエラー:', err);
+      setError('配信の取り消しに失敗しました: ' + err.message);
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  // 詳細表示
+  const handleShowDetail = (document) => {
+    setSelectedDocument(document);
+    setShowDetailModal(true);
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -300,8 +344,12 @@ function PdfDeliveryManagement() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                        {doc.status || 'active'}
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        doc.status === 'cancelled' 
+                          ? 'bg-red-100 text-red-800' 
+                          : 'bg-green-100 text-green-800'
+                      }`}>
+                        {doc.status === 'cancelled' ? '取り消し済み' : '配信中'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -310,7 +358,10 @@ function PdfDeliveryManagement() {
                        doc.type === 'bulk_individual' ? `${Object.keys(doc.assignments || {}).length}名` : 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button className="text-indigo-600 hover:text-indigo-900 mr-3">
+                      <button 
+                        onClick={() => handleShowDetail(doc)}
+                        className="text-indigo-600 hover:text-indigo-900 mr-3"
+                      >
                         詳細
                       </button>
                       {doc.fileUrl && (
@@ -462,6 +513,122 @@ function PdfDeliveryManagement() {
                   >
                     {uploading ? '配信中...' : '配信実行'}
                   </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 配信詳細モーダル */}
+        {showDetailModal && selectedDocument && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-full max-w-3xl shadow-lg rounded-md bg-white">
+              <div className="mt-3">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">配信詳細</h3>
+                  <button 
+                    onClick={() => setShowDetailModal(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* 基本情報 */}
+                <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                  <h4 className="font-medium text-gray-900 mb-3">📋 基本情報</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium text-gray-700">書類名:</span>
+                      <p className="mt-1">{selectedDocument.title}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">配信タイプ:</span>
+                      <p className="mt-1">{getDeliveryTypeLabel(selectedDocument.type)}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">配信日時:</span>
+                      <p className="mt-1">{formatDate(selectedDocument.uploadedAt)}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">ステータス:</span>
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        selectedDocument.status === 'cancelled' 
+                          ? 'bg-red-100 text-red-800' 
+                          : 'bg-green-100 text-green-800'
+                      }`}>
+                        {selectedDocument.status === 'cancelled' ? '取り消し済み' : '配信中'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 対象者情報 */}
+                <div className="bg-blue-50 rounded-lg p-4 mb-4">
+                  <h4 className="font-medium text-gray-900 mb-3">👥 配信対象者</h4>
+                  <div className="text-sm">
+                    {selectedDocument.type === 'broadcast' ? (
+                      <p>全従業員対象</p>
+                    ) : (
+                      <p>
+                        個別配信: {selectedDocument.totalRecipients || Object.keys(selectedDocument.assignments || {}).length}名
+                        <br />
+                        <span className="text-gray-600">
+                          ※ 詳細な対象者リストは今後実装予定
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* 取り消し情報 */}
+                {selectedDocument.status === 'cancelled' && (
+                  <div className="bg-red-50 rounded-lg p-4 mb-4">
+                    <h4 className="font-medium text-red-900 mb-2">🚫 取り消し情報</h4>
+                    <div className="text-sm text-red-700">
+                      <p>取り消し日時: {formatDate(selectedDocument.cancelledAt)}</p>
+                      {selectedDocument.cancelledBy && (
+                        <p>取り消し実行者: {selectedDocument.cancelledBy}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* アクションボタン */}
+                <div className="flex justify-between items-center pt-4 border-t">
+                  <div>
+                    {selectedDocument.fileUrl && (
+                      <a
+                        href={selectedDocument.fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                      >
+                        📄 ファイル表示
+                      </a>
+                    )}
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowDetailModal(false)}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      閉じる
+                    </button>
+                    
+                    {selectedDocument.status !== 'cancelled' && (
+                      <button
+                        onClick={() => handleCancelDelivery(selectedDocument.id, selectedDocument.title)}
+                        disabled={cancelling}
+                        className="px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                      >
+                        {cancelling ? '取り消し中...' : '配信取り消し'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
