@@ -752,7 +752,7 @@ function PdfDeliveryManagement() {
                           onClick={() => document.getElementById('folder-select').click()}
                           className="px-4 py-2 bg-purple-50 text-purple-700 rounded-full text-sm font-semibold hover:bg-purple-100"
                         >
-                          ファイル選択
+                          フォルダ選択
                         </button>
                         <input
                           type="file"
