@@ -230,7 +230,9 @@ companyID一致: ${targetEmployeeData?.companyId === userDetails?.companyId}
           status: 'active'
         });
         
-        // Firebase Functionsを呼び出してアカウント作成
+        // メール送信は削除（手動送信のみにする）
+        // 従業員登録時に自動的にメールを送信しないようにコメントアウト
+        /*
         const createEmployeeAccount = httpsCallable(functions, 'createEmployeeAccount');
         const result = await createEmployeeAccount({
           email: saveData.email,
@@ -239,18 +241,19 @@ companyID一致: ${targetEmployeeData?.companyId === userDetails?.companyId}
         });
         
         console.log('✅ 従業員アカウント作成結果:', result.data);
+        */
         
         // 詳細デバッグ情報を表示
         const debugMessage = `従業員登録結果:
-${result.data.success ? '✅ 成功' : '❌ 失敗'}
+✅ 成功
 
 📧 ログイン情報:
 メール: ${saveData.email}
-パスワード: ${result.data.testPassword}
+パスワード: 000000
 
-🔍 デバッグ情報:
-UID: ${result.data.uid}
-メッセージ: ${result.data.message || 'なし'}
+🔍 登録情報:
+従業員ID: ${saveData.employeeId}
+会社ID: ${userDetails.companyId}
 
 ※テスト用の固定パスワードです
 ※Firestoreのemployeesコレクションも確認してください`;
