@@ -135,6 +135,62 @@ function EmployeeForm() {
     }
   }, [departments, employeeData._originalDepartmentId, employeeData.departmentCode]);
   
+  // 退職処理関数
+  const handleRetirement = async () => {
+    if (!window.confirm('この従業員を退職扱いにしますか？\n※退職日の入力も忘れずに行ってください。')) {
+      return;
+    }
+    
+    try {
+      const retiredDate = employeeData.retiredDate || new Date().toISOString().split('T')[0];
+      
+      await updateDoc(doc(db, 'employees', employeeId), {
+        isActive: false,
+        retiredDate: retiredDate,
+        updatedAt: new Date()
+      });
+      
+      // ローカルステートも更新
+      setEmployeeData(prev => ({
+        ...prev,
+        isActive: false,
+        retiredDate: retiredDate
+      }));
+      
+      alert('従業員を退職扱いにしました。');
+    } catch (error) {
+      console.error('退職処理エラー:', error);
+      setError('退職処理に失敗しました: ' + error.message);
+    }
+  };
+
+  // 復職処理関数
+  const handleReactivation = async () => {
+    if (!window.confirm('この従業員を在職中に戻しますか？')) {
+      return;
+    }
+    
+    try {
+      await updateDoc(doc(db, 'employees', employeeId), {
+        isActive: true,
+        retiredDate: '', // 退職日をクリア
+        updatedAt: new Date()
+      });
+      
+      // ローカルステートも更新
+      setEmployeeData(prev => ({
+        ...prev,
+        isActive: true,
+        retiredDate: ''
+      }));
+      
+      alert('従業員を在職中に戻しました。');
+    } catch (error) {
+      console.error('復職処理エラー:', error);
+      setError('復職処理に失敗しました: ' + error.message);
+    }
+  };
+  
   // フォーム送信ハンドラ
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -531,22 +587,50 @@ companyID一致: ${targetEmployeeData?.companyId === userDetails?.companyId}
           </div>
 
           {/* アクションボタン */}
-          <div className="mt-8 flex justify-end space-x-4">
-            <button
-              type="button"
-              onClick={() => navigate(isEditMode ? `/admin/employees/${employeeId}` : '/admin/employees')}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-              disabled={loading}
-            >
-              キャンセル
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-blue-300"
-            >
-              {loading ? '保存中...' : (isEditMode ? '更新' : '登録')}
-            </button>
+          <div className="mt-8 flex justify-between">
+            {/* 退職/復職ボタン（編集モードのみ） */}
+            {isEditMode && (
+              <div className="flex space-x-4">
+                {employeeData.isActive === false ? (
+                  <button
+                    type="button"
+                    onClick={handleReactivation}
+                    className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                    disabled={loading}
+                  >
+                    復職
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleRetirement}
+                    className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700"
+                    disabled={loading}
+                  >
+                    退職
+                  </button>
+                )}
+              </div>
+            )}
+            
+            {/* 保存・キャンセルボタン */}
+            <div className="flex space-x-4">
+              <button
+                type="button"
+                onClick={() => navigate(isEditMode ? `/admin/employees/${employeeId}` : '/admin/employees')}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                disabled={loading}
+              >
+                キャンセル
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-blue-300"
+              >
+                {loading ? '保存中...' : (isEditMode ? '更新' : '登録')}
+              </button>
+            </div>
           </div>
         </form>
       </div>
