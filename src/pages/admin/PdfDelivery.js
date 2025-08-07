@@ -153,12 +153,21 @@ function PdfDeliveryManagement() {
   
   // 従業員番号と従業員IDをマッチング
   const findEmployeeByNumber = (employeeNumber) => {
-    return employees.find(emp => 
-      emp.employeeId === employeeNumber ||
-      emp.employeeId === employeeNumber.padStart(2, '0') ||
-      emp.employeeId === employeeNumber.padStart(3, '0') ||
-      parseInt(emp.employeeId, 10).toString() === employeeNumber
-    );
+    return employees.find(emp => {
+      // 完全一致
+      if (emp.employeeId === employeeNumber) return true;
+      
+      // ゼロ埋めパターンのチェック（2〜8桁）
+      for (let digits = 2; digits <= 8; digits++) {
+        if (emp.employeeId === employeeNumber.padStart(digits, '0')) return true;
+      }
+      
+      // 数値変換での一致（両方向）
+      if (parseInt(emp.employeeId, 10).toString() === employeeNumber) return true;
+      if (emp.employeeId === parseInt(employeeNumber, 10).toString()) return true;
+      
+      return false;
+    });
   };
 
   // ファイル選択処理（個別配信用）
