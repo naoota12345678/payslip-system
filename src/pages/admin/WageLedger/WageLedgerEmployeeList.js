@@ -53,7 +53,7 @@ function WageLedgerEmployeeList() {
         console.log('期間:', startDate.toISOString().split('T')[0], '〜', endDate.toISOString().split('T')[0]);
         console.log('会社ID:', userDetails.companyId);
         
-        // 期間内の給与明細データを取得
+        // 期間内の給与明細データと賞与データを取得
         console.log('📄 Firestoreクエリ実行中...');
         // paymentDateフィールドを使用（DateオブジェクトまたはTimestamp）
         const payslipsQuery = query(
@@ -63,25 +63,54 @@ function WageLedgerEmployeeList() {
           where('paymentDate', '<=', endDate)
         );
         
-        console.log('📄 payslipsクエリ実行中...');
-        const payslipsSnapshot = await Promise.race([
-          getDocs(payslipsQuery),
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('payslipsクエリタイムアウト（30秒）')), 30000)
-          )
+        const bonusQuery = query(
+          collection(db, 'bonusPayslips'),
+          where('companyId', '==', userDetails.companyId),
+          where('paymentDate', '>=', startDate),
+          where('paymentDate', '<=', endDate)
+        );
+        
+        console.log('📄 給与明細・賞与明細クエリ実行中...');
+        const [payslipsSnapshot, bonusSnapshot] = await Promise.all([
+          Promise.race([
+            getDocs(payslipsQuery),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('payslipsクエリタイムアウト（30秒）')), 30000)
+            )
+          ]),
+          Promise.race([
+            getDocs(bonusQuery),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('bonusクエリタイムアウト（30秒）')), 30000)
+            )
+          ])
         ]);
+        
         console.log('📄 payslipsクエリ完了. 取得数:', payslipsSnapshot.size);
+        console.log('🎁 bonusクエリ完了. 取得数:', bonusSnapshot.size);
         
         const payslips = payslipsSnapshot.docs.map(doc => ({
           id: doc.id,
+          type: 'salary',
           ...doc.data()
         }));
         
+        const bonusPayslips = bonusSnapshot.docs.map(doc => ({
+          id: doc.id,
+          type: 'bonus',
+          ...doc.data()
+        }));
+        
+        // 給与と賞与を統合
+        const allPayslips = [...payslips, ...bonusPayslips];
+        
         console.log('📄 取得した給与明細:', payslips.length, '件');
+        console.log('🎁 取得した賞与明細:', bonusPayslips.length, '件');
+        console.log('📊 統合明細合計:', allPayslips.length, '件');
 
-        // 従業員ごとに給与明細をグループ化
+        // 従業員ごとに明細データをグループ化（給与・賞与統合）
         const employeePayslips = {};
-        payslips.forEach(payslip => {
+        allPayslips.forEach(payslip => {
           const employeeId = payslip.employeeId;
           if (!employeePayslips[employeeId]) {
             employeePayslips[employeeId] = [];
@@ -89,7 +118,7 @@ function WageLedgerEmployeeList() {
           employeePayslips[employeeId].push(payslip);
         });
 
-        console.log('👥 給与明細がある従業員数:', Object.keys(employeePayslips).length);
+        console.log('👥 明細データがある従業員数:', Object.keys(employeePayslips).length);
         setPayslipData(employeePayslips);
 
         // 従業員マスタデータを取得
@@ -263,7 +292,7 @@ function WageLedgerEmployeeList() {
                           {getPayslipCount(employee.employeeId)}件
                         </p>
                         <p className="text-xs text-gray-500">
-                          {getPayslipCount(employee.employeeId) > 0 ? '給与明細' : '全期間表示可能'}
+                          {getPayslipCount(employee.employeeId) > 0 ? '明細データ' : '全期間表示可能'}
                         </p>
                       </div>
                       <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

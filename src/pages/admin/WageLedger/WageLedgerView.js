@@ -509,7 +509,7 @@ function WageLedgerView() {
                     {data.hasData ? `¥${formatCurrency(data.totalDeductions)}` : '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-blue-600 font-medium">
-                    {data.hasData ? `¥${formatCurrency(data.netPay)}` : '-'}
+                    {data.hasData ? `¥${formatCurrency(data.netAmount)}` : '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
                     {data.hasData && data.workingDays > 0 ? `${data.workingDays}日` : '-'}
@@ -546,7 +546,7 @@ function WageLedgerView() {
                   ¥{formatCurrency(totals.totalDeductions)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-blue-600 font-bold">
-                  ¥{formatCurrency(totals.netPay)}
+                  ¥{formatCurrency(totals.netAmount)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-bold">
                   {totals.workingDays > 0 ? `${totals.workingDays}日` : '-'}
