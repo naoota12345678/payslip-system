@@ -54,6 +54,8 @@ function Layout() {
       setPageTitle('PDF配信管理');
     } else if (path === '/employee/documents') {
       setPageTitle('書類一覧');
+    } else if (path.startsWith('/admin/wage-ledger')) {
+      setPageTitle('賃金台帳');
     } else {
       setPageTitle('');
     }

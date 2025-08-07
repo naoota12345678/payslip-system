@@ -63,6 +63,12 @@ import DataBackup from './pages/DataBackup';
 import PdfDeliveryManagement from './pages/admin/PdfDelivery';
 import EmployeeDocuments from './pages/employee/Documents';
 
+// 賃金台帳関連
+import WageLedgerIndex from './pages/admin/WageLedger/WageLedgerIndex';
+import WageLedgerPeriodSelect from './pages/admin/WageLedger/WageLedgerPeriodSelect';
+import WageLedgerEmployeeList from './pages/admin/WageLedger/WageLedgerEmployeeList';
+import WageLedgerView from './pages/admin/WageLedger/WageLedgerView';
+
 // エラーページ
 import NotFound from './pages/NotFound';
 
@@ -230,6 +236,12 @@ function App() {
               
               {/* PDF配信管理 */}
               <Route path="pdf-delivery" element={<PdfDeliveryManagement />} />
+              
+              {/* 賃金台帳管理 */}
+              <Route path="wage-ledger" element={<WageLedgerIndex />} />
+              <Route path="wage-ledger/period-select" element={<WageLedgerPeriodSelect />} />
+              <Route path="wage-ledger/employees" element={<WageLedgerEmployeeList />} />
+              <Route path="wage-ledger/view" element={<WageLedgerView />} />
               
               {/* 賞与明細管理 */}
               <Route path="bonus-upload" element={<BonusCSVUpload />} />

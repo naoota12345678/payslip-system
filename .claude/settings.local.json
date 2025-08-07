@@ -33,7 +33,8 @@
       "Bash(gh workflow:*)",
       "Bash(gh run list:*)",
       "WebFetch(domain:github.com)",
-      "Bash(gh secret:*)"
+      "Bash(gh secret:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": []
   }
