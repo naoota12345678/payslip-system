@@ -1,7 +1,7 @@
 // src/pages/admin/PdfDelivery.js
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { collection, query, where, getDocs, orderBy, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, addDoc, updateDoc, doc, limit, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
 import { db, storage, functions } from '../../firebase';
@@ -24,6 +24,8 @@ function PdfDeliveryManagement() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState(null);
   const [cancelling, setCancelling] = useState(false);
+  const [recipientDetails, setRecipientDetails] = useState([]);
+  const [loadingRecipients, setLoadingRecipients] = useState(false);
 
   // テスト会社かどうかのチェック
   const isTestCompany = userDetails?.companyId?.includes('test-') || false;
@@ -249,12 +251,71 @@ function PdfDeliveryManagement() {
     }
   };
 
+  // 配信対象者の詳細情報を取得
+  const fetchRecipientDetails = async (document) => {
+    if (document.type === 'broadcast') {
+      // 一斉配信の場合は全従業員（今後実装時）
+      setRecipientDetails([{ name: '全従業員', employeeId: 'all', department: '全部署' }]);
+      return;
+    }
+
+    if (!document.assignments) {
+      setRecipientDetails([]);
+      return;
+    }
+
+    try {
+      setLoadingRecipients(true);
+      const employeeIds = Object.keys(document.assignments);
+      const recipientList = [];
+
+      // 各従業員IDの詳細情報を取得
+      for (const employeeId of employeeIds) {
+        const q = query(
+          collection(db, 'employees'),
+          where('employeeId', '==', employeeId),
+          where('companyId', '==', userDetails.companyId),
+          limit(1)
+        );
+        
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+          const employeeData = querySnapshot.docs[0].data();
+          recipientList.push({
+            employeeId: employeeData.employeeId,
+            name: employeeData.name || '不明',
+            department: employeeData.department || '未設定',
+            email: employeeData.email || '未設定'
+          });
+        } else {
+          // 従業員が見つからない場合
+          recipientList.push({
+            employeeId: employeeId,
+            name: '従業員が見つかりません',
+            department: '未設定',
+            email: '未設定'
+          });
+        }
+      }
+
+      setRecipientDetails(recipientList);
+    } catch (err) {
+      console.error('配信対象者情報取得エラー:', err);
+      setRecipientDetails([]);
+    } finally {
+      setLoadingRecipients(false);
+    }
+  };
+
   // 詳細表示
-  const handleShowDetail = (document) => {
+  const handleShowDetail = async (document) => {
     console.log('📄 詳細ボタンがクリックされました:', document);
     console.log('📄 モーダル表示状態を変更します');
     setSelectedDocument(document);
     setShowDetailModal(true);
+    
+    // 配信対象者の詳細情報を取得
+    await fetchRecipientDetails(document);
   };
 
   if (loading) {
@@ -573,20 +634,45 @@ function PdfDeliveryManagement() {
 
                 {/* 対象者情報 */}
                 <div className="bg-blue-50 rounded-lg p-4 mb-4">
-                  <h4 className="font-medium text-gray-900 mb-3">👥 配信対象者</h4>
-                  <div className="text-sm">
-                    {selectedDocument.type === 'broadcast' ? (
-                      <p>全従業員対象</p>
-                    ) : (
-                      <p>
-                        個別配信: {selectedDocument.totalRecipients || Object.keys(selectedDocument.assignments || {}).length}名
-                        <br />
-                        <span className="text-gray-600">
-                          ※ 詳細な対象者リストは今後実装予定
-                        </span>
-                      </p>
-                    )}
-                  </div>
+                  <h4 className="font-medium text-gray-900 mb-3">
+                    👥 配信対象者 ({selectedDocument.totalRecipients || Object.keys(selectedDocument.assignments || {}).length}名)
+                  </h4>
+                  
+                  {selectedDocument.type === 'broadcast' ? (
+                    <div className="text-sm">
+                      <p className="text-green-700 font-medium">🌐 全従業員対象</p>
+                      <p className="text-gray-600 text-xs mt-1">※ アクティブな全従業員に配信されます</p>
+                    </div>
+                  ) : (
+                    <div className="text-sm">
+                      {loadingRecipients ? (
+                        <p className="text-gray-600">📋 対象者情報を取得中...</p>
+                      ) : recipientDetails.length > 0 ? (
+                        <div className="space-y-2">
+                          {recipientDetails.map((recipient, index) => (
+                            <div 
+                              key={recipient.employeeId}
+                              className="flex items-center justify-between bg-white rounded p-2 border"
+                            >
+                              <div className="flex items-center">
+                                <span className="text-green-600 mr-2">✓</span>
+                                <div>
+                                  <span className="font-medium text-gray-900">
+                                    {recipient.name} ({recipient.employeeId})
+                                  </span>
+                                  <div className="text-xs text-gray-500">
+                                    {recipient.department} • {recipient.email}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-gray-600">対象者情報が見つかりません</p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* 取り消し情報 */}
