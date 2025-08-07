@@ -55,11 +55,12 @@ function WageLedgerEmployeeList() {
         
         // 期間内の給与明細データを取得
         console.log('📄 Firestoreクエリ実行中...');
+        // paymentDateフィールドを使用（DateオブジェクトまたはTimestamp）
         const payslipsQuery = query(
           collection(db, 'payslips'),
           where('companyId', '==', userDetails.companyId),
-          where('payDate', '>=', startDate.toISOString().split('T')[0]),
-          where('payDate', '<=', endDate.toISOString().split('T')[0])
+          where('paymentDate', '>=', startDate),
+          where('paymentDate', '<=', endDate)
         );
         
         console.log('📄 payslipsクエリ実行中...');

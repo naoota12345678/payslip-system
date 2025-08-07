@@ -38,13 +38,14 @@ function WageLedgerView() {
         console.log('期間:', startDate.toISOString().split('T')[0], '〜', endDate.toISOString().split('T')[0]);
         
         // 従業員の給与明細データを取得
+        // paymentDateフィールドを使用（DateオブジェクトまたはTimestamp）
         const payslipsQuery = query(
           collection(db, 'payslips'),
           where('companyId', '==', userDetails.companyId),
           where('employeeId', '==', employeeId),
-          where('payDate', '>=', startDate.toISOString().split('T')[0]),
-          where('payDate', '<=', endDate.toISOString().split('T')[0]),
-          orderBy('payDate', 'asc')
+          where('paymentDate', '>=', startDate),
+          where('paymentDate', '<=', endDate),
+          orderBy('paymentDate', 'asc')
         );
         
         const payslipsSnapshot = await getDocs(payslipsQuery);
@@ -187,7 +188,23 @@ function WageLedgerView() {
     const payslipMap = {};
     
     payslipData.forEach(payslip => {
-      const payDate = new Date(payslip.payDate);
+      // paymentDateはDateオブジェクトまたはFirestore Timestampの可能性がある
+      let payDate;
+      if (payslip.paymentDate) {
+        // Firestore Timestampの場合
+        if (payslip.paymentDate.toDate) {
+          payDate = payslip.paymentDate.toDate();
+        } else {
+          payDate = new Date(payslip.paymentDate);
+        }
+      } else if (payslip.year && payslip.month) {
+        // year/monthフィールドから日付を生成
+        payDate = new Date(payslip.year, payslip.month - 1, 1);
+      } else {
+        console.warn('給与明細の日付が取得できません:', payslip);
+        return;
+      }
+      
       const monthKey = `${payDate.getFullYear()}-${(payDate.getMonth() + 1).toString().padStart(2, '0')}`;
       payslipMap[monthKey] = payslip;
     });
