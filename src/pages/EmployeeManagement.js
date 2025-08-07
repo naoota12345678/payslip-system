@@ -106,6 +106,36 @@ function EmployeeManagement() {
       setError(`従業員の削除中にエラーが発生しました: ${error.message}`);
     }
   };
+  
+  // 従業員の退職処理
+  const toggleRetirement = async (employeeId, currentStatus) => {
+    const newStatus = !currentStatus;
+    const statusText = newStatus ? "在職中に戻す" : "退職扱いにする";
+    
+    if (!window.confirm(`この従業員を${statusText}でよろしいですか？`)) {
+      return;
+    }
+    
+    try {
+      await updateDoc(doc(db, "employees", employeeId), {
+        isActive: newStatus,
+        updatedAt: new Date()
+      });
+      
+      // ローカルステートを更新
+      setEmployees(employees.map(emp => 
+        emp.id === employeeId 
+          ? { ...emp, isActive: newStatus }
+          : emp
+      ));
+      
+      setSuccess(`従業員を${newStatus ? "在職中" : "退職済み"}に変更しました`);
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      console.error("退職処理エラー:", err);
+      setError("退職処理に失敗しました");
+    }
+  };
 
   // 部門名を取得（departmentCodeベース）
   const getDepartmentName = (departmentCode, departmentId = null) => {
@@ -353,6 +383,17 @@ function EmployeeManagement() {
                         メール送信
                       </button>
                     )}
+                    <button
+                      onClick={() => toggleRetirement(employee.id, employee.isActive)}
+                      className={`mr-3 ${
+                        employee.isActive === false 
+                          ? 'text-green-600 hover:text-green-800' 
+                          : 'text-orange-600 hover:text-orange-800'
+                      }`}
+                      title={employee.isActive === false ? "在職中に戻す" : "退職扱いにする"}
+                    >
+                      {employee.isActive === false ? '復職' : '退職'}
+                    </button>
                     <button
                       onClick={() => deleteEmployee(employee.id)}
                       className="text-red-600 hover:text-red-800"
