@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { db } from '../../../firebase';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, doc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../../../contexts/AuthContext';
 
 function WageLedgerView() {
@@ -13,6 +13,7 @@ function WageLedgerView() {
   const [error, setError] = useState('');
   const [payslipData, setPayslipData] = useState([]);
   const [employeeInfo, setEmployeeInfo] = useState(null);
+  const [mappingConfig, setMappingConfig] = useState(null);
 
   // URLパラメータから期間と従業員情報を取得
   const startYear = parseInt(searchParams.get('startYear'));
@@ -21,6 +22,110 @@ function WageLedgerView() {
   const endMonth = parseInt(searchParams.get('endMonth'));
   const employeeId = searchParams.get('employeeId');
   const employeeName = searchParams.get('employeeName');
+
+  // CSVマッピング設定を取得（給与明細と同じロジック）
+  const fetchMappingConfigSync = async (companyId) => {
+    try {
+      const mappingDoc = await getDoc(doc(db, "csvMappings", companyId));
+      if (mappingDoc.exists()) {
+        const mappingData = mappingDoc.data();
+        console.log('🎯 賃金台帳用マッピング設定取得:', mappingData);
+        setMappingConfig(mappingData);
+        return mappingData;
+      } else {
+        console.log('❌ マッピング設定が見つかりません');
+        setMappingConfig(null);
+        return null;
+      }
+    } catch (err) {
+      console.error('🚨 マッピング設定取得エラー:', err);
+      setMappingConfig(null);
+      return null;
+    }
+  };
+
+  // 給与明細と同じ分類ロジックを適用
+  const classifyItemsForWageLedger = (payslipData, mappingConfig) => {
+    const incomeItems = [];
+    const deductionItems = [];
+    const attendanceItems = [];
+    const otherItems = [];
+    
+    if (!payslipData.items || !mappingConfig) {
+      // マッピング設定がない場合はCSVのキーをそのまま表示
+      Object.entries(payslipData.items || {}).forEach(([csvColumn, value]) => {
+        otherItems.push({
+          id: csvColumn,
+          name: csvColumn,
+          value: value,
+          type: 'other',
+          csvColumn: csvColumn
+        });
+      });
+      return { incomeItems, deductionItems, attendanceItems, otherItems };
+    }
+
+    // 全ての設定カテゴリを処理（給与明細と同じロジック）
+    const allCategories = [
+      { items: mappingConfig.incomeItems || [], type: 'income', targetArray: incomeItems },
+      { items: mappingConfig.deductionItems || [], type: 'deduction', targetArray: deductionItems },
+      { items: mappingConfig.attendanceItems || [], type: 'attendance', targetArray: attendanceItems },
+      { items: mappingConfig.totalItems || [], type: 'total', targetArray: otherItems }
+    ];
+
+    allCategories.forEach(category => {
+      // カテゴリ内でソート（displayOrder > columnIndex > 配列index の優先順位）
+      const sortedItems = category.items.slice().sort((a, b) => {
+        const orderA = (typeof a.displayOrder === 'number' && !isNaN(a.displayOrder)) 
+          ? a.displayOrder 
+          : (typeof a.columnIndex === 'number' && !isNaN(a.columnIndex)) 
+            ? a.columnIndex 
+            : 999;
+        const orderB = (typeof b.displayOrder === 'number' && !isNaN(b.displayOrder)) 
+          ? b.displayOrder 
+          : (typeof b.columnIndex === 'number' && !isNaN(b.columnIndex)) 
+            ? b.columnIndex 
+            : 999;
+        return orderA - orderB;
+      });
+
+      sortedItems.forEach((item, index) => {
+        // CSVデータに対応する値があるかチェック
+        const value = payslipData.items[item.headerName];
+        if (value === undefined || value === null) {
+          return; // データがない項目はスキップ
+        }
+
+        // 表示/非表示のチェック
+        if (item.isVisible === false) {
+          return;
+        }
+
+        // 表示名を決定（itemName優先、なければheaderName）
+        const displayName = (item.itemName && item.itemName.trim() !== '') 
+          ? item.itemName 
+          : item.headerName;
+
+        const processedItem = {
+          id: item.headerName,
+          name: displayName,
+          value: value,
+          type: category.type,
+          csvColumn: item.headerName,
+          showZeroValue: item.showZeroValue !== undefined ? item.showZeroValue : false, // デフォルトで0値非表示
+          order: (typeof item.displayOrder === 'number' && !isNaN(item.displayOrder)) 
+            ? item.displayOrder 
+            : (typeof item.columnIndex === 'number' && !isNaN(item.columnIndex)) 
+              ? item.columnIndex 
+              : index
+        };
+
+        category.targetArray.push(processedItem);
+      });
+    });
+
+    return { incomeItems, deductionItems, attendanceItems, otherItems };
+  };
 
   useEffect(() => {
     const fetchWageLedgerData = async () => {
@@ -85,8 +190,28 @@ function WageLedgerView() {
         console.log('📄 該当する給与明細:', payslips.length, '件');
         console.log('🎁 該当する賞与明細:', bonusPayslips.length, '件');
         console.log('📊 合計データ:', allPayslips.length, '件');
+
+        // マッピング設定を取得
+        const currentMappingConfig = await fetchMappingConfigSync(userDetails.companyId);
         
-        setPayslipData(allPayslips);
+        // 各給与明細データを分類処理
+        const processedPayslips = allPayslips.map(payslip => {
+          const { incomeItems, deductionItems, attendanceItems, otherItems } = 
+            classifyItemsForWageLedger(payslip, currentMappingConfig);
+          
+          return {
+            ...payslip,
+            classifiedItems: {
+              incomeItems,
+              deductionItems, 
+              attendanceItems,
+              otherItems
+            }
+          };
+        });
+        
+        console.log('📋 分類処理完了:', processedPayslips.length, '件');
+        setPayslipData(processedPayslips);
 
         // 従業員情報を取得
         const employeeQuery = query(
@@ -162,45 +287,90 @@ function WageLedgerView() {
     return payslipMap;
   };
 
-  // 期間中の全項目をマトリックス形式で生成
-  const generateItemMatrix = () => {
+  // 分類済み項目をマトリックス形式で生成（給与明細表示形式）
+  const generateClassifiedItemMatrix = () => {
     const allMonths = generateAllMonthsInPeriod();
     const payslipMap = getPayslipByMonth();
     
-    // 全期間の全項目を収集
-    const allItemsSet = new Set();
+    // 全期間の分類済み項目を収集
+    const allClassifiedItems = new Map(); // id -> {name, type, showZeroValue}
+    
     payslipData.forEach(payslip => {
-      const items = payslip.items || {};
-      Object.keys(items).forEach(key => allItemsSet.add(key));
+      if (!payslip.classifiedItems) return;
+      
+      // 4つのカテゴリから項目を収集
+      ['incomeItems', 'deductionItems', 'attendanceItems', 'otherItems'].forEach(category => {
+        const items = payslip.classifiedItems[category] || [];
+        items.forEach(item => {
+          if (!allClassifiedItems.has(item.id)) {
+            allClassifiedItems.set(item.id, {
+              id: item.id,
+              name: item.name,
+              type: item.type,
+              showZeroValue: item.showZeroValue || false,
+              order: item.order || 0,
+              csvColumn: item.csvColumn
+            });
+          }
+        });
+      });
     });
     
-    const allItems = Array.from(allItemsSet).sort();
-    console.log('📋 全項目一覧:', allItems);
+    const allItems = Array.from(allClassifiedItems.values())
+      .sort((a, b) => {
+        // タイプ別ソート: attendance, income, deduction, total
+        const typeOrder = { attendance: 1, income: 2, deduction: 3, total: 4 };
+        const typeA = typeOrder[a.type] || 5;
+        const typeB = typeOrder[b.type] || 5;
+        
+        if (typeA !== typeB) return typeA - typeB;
+        return (a.order || 0) - (b.order || 0);
+      });
+    
+    console.log('📋 分類済み全項目一覧:', allItems.map(item => `${item.name} (${item.type})`));
     
     // マトリックスデータを生成
-    const matrix = allItems.map(itemName => {
+    const matrix = allItems.map(itemDef => {
       const row = {
-        itemName,
+        itemName: itemDef.name,
+        itemId: itemDef.id,
+        itemType: itemDef.type,
+        showZeroValue: itemDef.showZeroValue,
         months: {}
       };
       
       allMonths.forEach(month => {
         const payslip = payslipMap[month.monthKey];
-        if (payslip && payslip.items && payslip.items[itemName] !== undefined) {
-          const value = payslip.items[itemName];
-          const category = (payslip.itemCategories && payslip.itemCategories[itemName]) || 'other';
+        let value = null;
+        let hasData = false;
+        
+        if (payslip && payslip.classifiedItems) {
+          // 分類済み項目から該当する項目を探す
+          const categories = ['incomeItems', 'deductionItems', 'attendanceItems', 'otherItems'];
+          for (const category of categories) {
+            const items = payslip.classifiedItems[category] || [];
+            const foundItem = items.find(item => item.id === itemDef.id);
+            if (foundItem) {
+              value = foundItem.value;
+              hasData = true;
+              break;
+            }
+          }
+        }
+        
+        if (hasData && value !== null && value !== undefined) {
           const numericValue = typeof value === 'number' ? value : parseFloat(value || 0);
           
           row.months[month.monthKey] = {
             value: numericValue,
-            category,
-            type: payslip.type || 'salary',
+            category: itemDef.type,
+            type: payslip?.type || 'salary',
             hasData: true
           };
         } else {
           row.months[month.monthKey] = {
             value: 0,
-            category: 'other',
+            category: itemDef.type,
             type: 'salary',
             hasData: false
           };
@@ -213,8 +383,8 @@ function WageLedgerView() {
     return { matrix, allMonths, allItems };
   };
 
-  const getTotals = () => {
-    const { matrix, allMonths } = generateItemMatrix();
+  const getClassifiedTotals = () => {
+    const { matrix, allMonths } = generateClassifiedItemMatrix();
     const totals = {};
     
     matrix.forEach(row => {
@@ -257,8 +427,8 @@ function WageLedgerView() {
     );
   }
 
-  const { matrix, allMonths } = generateItemMatrix();
-  const totals = getTotals();
+  const { matrix, allMonths } = generateClassifiedItemMatrix();
+  const totals = getClassifiedTotals();
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -339,75 +509,98 @@ function WageLedgerView() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {matrix.map((row, index) => (
-                <tr key={row.itemName} className="hover:bg-gray-50">
-                  <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white border-r">
-                    <div className="flex items-center">
-                      <span className="truncate max-w-32" title={row.itemName}>
-                        {row.itemName}
-                      </span>
-                      {(() => {
-                        // どの月かのカテゴリーを取得
-                        const sampleMonth = allMonths.find(month => row.months[month.monthKey]?.hasData);
-                        const category = sampleMonth ? row.months[sampleMonth.monthKey].category : 'other';
-                        
-                        if (category === 'income') {
-                          return <span className="ml-2 px-1 py-0.5 text-xs bg-green-100 text-green-600 rounded">支給</span>;
-                        } else if (category === 'deduction') {
-                          return <span className="ml-2 px-1 py-0.5 text-xs bg-red-100 text-red-600 rounded">控除</span>;
-                        }
-                        return null;
-                      })()}
-                    </div>
-                  </td>
-                  {allMonths.map(month => {
-                    const monthData = row.months[month.monthKey];
-                    const value = monthData.value;
-                    const hasData = monthData.hasData;
-                    const isBonus = monthData.type === 'bonus';
-                    
-                    return (
-                      <td key={month.monthKey} className="px-3 py-2 whitespace-nowrap text-sm text-right">
-                        <div className="flex flex-col items-end">
-                          {hasData && value !== 0 ? (
-                            <>
-                              <span className={`font-medium ${
-                                monthData.category === 'income' ? 'text-gray-900' : 
-                                monthData.category === 'deduction' ? 'text-red-600' : 'text-gray-600'
-                              }`}>
-                                ¥{formatCurrency(value)}
-                              </span>
-                              {isBonus && (
-                                <span className="text-xs px-1 py-0.5 bg-orange-100 text-orange-600 rounded mt-1">
-                                  賞与
+              {matrix.map((row, index) => {
+                // 0値表示制御: showZeroValueがtrueでない限り、全ての月が0値の行は非表示
+                const hasNonZeroValue = allMonths.some(month => {
+                  const monthData = row.months[month.monthKey];
+                  return monthData.hasData && monthData.value !== 0;
+                });
+                
+                if (!row.showZeroValue && !hasNonZeroValue) {
+                  return null; // この行をスキップ
+                }
+
+                return (
+                  <tr key={row.itemId} className="hover:bg-gray-50">
+                    <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white border-r">
+                      <div className="flex items-center">
+                        <span className="truncate max-w-32" title={row.itemName}>
+                          {row.itemName}
+                        </span>
+                        {(() => {
+                          const category = row.itemType;
+                          if (category === 'income') {
+                            return <span className="ml-2 px-1 py-0.5 text-xs bg-green-100 text-green-600 rounded">支給</span>;
+                          } else if (category === 'deduction') {
+                            return <span className="ml-2 px-1 py-0.5 text-xs bg-red-100 text-red-600 rounded">控除</span>;
+                          } else if (category === 'attendance') {
+                            return <span className="ml-2 px-1 py-0.5 text-xs bg-blue-100 text-blue-600 rounded">勤怠</span>;
+                          } else if (category === 'total') {
+                            return <span className="ml-2 px-1 py-0.5 text-xs bg-purple-100 text-purple-600 rounded">合計</span>;
+                          }
+                          return null;
+                        })()}
+                      </div>
+                    </td>
+                    {allMonths.map(month => {
+                      const monthData = row.months[month.monthKey];
+                      const value = monthData.value;
+                      const hasData = monthData.hasData;
+                      const isBonus = monthData.type === 'bonus';
+                      
+                      // 0値表示制御を適用
+                      const shouldShowZero = row.showZeroValue === true;
+                      const shouldDisplay = hasData && (value !== 0 || shouldShowZero);
+                      
+                      return (
+                        <td key={month.monthKey} className="px-3 py-2 whitespace-nowrap text-sm text-right">
+                          <div className="flex flex-col items-end">
+                            {shouldDisplay ? (
+                              <>
+                                <span className={`font-medium ${
+                                  row.itemType === 'income' ? 'text-gray-900' : 
+                                  row.itemType === 'deduction' ? 'text-red-600' : 
+                                  row.itemType === 'attendance' ? 'text-blue-600' :
+                                  row.itemType === 'total' ? 'text-purple-600' : 'text-gray-600'
+                                }`}>
+                                  {row.itemType === 'attendance' ? 
+                                    value : // 勤怠項目は数値をそのまま表示
+                                    `¥${formatCurrency(value)}` // 金額項目は通貨フォーマット
+                                  }
                                 </span>
-                              )}
-                            </>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
-                        </div>
-                      </td>
-                    );
-                  })}
-                  <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-bold bg-gray-50">
-                    {totals[row.itemName] !== 0 ? (
-                      <span className={`${
-                        (() => {
-                          const sampleMonth = allMonths.find(month => row.months[month.monthKey]?.hasData);
-                          const category = sampleMonth ? row.months[sampleMonth.monthKey].category : 'other';
-                          return category === 'income' ? 'text-gray-900' : 
-                                 category === 'deduction' ? 'text-red-600' : 'text-gray-600';
-                        })()
-                      }`}>
-                        ¥{formatCurrency(totals[row.itemName])}
-                      </span>
-                    ) : (
-                      <span className="text-gray-400">-</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                                {isBonus && (
+                                  <span className="text-xs px-1 py-0.5 bg-orange-100 text-orange-600 rounded mt-1">
+                                    賞与
+                                  </span>
+                                )}
+                              </>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </div>
+                        </td>
+                      );
+                    })}
+                    <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-bold bg-gray-50">
+                      {totals[row.itemName] !== 0 ? (
+                        <span className={`${
+                          row.itemType === 'income' ? 'text-gray-900' : 
+                          row.itemType === 'deduction' ? 'text-red-600' : 
+                          row.itemType === 'attendance' ? 'text-blue-600' :
+                          row.itemType === 'total' ? 'text-purple-600' : 'text-gray-600'
+                        }`}>
+                          {row.itemType === 'attendance' ? 
+                            totals[row.itemName] : // 勤怠項目は数値をそのまま表示
+                            `¥${formatCurrency(totals[row.itemName])}` // 金額項目は通貨フォーマット
+                          }
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
