@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db, functions } from '../firebase';
-import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -230,18 +230,9 @@ companyID一致: ${targetEmployeeData?.companyId === userDetails?.companyId}
           status: 'active'
         });
         
-        // メール送信は削除（手動送信のみにする）
-        // 従業員登録時に自動的にメールを送信しないようにコメントアウト
-        /*
-        const createEmployeeAccount = httpsCallable(functions, 'createEmployeeAccount');
-        const result = await createEmployeeAccount({
-          email: saveData.email,
-          name: saveData.name,
-          employeeData: saveData
-        });
-        
-        console.log('✅ 従業員アカウント作成結果:', result.data);
-        */
+        // Firestoreに従業員データを直接保存（メール送信なし）
+        const employeeDocRef = await addDoc(collection(db, 'employees'), saveData);
+        console.log('✅ 従業員データ保存完了:', employeeDocRef.id);
         
         // 詳細デバッグ情報を表示
         const debugMessage = `従業員登録結果:

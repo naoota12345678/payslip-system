@@ -2081,7 +2081,6 @@ exports.sendBulkInvitationEmails = onCall({
           TEST_PASSWORD
         );
         
-        // Gmail設定がない場合でも処理を続行
         if (emailResult.success) {
           successCount++;
           console.log(`✅ 招待メール送信成功: ${employeeData.email}`);
@@ -2090,16 +2089,6 @@ exports.sendBulkInvitationEmails = onCall({
           await employeeDoc.ref.update({
             lastInvitationEmailSent: admin.firestore.FieldValue.serverTimestamp(),
             lastInvitationEmailResult: 'success'
-          });
-          
-        } else if (emailResult.error === 'Gmail SMTP not configured') {
-          // Gmail設定がない場合は成功扱いにする（開発環境用）
-          successCount++;
-          console.log(`⚠️ Gmail未設定のため送信スキップ: ${employeeData.email}`);
-          
-          await employeeDoc.ref.update({
-            lastInvitationEmailResult: 'skipped',
-            lastInvitationEmailError: 'Gmail not configured'
           });
           
         } else {
@@ -2150,6 +2139,12 @@ exports.sendBulkInvitationEmails = onCall({
     
   } catch (error) {
     console.error('❌ 一括招待メール送信エラー:', error);
+    console.error('エラースタック:', error.stack);
+    console.error('エラー詳細:', {
+      message: error.message,
+      code: error.code,
+      details: error.details
+    });
     throw new HttpsError('internal', `一括招待メール送信中にエラーが発生しました: ${error.message}`);
   }
 });
