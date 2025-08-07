@@ -251,6 +251,8 @@ function PdfDeliveryManagement() {
 
   // 詳細表示
   const handleShowDetail = (document) => {
+    console.log('📄 詳細ボタンがクリックされました:', document);
+    console.log('📄 モーダル表示状態を変更します');
     setSelectedDocument(document);
     setShowDetailModal(true);
   };
@@ -359,7 +361,10 @@ function PdfDeliveryManagement() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button 
-                        onClick={() => handleShowDetail(doc)}
+                        onClick={() => {
+                          console.log('📄 詳細ボタンクリック開始');
+                          handleShowDetail(doc);
+                        }}
                         className="text-indigo-600 hover:text-indigo-900 mr-3"
                       >
                         詳細
@@ -520,6 +525,7 @@ function PdfDeliveryManagement() {
         )}
 
         {/* 配信詳細モーダル */}
+        {console.log('📄 モーダル表示判定:', { showDetailModal, hasSelectedDocument: !!selectedDocument })}
         {showDetailModal && selectedDocument && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
             <div className="relative top-20 mx-auto p-5 border w-full max-w-3xl shadow-lg rounded-md bg-white">
