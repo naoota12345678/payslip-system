@@ -158,20 +158,95 @@ function WageLedgerView() {
     return `${date.getFullYear()}年${date.getMonth() + 1}月`;
   };
 
+  // 期間中の全ての月を生成する関数
+  const generateAllMonthsInPeriod = () => {
+    const months = [];
+    let currentDate = new Date(startYear, startMonth - 1, 1);
+    const endDate = new Date(endYear, endMonth - 1, 1);
+    
+    while (currentDate <= endDate) {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth() + 1;
+      const monthKey = `${year}-${month.toString().padStart(2, '0')}`;
+      
+      months.push({
+        year,
+        month,
+        monthKey,
+        displayText: `${year}年${month}月`
+      });
+      
+      currentDate.setMonth(currentDate.getMonth() + 1);
+    }
+    
+    return months;
+  };
+
+  // 給与明細データを月別にマップ化
+  const getPayslipByMonth = () => {
+    const payslipMap = {};
+    
+    payslipData.forEach(payslip => {
+      const payDate = new Date(payslip.payDate);
+      const monthKey = `${payDate.getFullYear()}-${(payDate.getMonth() + 1).toString().padStart(2, '0')}`;
+      payslipMap[monthKey] = payslip;
+    });
+    
+    return payslipMap;
+  };
+
+  // 期間中の全月の賃金台帳データを生成（ブランク月含む）
+  const generateCompleteWageLedgerData = () => {
+    const allMonths = generateAllMonthsInPeriod();
+    const payslipMap = getPayslipByMonth();
+    
+    return allMonths.map(month => {
+      const payslip = payslipMap[month.monthKey];
+      
+      if (payslip) {
+        // データがある月は通常の処理
+        return {
+          ...formatPayslipForWageLedger(payslip),
+          displayText: month.displayText,
+          hasData: true
+        };
+      } else {
+        // データがない月はブランクデータ
+        return {
+          payDate: `${month.year}-${month.month.toString().padStart(2, '0')}-01`,
+          basicWage: 0,
+          overtime: 0,
+          allowances: 0,
+          totalGross: 0,
+          totalDeductions: 0,
+          netPay: 0,
+          workingDays: 0,
+          workingHours: 0,
+          overtimeHours: 0,
+          displayText: month.displayText,
+          hasData: false
+        };
+      }
+    });
+  };
+
   const getTotals = () => {
-    const totals = payslipData.reduce((acc, payslip) => {
-      const formatted = formatPayslipForWageLedger(payslip);
-      return {
-        basicWage: acc.basicWage + formatted.basicWage,
-        overtime: acc.overtime + formatted.overtime,
-        allowances: acc.allowances + formatted.allowances,
-        totalGross: acc.totalGross + formatted.totalGross,
-        totalDeductions: acc.totalDeductions + formatted.totalDeductions,
-        netPay: acc.netPay + formatted.netPay,
-        workingDays: acc.workingDays + formatted.workingDays,
-        workingHours: acc.workingHours + formatted.workingHours,
-        overtimeHours: acc.overtimeHours + formatted.overtimeHours
-      };
+    const completeData = generateCompleteWageLedgerData();
+    const totals = completeData.reduce((acc, data) => {
+      if (data.hasData) {
+        return {
+          basicWage: acc.basicWage + data.basicWage,
+          overtime: acc.overtime + data.overtime,
+          allowances: acc.allowances + data.allowances,
+          totalGross: acc.totalGross + data.totalGross,
+          totalDeductions: acc.totalDeductions + data.totalDeductions,
+          netPay: acc.netPay + data.netPay,
+          workingDays: acc.workingDays + data.workingDays,
+          workingHours: acc.workingHours + data.workingHours,
+          overtimeHours: acc.overtimeHours + data.overtimeHours
+        };
+      }
+      return acc;
     }, {
       basicWage: 0,
       overtime: 0,
@@ -268,122 +343,113 @@ function WageLedgerView() {
           <h2 className="text-lg font-medium text-gray-900">賃金台帳（法定様式準拠）</h2>
         </div>
         
-        {payslipData.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
-            <p>該当期間の給与明細データがありません</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    年月
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    基本給
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    残業代
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    諸手当
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    総支給額
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    控除計
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    実支給額
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    出勤日数
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    労働時間
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    残業時間
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {payslipData.map((payslip, index) => {
-                  const formatted = formatPayslipForWageLedger(payslip);
-                  return (
-                    <tr key={index} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {formatMonth(formatted.payDate)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                        ¥{formatCurrency(formatted.basicWage)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                        ¥{formatCurrency(formatted.overtime)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                        ¥{formatCurrency(formatted.allowances)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-medium">
-                        ¥{formatCurrency(formatted.totalGross)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-red-600">
-                        ¥{formatCurrency(formatted.totalDeductions)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-blue-600 font-medium">
-                        ¥{formatCurrency(formatted.netPay)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                        {formatted.workingDays}日
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                        {formatted.workingHours}h
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                        {formatted.overtimeHours}h
-                      </td>
-                    </tr>
-                  );
-                })}
-                {/* 合計行 */}
-                <tr className="bg-gray-100 font-medium">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-                    合計
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  年月
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  基本給
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  残業代
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  諸手当
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  総支給額
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  控除計
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  実支給額
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  出勤日数
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  労働時間
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  残業時間
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {generateCompleteWageLedgerData().map((data, index) => (
+                <tr key={index} className={data.hasData ? "hover:bg-gray-50" : "hover:bg-gray-50 bg-gray-25"}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {data.displayText}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-bold">
-                    ¥{formatCurrency(totals.basicWage)}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                    {data.hasData ? `¥${formatCurrency(data.basicWage)}` : '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-bold">
-                    ¥{formatCurrency(totals.overtime)}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                    {data.hasData ? `¥${formatCurrency(data.overtime)}` : '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-bold">
-                    ¥{formatCurrency(totals.allowances)}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                    {data.hasData ? `¥${formatCurrency(data.allowances)}` : '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-bold">
-                    ¥{formatCurrency(totals.totalGross)}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-medium">
+                    {data.hasData ? `¥${formatCurrency(data.totalGross)}` : '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-red-600 font-bold">
-                    ¥{formatCurrency(totals.totalDeductions)}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-red-600">
+                    {data.hasData ? `¥${formatCurrency(data.totalDeductions)}` : '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-blue-600 font-bold">
-                    ¥{formatCurrency(totals.netPay)}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-blue-600 font-medium">
+                    {data.hasData ? `¥${formatCurrency(data.netPay)}` : '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-bold">
-                    {totals.workingDays}日
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                    {data.hasData && data.workingDays > 0 ? `${data.workingDays}日` : '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-bold">
-                    {totals.workingHours}h
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                    {data.hasData && data.workingHours > 0 ? `${data.workingHours}h` : '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-bold">
-                    {totals.overtimeHours}h
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                    {data.hasData && data.overtimeHours > 0 ? `${data.overtimeHours}h` : '-'}
                   </td>
                 </tr>
-              </tbody>
-            </table>
-          </div>
-        )}
+              ))}
+              {/* 合計行 */}
+              <tr className="bg-gray-100 font-medium">
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                  合計
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-bold">
+                  ¥{formatCurrency(totals.basicWage)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-bold">
+                  ¥{formatCurrency(totals.overtime)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-bold">
+                  ¥{formatCurrency(totals.allowances)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-bold">
+                  ¥{formatCurrency(totals.totalGross)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-red-600 font-bold">
+                  ¥{formatCurrency(totals.totalDeductions)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-blue-600 font-bold">
+                  ¥{formatCurrency(totals.netPay)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-bold">
+                  {totals.workingDays > 0 ? `${totals.workingDays}日` : '-'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-bold">
+                  {totals.workingHours > 0 ? `${totals.workingHours}h` : '-'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-bold">
+                  {totals.overtimeHours > 0 ? `${totals.overtimeHours}h` : '-'}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* アクションボタン */}

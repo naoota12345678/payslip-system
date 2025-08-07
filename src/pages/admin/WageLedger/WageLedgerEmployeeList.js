@@ -114,16 +114,20 @@ function WageLedgerEmployeeList() {
         console.log('👤 全従業員数:', employeesData.length);
         console.log('👤 従業員データサンプル:', employeesData.slice(0, 3));
 
-        // 期間内に給与明細があるアクティブな従業員のみフィルタリング
-        const activeEmployeesWithPayslips = employeesData.filter(employee => {
-          return employeePayslips[employee.employeeId] && 
-                 employeePayslips[employee.employeeId].length > 0 &&
-                 employee.isActive !== false; // 退職者を除外
+        // アクティブな従業員を全て表示（給与明細の有無に関係なく）
+        // 賃金台帳画面でブランク行表示する
+        const activeEmployees = employeesData.filter(employee => {
+          return employee.isActive !== false; // 退職者のみ除外
         });
         
-        console.log('✅ 該当従業員数:', activeEmployeesWithPayslips.length);
+        console.log('📊 給与明細データ詳細:', Object.keys(employeePayslips).map(empId => ({
+          employeeId: empId,
+          payslipCount: employeePayslips[empId]?.length || 0
+        })));
+        
+        console.log('✅ 該当従業員数:', activeEmployees.length);
 
-        setEmployees(activeEmployeesWithPayslips);
+        setEmployees(activeEmployees);
         setLoading(false);
       } catch (err) {
         console.error('❌ データ取得エラー:', err);
@@ -248,7 +252,9 @@ function WageLedgerEmployeeList() {
                         <p className="text-sm font-medium text-gray-900">
                           {getPayslipCount(employee.employeeId)}件
                         </p>
-                        <p className="text-xs text-gray-500">給与明細</p>
+                        <p className="text-xs text-gray-500">
+                          {getPayslipCount(employee.employeeId) > 0 ? '給与明細' : '全期間表示可能'}
+                        </p>
                       </div>
                       <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
