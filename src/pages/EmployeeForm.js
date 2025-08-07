@@ -230,24 +230,30 @@ companyID一致: ${targetEmployeeData?.companyId === userDetails?.companyId}
           status: 'active'
         });
         
-        // Firestoreに従業員データを直接保存（メール送信なし）
+        // Firestoreに従業員データを直接保存（メール送信なし、Auth作成もなし）
+        // 注意: この方法だと従業員はログインできません。
+        // ログイン機能を有効にするには、従業員管理画面で個別にメール送信してください。
         const employeeDocRef = await addDoc(collection(db, 'employees'), saveData);
         console.log('✅ 従業員データ保存完了:', employeeDocRef.id);
+        console.log('⚠️ 注意: Firebase Authユーザーは作成されていません。');
+        console.log('⚠️ 従業員がログインするには、従業員管理画面でメール送信を実行してください。');
         
         // 詳細デバッグ情報を表示
         const debugMessage = `従業員登録結果:
-✅ 成功
+✅ データ保存成功
 
-📧 ログイン情報:
-メール: ${saveData.email}
-パスワード: 000000
+⚠️ 重要な注意事項:
+この従業員はまだログインできません。
+
+📧 ログインを有効にするには:
+1. 従業員管理画面に移動
+2. この従業員の「メール送信」ボタンをクリック
+3. メールが送信されるとログイン可能になります
 
 🔍 登録情報:
 従業員ID: ${saveData.employeeId}
 会社ID: ${userDetails.companyId}
-
-※テスト用の固定パスワードです
-※Firestoreのemployeesコレクションも確認してください`;
+メール: ${saveData.email}`;
 
         alert(debugMessage);
         
