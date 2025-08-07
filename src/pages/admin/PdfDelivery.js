@@ -218,7 +218,7 @@ function PdfDeliveryManagement() {
 
   // 配信取り消し処理
   const handleCancelDelivery = async (documentId, documentTitle) => {
-    if (!confirm(`「${documentTitle}」の配信を取り消しますか？\n\n取り消し後は従業員から見えなくなります。`)) {
+    if (!window.confirm(`「${documentTitle}」の配信を取り消しますか？\n\n取り消し後は従業員から見えなくなります。`)) {
       return;
     }
 
