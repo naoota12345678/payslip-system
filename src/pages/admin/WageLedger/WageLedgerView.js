@@ -44,7 +44,25 @@ function WageLedgerView() {
     }
   };
 
-  // 給与明細と同じ分類ロジックを適用
+  // 賞与用マッピング設定取得
+  const fetchBonusMappingConfigSync = async (companyId) => {
+    try {
+      const mappingDoc = await getDoc(doc(db, "csvMappingsBonus", companyId));
+      if (mappingDoc.exists()) {
+        const mappingData = mappingDoc.data();
+        console.log('🎁 賞与マッピング設定取得:', mappingData);
+        return mappingData;
+      } else {
+        console.log('❌ 賞与マッピング設定が見つかりません');
+        return null;
+      }
+    } catch (err) {
+      console.error('🚨 賞与マッピング設定取得エラー:', err);
+      return null;
+    }
+  };
+
+  // 給与明細と賞与明細の分類ロジックを適用
   const classifyItemsForWageLedger = (payslipData, mappingConfig) => {
     const incomeItems = [];
     const deductionItems = [];
@@ -191,11 +209,19 @@ function WageLedgerView() {
         console.log('🎁 該当する賞与明細:', bonusPayslips.length, '件');
         console.log('📊 合計データ:', allPayslips.length, '件');
 
-        // マッピング設定を取得
-        const currentMappingConfig = await fetchMappingConfigSync(userDetails.companyId);
+        // マッピング設定を取得（給与・賞与両方）
+        const salaryMappingConfig = await fetchMappingConfigSync(userDetails.companyId);
+        const bonusMappingConfig = await fetchBonusMappingConfigSync(userDetails.companyId);
+        
+        console.log('📋 マッピング設定取得結果:');
+        console.log('- 給与マッピング:', salaryMappingConfig ? '✅あり' : '❌なし');
+        console.log('- 賞与マッピング:', bonusMappingConfig ? '✅あり' : '❌なし');
         
         // 各給与明細データを分類処理
         const processedPayslips = allPayslips.map(payslip => {
+          // データタイプに応じてマッピング設定を選択
+          const currentMappingConfig = payslip.type === 'bonus' ? bonusMappingConfig : salaryMappingConfig;
+          
           const { incomeItems, deductionItems, attendanceItems, otherItems } = 
             classifyItemsForWageLedger(payslip, currentMappingConfig);
           
