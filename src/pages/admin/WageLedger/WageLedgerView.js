@@ -621,17 +621,15 @@ function WageLedgerView() {
                       );
                     })}
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-bold bg-gray-50">
-                      {totals[row.itemName] !== 0 ? (
+                      {row.itemType === 'attendance' ? (
+                        <span className="text-gray-400">-</span> // 勤怠項目は合計を表示しない
+                      ) : totals[row.itemName] !== 0 ? (
                         <span className={`${
                           row.itemType === 'income' ? 'text-gray-900' : 
                           row.itemType === 'deduction' ? 'text-red-600' : 
-                          row.itemType === 'attendance' ? 'text-blue-600' :
                           row.itemType === 'total' ? 'text-purple-600' : 'text-gray-600'
                         }`}>
-                          {row.itemType === 'attendance' ? 
-                            totals[row.itemName] : // 勤怠項目は数値をそのまま表示
-                            `¥${formatCurrency(totals[row.itemName])}` // 金額項目は通貨フォーマット
-                          }
+                          ¥{formatCurrency(totals[row.itemName])}
                         </span>
                       ) : (
                         <span className="text-gray-400">-</span>
