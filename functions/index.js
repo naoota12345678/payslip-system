@@ -2098,11 +2098,16 @@ exports.sendPayslipNotifications = onCall(async (request) => {
           const employeeSnapshot = await db.collection('employees')
             .where('employeeId', '==', payslipData.employeeId)
             .where('companyId', '==', payslipData.companyId)
-            .where('isActive', '==', true) // 在職者のみ対象
             .get();
             
           if (!employeeSnapshot.empty) {
-            employeeData = employeeSnapshot.docs[0].data();
+            const empData = employeeSnapshot.docs[0].data();
+            // 退職者（isActive === false）以外は送信対象
+            if (empData.isActive !== false) {
+              employeeData = empData;
+            } else {
+              console.log(`⚠️ 退職者のためメール送信スキップ: ${empData.employeeId} (${empData.name})`);
+            }
           }
         }
         
