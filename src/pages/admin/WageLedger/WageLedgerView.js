@@ -148,6 +148,8 @@ function WageLedgerView() {
 
     // 賞与項目の処理（bonusConfigとintegratedConfigに基づく）
     if (bonusConfig && integratedConfig && payslipData.type === 'bonus') {
+      console.log('💜 賞与項目統合処理開始', payslipData.items);
+      
       const bonusCategories = [
         { items: bonusConfig.incomeItems || [], type: 'income', targetArray: incomeItems },
         { items: bonusConfig.deductionItems || [], type: 'deduction', targetArray: deductionItems },
@@ -156,6 +158,8 @@ function WageLedgerView() {
       ];
 
       bonusCategories.forEach(category => {
+        console.log(`💜 ${category.type}カテゴリ処理開始, 既存項目数: ${category.targetArray.length}`);
+        
         category.items.forEach((item, index) => {
           const itemId = item.headerName;
           const value = payslipData.items[itemId];
@@ -163,6 +167,8 @@ function WageLedgerView() {
           if (value === undefined || value === null || item.isVisible === false) {
             return;
           }
+
+          console.log(`💜 賞与項目処理: ${itemId} = ${value}`);
 
           // 統合設定に基づいて処理
           if (integratedConfig.showSeparately.includes(itemId)) {
@@ -181,11 +187,15 @@ function WageLedgerView() {
             };
 
             category.targetArray.push(processedItem);
+            console.log(`💜 別項目として追加: ${displayName}`);
           } else if (integratedConfig.mergeWithSalary.includes(itemId)) {
             // 給与項目に統合
             const displayName = (item.itemName && item.itemName.trim() !== '') 
               ? item.itemName 
               : item.headerName;
+            
+            console.log(`💜 統合対象: ${displayName}, 既存項目から検索中...`);
+            console.log(`💜 既存項目一覧:`, category.targetArray.map(item => `${item.name} (source: ${item.source})`));
             
             // 同名の給与項目を探す（統合賃金台帳でのみ実行）
             const existingItem = category.targetArray.find(salaryItem => 
@@ -198,7 +208,7 @@ function WageLedgerView() {
               const bonusValue = parseFloat(value) || 0;
               existingItem.value = currentValue + bonusValue;
               existingItem.source = 'integrated'; // 統合項目であることを記録
-              console.log(`💜 統合賃金台帳: ${displayName}を統合 ${currentValue} + ${bonusValue} = ${existingItem.value}`);
+              console.log(`💜 統合成功: ${displayName} ${currentValue} + ${bonusValue} = ${existingItem.value}`);
             } else {
               // 新規項目として追加（統合賃金台帳専用処理）
               const processedItem = {
@@ -213,7 +223,7 @@ function WageLedgerView() {
               };
 
               category.targetArray.push(processedItem);
-              console.log(`💜 統合賃金台帳: ${displayName}を新規追加 ${processedItem.value}`);
+              console.log(`💜 既存項目なし、新規追加: ${displayName} = ${processedItem.value}`);
             }
           }
           // 非表示の場合は何もしない
