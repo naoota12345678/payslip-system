@@ -2953,12 +2953,17 @@ exports.startPayslipNotificationJob = onCall({
     const targetCount = payslipsSnapshot.size;
     const estimatedTime = Math.max(30, targetCount * 5);
     
+    // companyIdを取得（最初の明細から）
+    const firstPayslip = payslipsSnapshot.docs[0].data();
+    const companyId = firstPayslip.companyId;
+    
     // ジョブをデータベースに登録
     const jobDoc = await db.collection('payslipNotificationJobs').add({
       uploadId,
       paymentDate,
       type,
       targetCount,
+      companyId,
       status: 'pending',
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       createdBy: request.auth.uid,
@@ -3006,6 +3011,21 @@ const processPayslipNotificationJob = async (jobId, uploadId, paymentDate, type 
         type
       },
       auth: { uid: 'system' } // システム実行として扱う
+    });
+    
+    // メール送信履歴を保存
+    const jobData = (await jobRef.get()).data();
+    await db.collection('payslipEmailHistory').add({
+      companyId: jobData.companyId || 'unknown',
+      uploadId: uploadId,
+      paymentDate: paymentDate,
+      type: type,
+      sentAt: admin.firestore.FieldValue.serverTimestamp(),
+      sentBy: jobData.createdBy,
+      targetCount: result.data?.targetCount || jobData.targetCount || 0,
+      successCount: result.data?.successCount || 0,
+      failCount: result.data?.failCount || 0,
+      jobId: jobId
     });
     
     // ジョブ完了

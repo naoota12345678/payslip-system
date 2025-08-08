@@ -5,7 +5,6 @@ import { collection, addDoc, serverTimestamp, getDocs, query, where, doc, getDoc
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
 import { fetchUnifiedMappingSettings } from '../utils/mappingUtils';
-import PayslipNotificationUI from './PayslipNotificationUI';
 
 const BonusSimpleCSVUpload = () => {
   const { userDetails } = useAuth();
@@ -832,17 +831,6 @@ const BonusSimpleCSVUpload = () => {
               </tbody>
             </table>
           </div>
-        </div>
-      )}
-      
-      {/* アップロード完了後のメール配信UI */}
-      {uploadedData && !showPreview && (
-        <div className="mt-6">
-          <PayslipNotificationUI
-            uploadId={uploadedData.uploadId}
-            paymentDate={uploadedData.paymentDate}
-            type="bonus"
-          />
         </div>
       )}
     </div>

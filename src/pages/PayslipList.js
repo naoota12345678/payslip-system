@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, query, where, orderBy, getDocs, doc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
+import PayslipNotificationUI from './PayslipNotificationUI';
 
 function PayslipList() {
   const { currentUser, userDetails } = useAuth();
@@ -17,6 +18,9 @@ function PayslipList() {
   const [deleting, setDeleting] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [selectedEmailData, setSelectedEmailData] = useState(null);
+  const [emailHistory, setEmailHistory] = useState({});
 
     // 従業員情報と部門情報を取得
   useEffect(() => {
@@ -72,6 +76,36 @@ function PayslipList() {
     };
     
     fetchEmployeesAndDepartments();
+  }, [userDetails]);
+
+  // メール送信履歴を取得
+  useEffect(() => {
+    const fetchEmailHistory = async () => {
+      if (!userDetails?.companyId) return;
+      
+      try {
+        const historyQuery = query(
+          collection(db, "payslipEmailHistory"),
+          where("companyId", "==", userDetails.companyId)
+        );
+        
+        const historySnapshot = await getDocs(historyQuery);
+        const historyMap = {};
+        
+        historySnapshot.forEach(doc => {
+          const data = doc.data();
+          const key = `${data.uploadId}_${data.paymentDate}`;
+          historyMap[key] = data;
+        });
+        
+        setEmailHistory(historyMap);
+        console.log('📧 メール送信履歴取得:', Object.keys(historyMap).length, '件');
+      } catch (err) {
+        console.error("メール送信履歴取得エラー:", err);
+      }
+    };
+    
+    fetchEmailHistory();
   }, [userDetails]);
 
   useEffect(() => {
@@ -358,6 +392,57 @@ function PayslipList() {
     setDeleteTarget(null);
   };
 
+  // メール送信モーダルを開く
+  const openEmailModal = (paymentDate, payslipsForDate) => {
+    const uploadId = payslipsForDate[0]?.uploadId;
+    if (!uploadId) {
+      alert('uploadIdが取得できませんでした');
+      return;
+    }
+    
+    setSelectedEmailData({
+      uploadId,
+      paymentDate,
+      type: 'payslip'
+    });
+    setEmailModalOpen(true);
+  };
+
+  // メール送信モーダルを閉じる
+  const closeEmailModal = () => {
+    setEmailModalOpen(false);
+    setSelectedEmailData(null);
+    
+    // メール送信履歴を再取得
+    setTimeout(() => {
+      const fetchEmailHistory = async () => {
+        if (!userDetails?.companyId) return;
+        
+        try {
+          const historyQuery = query(
+            collection(db, "payslipEmailHistory"),
+            where("companyId", "==", userDetails.companyId)
+          );
+          
+          const historySnapshot = await getDocs(historyQuery);
+          const historyMap = {};
+          
+          historySnapshot.forEach(doc => {
+            const data = doc.data();
+            const key = `${data.uploadId}_${data.paymentDate}`;
+            historyMap[key] = data;
+          });
+          
+          setEmailHistory(historyMap);
+        } catch (err) {
+          console.error("メール送信履歴更新エラー:", err);
+        }
+      };
+      
+      fetchEmailHistory();
+    }, 1000);
+  };
+
   // 支払い日一覧に戻る
   const handleBackToDateList = () => {
     setSelectedPaymentDate(null);
@@ -523,6 +608,31 @@ function PayslipList() {
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">
+                  {userDetails?.role === 'admin' && (() => {
+                    const uploadId = payslipsForDate[0]?.uploadId;
+                    const historyKey = `${uploadId}_${paymentDate}`;
+                    const isSent = emailHistory[historyKey];
+                    
+                    return (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEmailModal(paymentDate, payslipsForDate);
+                        }}
+                        className={`p-2 rounded-lg transition-colors ${
+                          isSent 
+                            ? 'text-green-600 hover:text-green-800 hover:bg-green-50' 
+                            : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'
+                        }`}
+                        title={isSent ? '送信済み - 再送信可能' : 'メール送信'}
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 4.26c.07.04.14.06.21.06s.14-.02.21-.06L19 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                          {isSent && <circle cx="18" cy="6" r="3" fill="currentColor" />}
+                        </svg>
+                      </button>
+                    );
+                  })()}
                   {userDetails?.role === 'admin' && (
                     <button
                       onClick={(e) => {
@@ -592,6 +702,34 @@ function PayslipList() {
               >
                 {deleting ? '削除中...' : '削除'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* メール送信モーダル */}
+      {emailModalOpen && selectedEmailData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">
+                給与明細メール送信 - {selectedEmailData.paymentDate}
+              </h3>
+              <button
+                onClick={closeEmailModal}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+            <div className="p-4">
+              <PayslipNotificationUI
+                uploadId={selectedEmailData.uploadId}
+                paymentDate={selectedEmailData.paymentDate}
+                type={selectedEmailData.type}
+              />
             </div>
           </div>
         </div>

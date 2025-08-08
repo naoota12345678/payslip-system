@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, getDocs, doc, getDoc, deleteDoc, query, where } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
+import PayslipNotificationUI from './PayslipNotificationUI';
 
 function BonusPayslipList() {
   const { currentUser, userDetails } = useAuth();
@@ -13,6 +14,9 @@ function BonusPayslipList() {
   const [employeeNames, setEmployeeNames] = useState({}); // ユーザー名のキャッシュ
   const [expandedDates, setExpandedDates] = useState(new Set()); // 展開された支払い日
   const [deletingDate, setDeletingDate] = useState(null); // 削除処理中の支払い日
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [selectedEmailData, setSelectedEmailData] = useState(null);
+  const [emailHistory, setEmailHistory] = useState({});
 
   // 従業員情報を取得する関数（employeeIdベース）
   const fetchEmployeeNames = useCallback(async (payslipList) => {
