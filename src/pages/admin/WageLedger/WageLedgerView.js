@@ -536,8 +536,8 @@ function WageLedgerView() {
                   項目名
                 </th>
                 {allMonths.map(month => (
-                  <th key={month.monthKey} className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <div className="transform -rotate-45 origin-bottom-left">
+                  <th key={month.monthKey} className="px-3 py-8 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <div className="transform -rotate-45 origin-center h-6 flex items-center justify-center">
                       {month.month}月
                     </div>
                   </th>
