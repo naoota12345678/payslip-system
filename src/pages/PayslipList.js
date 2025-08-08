@@ -44,6 +44,8 @@ function PayslipList() {
         });
         
         setEmployees(employeesList);
+        
+        console.log('👥 取得した従業員データ:', employeesList.slice(0, 3)); // 最初の3件のみログ出力
 
         // 部門データを取得
         const departmentsQuery = query(
@@ -274,8 +276,15 @@ function PayslipList() {
 
   // 従業員IDから従業員名を取得する関数
   const getEmployeeName = (employeeId) => {
-    if (!employeeId) return 'N/A';
+    if (!employeeId) {
+      console.log('❌ getEmployeeName: employeeIdが空です');
+      return 'N/A';
+    }
     const employee = employees.find(emp => emp.employeeId === employeeId);
+    if (!employee) {
+      console.log('❌ getEmployeeName: employeeIdに一致する従業員が見つかりません:', employeeId);
+      console.log('📋 利用可能な従業員ID:', employees.map(e => e.employeeId).slice(0, 5));
+    }
     return employee ? employee.name : 'N/A';
   };
 
