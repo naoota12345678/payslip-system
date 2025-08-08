@@ -2991,6 +2991,142 @@ exports.startPayslipNotificationJob = onCall({
   }
 });
 
+// 給与明細通知メール送信の内部処理関数
+const sendPayslipNotificationsInternal = async (uploadId, paymentDate, type = 'payslip') => {
+  try {
+    console.log('📧 給与明細通知メール送信開始:', { uploadId, paymentDate, type });
+    
+    // 対象コレクションを決定
+    const collectionName = type === 'bonus' ? 'bonusPayslips' : 'payslips';
+    
+    // 該当する明細データを取得
+    const payslipsSnapshot = await db.collection(collectionName)
+      .where('uploadId', '==', uploadId)
+      .get();
+      
+    if (payslipsSnapshot.empty) {
+      throw new Error(`指定されたuploadIdの${type === 'bonus' ? '賞与' : '給与'}明細が見つかりません`);
+    }
+    
+    console.log(`📋 対象明細数: ${payslipsSnapshot.size}件`);
+    
+    // 即座に送信する場合
+    const loginUrl = process.env.APP_URL || 'https://kyuyoprint.web.app/employee/login';
+    const results = [];
+    let successCount = 0;
+    let failCount = 0;
+    
+    // 各従業員にメール送信
+    for (const payslipDoc of payslipsSnapshot.docs) {
+      const payslipData = payslipDoc.data();
+      
+      try {
+        // 従業員情報を取得
+        let employeeData = null;
+        
+        // userIdがある場合はそれを使用
+        if (payslipData.userId) {
+          const employeeDoc = await db.collection('employees').doc(payslipData.userId).get();
+          if (employeeDoc.exists) {
+            const empData = employeeDoc.data();
+            // 在職者のみ対象（退職者はメール送信対象外）
+            if (empData.isActive !== false) {
+              employeeData = empData;
+            } else {
+              console.log(`⚠️ 退職者のためメール送信スキップ: ${empData.employeeId} (${empData.name})`);
+            }
+          }
+        }
+        
+        // userIdがない場合はemployeeIdで検索
+        if (!employeeData && payslipData.employeeId) {
+          const employeeSnapshot = await db.collection('employees')
+            .where('employeeId', '==', payslipData.employeeId)
+            .where('companyId', '==', payslipData.companyId)
+            .get();
+            
+          if (!employeeSnapshot.empty) {
+            const empData = employeeSnapshot.docs[0].data();
+            // 退職者（isActive === false）以外は送信対象
+            if (empData.isActive !== false) {
+              employeeData = empData;
+            } else {
+              console.log(`⚠️ 退職者のためメール送信スキップ: ${empData.employeeId} (${empData.name})`);
+            }
+          }
+        }
+        
+        if (!employeeData || !employeeData.email) {
+          console.warn(`⚠️ 従業員情報またはメールアドレスが見つかりません: ${payslipData.employeeId}`);
+          failCount++;
+          results.push({
+            employeeId: payslipData.employeeId,
+            email: null,
+            success: false,
+            error: '従業員情報またはメールアドレスが見つかりません'
+          });
+          continue;
+        }
+        
+        // メール送信
+        const subjectPrefix = type === 'bonus' ? '【賞与明細】' : '【給与明細】';
+        const subject = `${subjectPrefix}${paymentDate}の明細のお知らせ`;
+        const htmlContent = createPayslipNotificationContent(
+          employeeData.name || payslipData.employeeId,
+          paymentDate,
+          loginUrl,
+          type
+        );
+        
+        const result = await sendEmail(employeeData.email, subject, htmlContent);
+        
+        if (result.success) {
+          successCount++;
+          console.log(`✅ ${type}明細通知メール送信成功: ${employeeData.email}`);
+        } else {
+          failCount++;
+          console.error(`❌ ${type}明細通知メール送信失敗: ${employeeData.email}`, result.error);
+        }
+        
+        results.push({
+          employeeId: payslipData.employeeId,
+          email: employeeData.email,
+          success: result.success,
+          error: result.error || null
+        });
+        
+        // API制限を避けるため少し待機
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+      } catch (employeeError) {
+        console.error(`❌ 従業員処理エラー: ${payslipData.employeeId}`, employeeError);
+        failCount++;
+        results.push({
+          employeeId: payslipData.employeeId,
+          email: null,
+          success: false,
+          error: employeeError.message
+        });
+      }
+    }
+    
+    console.log(`📧 ${type}明細通知メール送信完了: 成功 ${successCount}件、失敗 ${failCount}件`);
+    
+    return {
+      success: true,
+      totalCount: payslipsSnapshot.size,
+      successCount,
+      failCount,
+      results,
+      type
+    };
+    
+  } catch (error) {
+    console.error(`❌ ${type}明細通知メール送信エラー:`, error);
+    throw error;
+  }
+};
+
 // 給与明細通知メール送信ジョブ処理（バックグラウンド）
 const processPayslipNotificationJob = async (jobId, uploadId, paymentDate, type = 'payslip') => {
   console.log(`🔄 ジョブ処理開始: ${jobId}`);
@@ -3004,14 +3140,7 @@ const processPayslipNotificationJob = async (jobId, uploadId, paymentDate, type 
     });
     
     // 実際のメール送信処理を実行
-    const result = await exports.sendPayslipNotifications({
-      data: {
-        uploadId,
-        paymentDate,
-        type
-      },
-      auth: { uid: 'system' } // システム実行として扱う
-    });
+    const result = await sendPayslipNotificationsInternal(uploadId, paymentDate, type);
     
     // メール送信履歴を保存
     const jobData = (await jobRef.get()).data();
@@ -3022,9 +3151,9 @@ const processPayslipNotificationJob = async (jobId, uploadId, paymentDate, type 
       type: type,
       sentAt: admin.firestore.FieldValue.serverTimestamp(),
       sentBy: jobData.createdBy,
-      targetCount: result.data?.targetCount || jobData.targetCount || 0,
-      successCount: result.data?.successCount || 0,
-      failCount: result.data?.failCount || 0,
+      targetCount: result.totalCount || jobData.targetCount || 0,
+      successCount: result.successCount || 0,
+      failCount: result.failCount || 0,
       jobId: jobId
     });
     
@@ -3032,12 +3161,12 @@ const processPayslipNotificationJob = async (jobId, uploadId, paymentDate, type 
     await jobRef.update({
       status: 'completed',
       completedAt: admin.firestore.FieldValue.serverTimestamp(),
-      result: result.data || result,
-      successCount: result.data?.successCount || 0,
-      failCount: result.data?.failCount || 0
+      result: result,
+      successCount: result.successCount || 0,
+      failCount: result.failCount || 0
     });
     
-    console.log(`✅ ジョブ完了: ${jobId}`, result.data || result);
+    console.log(`✅ ジョブ完了: ${jobId}`, result);
     
   } catch (error) {
     console.error(`❌ ジョブ処理エラー: ${jobId}`, error);
