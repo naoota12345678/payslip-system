@@ -18,6 +18,37 @@ function BonusPayslipList() {
   const [selectedEmailData, setSelectedEmailData] = useState(null);
   const [emailHistory, setEmailHistory] = useState({});
 
+  // メール送信履歴を取得
+  useEffect(() => {
+    const fetchEmailHistory = async () => {
+      if (!userDetails?.companyId) return;
+      
+      try {
+        const historyQuery = query(
+          collection(db, "payslipEmailHistory"),
+          where("companyId", "==", userDetails.companyId),
+          where("type", "==", "bonus")
+        );
+        
+        const historySnapshot = await getDocs(historyQuery);
+        const historyMap = {};
+        
+        historySnapshot.forEach(doc => {
+          const data = doc.data();
+          const key = `${data.uploadId}_${data.paymentDate}`;
+          historyMap[key] = data;
+        });
+        
+        setEmailHistory(historyMap);
+        console.log('📧 賞与メール送信履歴取得:', Object.keys(historyMap).length, '件');
+      } catch (err) {
+        console.error("賞与メール送信履歴取得エラー:", err);
+      }
+    };
+    
+    fetchEmailHistory();
+  }, [userDetails]);
+
   // 従業員情報を取得する関数（employeeIdベース）
   const fetchEmployeeNames = useCallback(async (payslipList) => {
     if (!userDetails?.companyId) {
@@ -237,6 +268,58 @@ function BonusPayslipList() {
     return new Date(date).toLocaleDateString('ja-JP');
   };
 
+  // メール送信モーダルを開く
+  const openEmailModal = (paymentDate, payslipsForDate) => {
+    const uploadId = payslipsForDate[0]?.uploadId;
+    if (!uploadId) {
+      alert('uploadIdが取得できませんでした');
+      return;
+    }
+    
+    setSelectedEmailData({
+      uploadId,
+      paymentDate,
+      type: 'bonus'
+    });
+    setEmailModalOpen(true);
+  };
+
+  // メール送信モーダルを閉じる
+  const closeEmailModal = () => {
+    setEmailModalOpen(false);
+    setSelectedEmailData(null);
+    
+    // メール送信履歴を再取得
+    setTimeout(() => {
+      const fetchEmailHistory = async () => {
+        if (!userDetails?.companyId) return;
+        
+        try {
+          const historyQuery = query(
+            collection(db, "payslipEmailHistory"),
+            where("companyId", "==", userDetails.companyId),
+            where("type", "==", "bonus")
+          );
+          
+          const historySnapshot = await getDocs(historyQuery);
+          const historyMap = {};
+          
+          historySnapshot.forEach(doc => {
+            const data = doc.data();
+            const key = `${data.uploadId}_${data.paymentDate}`;
+            historyMap[key] = data;
+          });
+          
+          setEmailHistory(historyMap);
+        } catch (err) {
+          console.error("賞与メール送信履歴更新エラー:", err);
+        }
+      };
+      
+      fetchEmailHistory();
+    }, 1000);
+  };
+
   if (loading) {
     return <div className="text-center p-8">読み込み中...</div>;
   }
@@ -294,23 +377,52 @@ function BonusPayslipList() {
                       </div>
                     </div>
                    
-                   {/* 管理者の場合のみ削除ボタンを表示 */}
-                   {(userDetails.userType === 'company' || userDetails.role === 'admin') && (
-                     <button
-                       onClick={(e) => {
-                         e.stopPropagation();
-                         deletePayslipsByDate(dateKey, date);
-                       }}
-                       disabled={isDeleting}
-                       className={`px-3 py-1 text-sm rounded transition-colors ${
-                         isDeleting 
-                           ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                           : 'bg-red-600 hover:bg-red-700 text-white'
-                       }`}
-                     >
-                       {isDeleting ? '削除中...' : '削除'}
-                     </button>
-                   )}
+                   <div className="flex items-center space-x-2">
+                     {/* 管理者の場合のみメール送信ボタンを表示 */}
+                     {(userDetails.userType === 'company' || userDetails.role === 'admin') && (() => {
+                       const uploadId = datePayslips[0]?.uploadId;
+                       const historyKey = `${uploadId}_${formatDate(date)}`;
+                       const isSent = emailHistory[historyKey];
+                       
+                       return (
+                         <button
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             openEmailModal(formatDate(date), datePayslips);
+                           }}
+                           className={`p-2 rounded-lg transition-colors ${
+                             isSent 
+                               ? 'text-green-600 hover:text-green-800 hover:bg-green-50' 
+                               : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'
+                           }`}
+                           title={isSent ? '送信済み - 再送信可能' : 'メール送信'}
+                         >
+                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 4.26c.07.04.14.06.21.06s.14-.02.21-.06L19 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                             {isSent && <circle cx="18" cy="6" r="3" fill="currentColor" />}
+                           </svg>
+                         </button>
+                       );
+                     })()}
+                   
+                     {/* 管理者の場合のみ削除ボタンを表示 */}
+                     {(userDetails.userType === 'company' || userDetails.role === 'admin') && (
+                       <button
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           deletePayslipsByDate(dateKey, date);
+                         }}
+                         disabled={isDeleting}
+                         className={`px-3 py-1 text-sm rounded transition-colors ${
+                           isDeleting 
+                             ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                             : 'bg-red-600 hover:bg-red-700 text-white'
+                         }`}
+                       >
+                         {isDeleting ? '削除中...' : '削除'}
+                       </button>
+                     )}
+                   </div>
                  </div>
                </div>
 
@@ -352,6 +464,34 @@ function BonusPayslipList() {
         })}
       </div>
     )}
+
+      {/* メール送信モーダル */}
+      {emailModalOpen && selectedEmailData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">
+                賞与明細メール送信 - {selectedEmailData.paymentDate}
+              </h3>
+              <button
+                onClick={closeEmailModal}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+            <div className="p-4">
+              <PayslipNotificationUI
+                uploadId={selectedEmailData.uploadId}
+                paymentDate={selectedEmailData.paymentDate}
+                type={selectedEmailData.type}
+              />
+            </div>
+          </div>
+        </div>
+      )}
   </div>
   );
 }
