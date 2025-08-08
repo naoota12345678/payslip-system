@@ -503,48 +503,71 @@ function WageLedgerView() {
     // 2. 賞与明細を処理して統合
     bonusPayslips.forEach(payslip => {
       console.log('💜 賞与明細処理:', payslip.id);
-      const classifiedItems = classifyItemsForIntegratedLedger(payslip, salaryConfig, bonusConfig, integratedConfig);
+      const classifiedItems = classifyItemsForWageLedger(payslip, bonusConfig);
       
-      // 賞与項目を統合マップと照合
+      // 賞与項目を統合設定に基づいて処理
+      const payDate = payslip.paymentDate?.toDate ? payslip.paymentDate.toDate() : new Date(payslip.paymentDate);
+      const monthKey = `${payDate.getFullYear()}-${(payDate.getMonth() + 1).toString().padStart(2, '0')}`;
+      
       ['incomeItems', 'deductionItems', 'attendanceItems', 'otherItems'].forEach(category => {
         classifiedItems[category].forEach(item => {
-          const key = `${item.name}_${item.type}`;
-          const payDate = payslip.paymentDate?.toDate ? payslip.paymentDate.toDate() : new Date(payslip.paymentDate);
-          const monthKey = `${payDate.getFullYear()}-${(payDate.getMonth() + 1).toString().padStart(2, '0')}`;
+          const itemId = item.csvColumn;
           
-          if (integratedItemsMap.has(key) && item.source === 'integrated') {
-            // 既存の給与項目に統合
-            const existingItem = integratedItemsMap.get(key);
-            const existingMonthData = existingItem.months.get(monthKey);
+          console.log(`💜 賞与項目確認: ${item.name} (${itemId})`);
+          
+          // 統合設定をチェック
+          if (integratedConfig.mergeWithSalary.includes(itemId)) {
+            // 給与項目に統合する設定
+            const key = `${item.name}_${item.type}`;
+            console.log(`💜 統合設定確認: ${item.name} -> ${key}`);
             
-            if (existingMonthData) {
-              // 同月の給与データに加算
-              existingMonthData.value = (parseFloat(existingMonthData.value) || 0) + (parseFloat(item.value) || 0);
-              existingMonthData.type = 'integrated';
-              console.log(`💜 統合成功: ${item.name} 月:${monthKey} 統合後:${existingMonthData.value}`);
+            if (integratedItemsMap.has(key)) {
+              // 既存の給与項目に統合
+              const existingItem = integratedItemsMap.get(key);
+              const existingMonthData = existingItem.months.get(monthKey);
+              
+              if (existingMonthData) {
+                // 同月の給与データに加算
+                const oldValue = parseFloat(existingMonthData.value) || 0;
+                const bonusValue = parseFloat(item.value) || 0;
+                existingMonthData.value = oldValue + bonusValue;
+                existingMonthData.type = 'integrated';
+                console.log(`💜 統合成功: ${item.name} 月:${monthKey} ${oldValue} + ${bonusValue} = ${existingMonthData.value}`);
+              } else {
+                // 新しい月データとして追加
+                existingItem.months.set(monthKey, {
+                  value: parseFloat(item.value) || 0,
+                  type: 'bonus'
+                });
+                console.log(`💜 新月データ追加: ${item.name} 月:${monthKey} 値:${item.value}`);
+              }
+              existingItem.source = 'integrated';
             } else {
-              // 新しい月データとして追加
-              existingItem.months.set(monthKey, {
-                value: parseFloat(item.value) || 0,
-                type: 'bonus'
-              });
-              console.log(`💜 新月データ追加: ${item.name} 月:${monthKey} 値:${item.value}`);
-            }
-            existingItem.source = 'integrated';
-          } else {
-            // 新規項目として追加
-            if (!integratedItemsMap.has(key)) {
+              console.log(`💜 統合対象項目なし: ${key} (新規追加)`);
+              // 新規項目として追加
               integratedItemsMap.set(key, {
                 ...item,
-                months: new Map()
+                months: new Map([[monthKey, {
+                  value: parseFloat(item.value) || 0,
+                  type: 'bonus'
+                }]])
               });
             }
-            integratedItemsMap.get(key).months.set(monthKey, {
-              value: parseFloat(item.value) || 0,
-              type: 'bonus'
+          } else if (integratedConfig.showSeparately.includes(itemId)) {
+            // 別項目として追加
+            const bonusKey = `賞与${item.name}_${item.type}`;
+            integratedItemsMap.set(bonusKey, {
+              ...item,
+              name: `賞与${item.name}`,
+              source: 'bonus',
+              months: new Map([[monthKey, {
+                value: parseFloat(item.value) || 0,
+                type: 'bonus'
+              }]])
             });
-            console.log(`💜 新規項目追加: ${item.name} 月:${monthKey} 値:${item.value}`);
+            console.log(`💜 別項目追加: 賞与${item.name} 月:${monthKey} 値:${item.value}`);
           }
+          // 非表示の場合は何もしない
         });
       });
       
