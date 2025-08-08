@@ -874,7 +874,7 @@ function CSVUploadForm({ companyId, setError, setSuccess }) {
       if (result.created > 0) {
         console.log(`🔧 ${result.created}件の新規従業員にFirebase Authアカウントを作成中...`);
         
-        const createEmployeeAccount = httpsCallable(functions, 'createEmployeeAccount');
+        const createEmployeeAuthOnly = httpsCallable(functions, 'createEmployeeAuthOnly');
         let authCreated = 0;
         let authErrors = [];
         
@@ -894,7 +894,7 @@ function CSVUploadForm({ companyId, setError, setSuccess }) {
             // 新規作成された従業員かチェック
             if (!existingEmployees[employeeId]) {
               try {
-                const authResult = await createEmployeeAccount({
+                const authResult = await createEmployeeAuthOnly({
                   email: email,
                   name: name || employeeId,
                   employeeData: {

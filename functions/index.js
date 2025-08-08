@@ -602,6 +602,199 @@ exports.createEmployeeAccount = onCall({
   }
 });
 
+// Auth作成のみ（メール送信なし）の関数
+exports.createEmployeeAuthOnly = onCall({ 
+  enforceAppCheck: false,
+  invoker: 'public'
+}, async (request) => {
+  console.log('🔥 createEmployeeAuthOnly 関数開始');
+  console.log('🔍 Request情報:', {
+    hasAuth: !!request.auth,
+    authUid: request.auth?.uid,
+    origin: request.rawRequest?.headers?.origin,
+    method: request.rawRequest?.method
+  });
+  
+  // 認証確認（より厳密に）
+  if (!request.auth || !request.auth.uid) {
+    console.error('❌ 認証されていないリクエスト');
+    console.error('Auth情報:', request.auth);
+    throw new HttpsError('unauthenticated', 'この機能を使用するには管理者認証が必要です');
+  }
+  
+  // 管理者権限確認（必要に応じて）
+  try {
+    const userRecord = await admin.auth().getUser(request.auth.uid);
+    console.log('認証済みユーザーEmail:', userRecord.email);
+  } catch (error) {
+    console.error('ユーザー情報取得エラー:', error);
+    throw new HttpsError('permission-denied', '無効なユーザーです');
+  }
+  
+  console.log('✅ 認証済みユーザー:', request.auth.uid);
+  
+  try {
+    console.log('🚀 createEmployeeAuthOnly 関数開始');
+    console.log('📥 受信データ:', JSON.stringify(request.data, null, 2));
+    
+    // Firebase Admin SDK の初期化確認
+    console.log('🔧 Firebase Admin SDK 初期化状況確認...');
+    try {
+      const testAuth = admin.auth();
+      console.log('✅ Firebase Auth SDK 初期化成功');
+    } catch (initError) {
+      console.error('❌ Firebase Auth SDK 初期化失敗:', initError);
+      throw new Error(`Firebase Auth SDK 初期化エラー: ${initError.message}`);
+    }
+    
+    const { email, name, employeeData } = request.data;
+    
+    // 入力パラメータの詳細検証
+    if (!email) {
+      throw new Error('emailパラメータが必要です');
+    }
+    if (!name) {
+      throw new Error('nameパラメータが必要です');
+    }
+    
+    // メールアドレスの形式チェック
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      throw new Error(`無効なメールアドレス形式: ${email}`);
+    }
+    
+    console.log('✅ パラメータ検証完了:', { email, name });
+    
+    // 既存ユーザーの確認
+    let userRecord;
+    try {
+      const existingUser = await admin.auth().getUserByEmail(email);
+      console.log('⚠️ 既存ユーザーが見つかりました:', existingUser.uid);
+      userRecord = existingUser;
+    } catch (getUserError) {
+      // ユーザーが存在しない場合（期待される動作）
+      if (getUserError.code === 'auth/user-not-found') {
+        console.log('✅ 新規ユーザー作成を続行します');
+        
+        console.log('👤 Firebase Authユーザー作成開始...');
+        
+        // Firebase Authでユーザー作成
+        userRecord = await admin.auth().createUser({
+          email: email,
+          password: TEST_PASSWORD, // テスト用固定パスワード
+          displayName: name,
+          emailVerified: false
+        });
+        
+        console.log('✅ 従業員アカウント作成完了:', {
+          uid: userRecord.uid,
+          email: email,
+          displayName: userRecord.displayName,
+          emailVerified: userRecord.emailVerified,
+          creationTime: userRecord.metadata.creationTime
+        });
+      } else {
+        console.error('❌ ユーザー検索時のエラー:', getUserError);
+        throw getUserError;
+      }
+    }
+    
+    // 従業員データの処理
+    console.log('🔄 Firestoreの従業員データ処理中...');
+    
+    try {
+      // メールアドレスで従業員ドキュメントを検索
+      const employeesQuery = db.collection('employees').where('email', '==', email);
+      const employeesSnapshot = await employeesQuery.get();
+      
+      if (!employeesSnapshot.empty) {
+        // 既存の従業員ドキュメントが見つかった場合、UIDを更新
+        const employeeDoc = employeesSnapshot.docs[0];
+        await employeeDoc.ref.update({
+          uid: userRecord.uid,
+          userType: 'employee',
+          role: 'employee',
+          status: 'auth_created',
+          isFirstLogin: true,
+          tempPassword: TEST_PASSWORD,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        
+        console.log('✅ 既存従業員データのUID更新完了:', {
+          docId: employeeDoc.id,
+          uid: userRecord.uid,
+          email: email
+        });
+      } else {
+        // 従業員データが見つからない場合、新規作成
+        console.log('📝 新規従業員ドキュメントを作成中...');
+        
+        if (!employeeData) {
+          throw new Error('employeeDataが提供されていません');
+        }
+        
+        // 新しい従業員ドキュメントを作成
+        const newEmployeeData = {
+          ...employeeData,
+          uid: userRecord.uid,
+          email: email,
+          name: name,
+          userType: 'employee',
+          role: 'employee',
+          status: 'auth_created',
+          isFirstLogin: true,
+          tempPassword: TEST_PASSWORD,
+          isActive: true,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        };
+        
+        await db.collection('employees').add(newEmployeeData);
+        console.log('✅ 新規従業員ドキュメント作成完了');
+      }
+    } catch (firestoreError) {
+      console.error('❌ Firestore処理エラー:', firestoreError);
+      throw new Error(`Firestore処理エラー: ${firestoreError.message}`);
+    }
+    
+    // メール送信はスキップ（この関数の目的）
+    console.log('⏭️ メール送信をスキップ（Auth作成のみの関数）');
+    
+    console.log('🎉 createEmployeeAuthOnly 関数完了');
+    
+    return {
+      success: true,
+      uid: userRecord.uid,
+      email: email,
+      testPassword: TEST_PASSWORD,
+      message: userRecord.metadata?.creationTime ? '従業員アカウントが作成されました（メール送信なし）' : '既存のアカウントを使用しました（メール送信なし）'
+    };
+    
+  } catch (error) {
+    console.error('❌ 従業員Auth作成エラー (詳細):', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      stack: error.stack
+    });
+    
+    // エラーの詳細な分析
+    if (error.code === 'auth/email-already-exists') {
+      console.log('🔍 原因: メールアドレスが既に使用されています');
+    } else if (error.code === 'auth/invalid-email') {
+      console.log('🔍 原因: 無効なメールアドレス形式です');
+    } else if (error.code === 'auth/weak-password') {
+      console.log('🔍 原因: パスワードが弱すぎます');
+    } else if (error.code === 'auth/quota-exceeded') {
+      console.log('🔍 原因: APIクォータを超過しました');
+    } else {
+      console.log('🔍 原因: 不明なエラー');
+    }
+    
+    throw new HttpsError('internal', `Auth作成に失敗しました: [${error.code || 'UNKNOWN'}] ${error.message}`);
+  }
+});
+
 // 従業員招待メール送信関数
 const sendEmployeeInvitationEmail = async (email, name, tempPassword) => {
   const loginUrl = 'https://kyuyoprint.web.app/employee/login';

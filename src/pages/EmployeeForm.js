@@ -286,9 +286,9 @@ companyID一致: ${targetEmployeeData?.companyId === userDetails?.companyId}
           status: 'active'
         });
         
-        // Firebase Functionsを呼び出してアカウント作成
-        const createEmployeeAccount = httpsCallable(functions, 'createEmployeeAccount');
-        const result = await createEmployeeAccount({
+        // Firebase Functionsを呼び出してアカウント作成（メール送信なし）
+        const createEmployeeAuthOnly = httpsCallable(functions, 'createEmployeeAuthOnly');
+        const result = await createEmployeeAuthOnly({
           email: saveData.email,
           name: saveData.name,
           companyId: userDetails.companyId
