@@ -507,6 +507,7 @@ exports.createEmployeeAccount = onCall({
           status: 'auth_created',
           isFirstLogin: true,
           tempPassword: TEST_PASSWORD,
+          isActive: true,
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
         
@@ -717,6 +718,7 @@ exports.createEmployeeAuthOnly = onCall({
           status: 'auth_created',
           isFirstLogin: true,
           tempPassword: TEST_PASSWORD,
+          isActive: true,
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
         
