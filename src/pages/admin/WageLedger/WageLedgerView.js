@@ -581,13 +581,83 @@ function WageLedgerView() {
       
       processedPayslips.push({
         ...payslip,
-        classifiedItems
+        classifiedItems,
+        allItems: Array.from(integratedItemsMap.values()), // 統合項目を追加
+        integratedItemsMap: integratedItemsMap // デバッグ用
       });
     });
     
     console.log('💜 統合処理完了。最終項目数:', integratedItemsMap.size);
     
     return processedPayslips;
+  };
+
+  // 統合賃金台帳専用のマトリックス生成関数
+  const generateIntegratedItemMatrix = () => {
+    if (ledgerType !== 'integrated' || !payslipData.length) {
+      return generateClassifiedItemMatrix(); // 通常の処理
+    }
+
+    console.log('💜 統合マトリックス生成開始');
+    
+    const allMonths = generateAllMonthsInPeriod();
+    
+    // 統合データから項目を取得
+    const integratedData = payslipData[0]; // 統合データは1つの要素
+    if (!integratedData.allItems) {
+      console.log('💜 統合データなし、通常処理に切り替え');
+      return generateClassifiedItemMatrix();
+    }
+    
+    const allItems = integratedData.allItems.sort((a, b) => {
+      // タイプ別ソート: attendance, income, deduction, total
+      const typeOrder = { attendance: 1, income: 2, deduction: 3, total: 4 };
+      const typeA = typeOrder[a.type] || 5;
+      const typeB = typeOrder[b.type] || 5;
+      
+      if (typeA !== typeB) return typeA - typeB;
+      return (a.order || 0) - (b.order || 0);
+    });
+    
+    console.log('💜 統合項目一覧:', allItems.map(item => `${item.name} (${item.type})`));
+    
+    // マトリックスデータを生成
+    const matrix = allItems.map(itemDef => {
+      const row = {
+        itemName: itemDef.name,
+        itemId: itemDef.id,
+        itemType: itemDef.type,
+        showZeroValue: itemDef.showZeroValue,
+        months: {}
+      };
+      
+      allMonths.forEach(month => {
+        const monthData = itemDef.months ? itemDef.months.get(month.monthKey) : null;
+        
+        if (monthData) {
+          const numericValue = typeof monthData.value === 'number' ? monthData.value : parseFloat(monthData.value || 0);
+          
+          row.months[month.monthKey] = {
+            value: numericValue,
+            category: itemDef.type,
+            type: monthData.type,
+            hasData: true
+          };
+        } else {
+          row.months[month.monthKey] = {
+            value: 0,
+            category: itemDef.type,
+            type: 'salary',
+            hasData: false
+          };
+        }
+      });
+      
+      return row;
+    });
+    
+    console.log('💜 統合マトリックス生成完了:', matrix.length, '項目');
+    return { matrix, allMonths, allItems };
   };
 
   useEffect(() => {
@@ -983,7 +1053,7 @@ function WageLedgerView() {
     );
   }
 
-  const { matrix, allMonths } = generateClassifiedItemMatrix();
+  const { matrix, allMonths } = ledgerType === 'integrated' ? generateIntegratedItemMatrix() : generateClassifiedItemMatrix();
   const totals = getClassifiedTotals();
 
   return (
