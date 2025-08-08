@@ -187,21 +187,24 @@ function WageLedgerView() {
               ? item.itemName 
               : item.headerName;
             
-            // 同名の給与項目を探す
+            // 同名の給与項目を探す（統合賃金台帳でのみ実行）
             const existingItem = category.targetArray.find(salaryItem => 
               salaryItem.name === displayName && salaryItem.source === 'salary'
             );
             
             if (existingItem) {
-              // 既存項目に加算
-              existingItem.value = (parseFloat(existingItem.value) || 0) + (parseFloat(value) || 0);
+              // 既存項目に加算（統合賃金台帳専用処理）
+              const currentValue = parseFloat(existingItem.value) || 0;
+              const bonusValue = parseFloat(value) || 0;
+              existingItem.value = currentValue + bonusValue;
               existingItem.source = 'integrated'; // 統合項目であることを記録
+              console.log(`💜 統合賃金台帳: ${displayName}を統合 ${currentValue} + ${bonusValue} = ${existingItem.value}`);
             } else {
-              // 新規項目として追加
+              // 新規項目として追加（統合賃金台帳専用処理）
               const processedItem = {
                 id: `merged_${itemId}`,
                 name: displayName,
-                value: value,
+                value: parseFloat(value) || 0,
                 type: category.type,
                 csvColumn: itemId,
                 showZeroValue: item.showZeroValue !== undefined ? item.showZeroValue : false,
@@ -210,6 +213,7 @@ function WageLedgerView() {
               };
 
               category.targetArray.push(processedItem);
+              console.log(`💜 統合賃金台帳: ${displayName}を新規追加 ${processedItem.value}`);
             }
           }
           // 非表示の場合は何もしない
