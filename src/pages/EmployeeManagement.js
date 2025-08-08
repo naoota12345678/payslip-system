@@ -17,6 +17,7 @@ function EmployeeManagement() {
   const [currentJobId, setCurrentJobId] = useState(null);
   const [jobStatus, setJobStatus] = useState(null);
   const [statusPolling, setStatusPolling] = useState(false);
+  const [sortConfig, setSortConfig] = useState({ field: 'employeeId', direction: 'asc' });
 
   // 従業員と部門データを読み込む
   useEffect(() => {
@@ -249,6 +250,41 @@ function EmployeeManagement() {
     }, 300000);
   };
 
+  // ソート機能
+  const handleSort = (field) => {
+    setSortConfig(prev => ({
+      field,
+      direction: prev.field === field && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  // ソート適用
+  const sortedEmployees = [...employees].sort((a, b) => {
+    const { field, direction } = sortConfig;
+    let aVal = a[field];
+    let bVal = b[field];
+    
+    // 文字列の場合は小文字で比較
+    if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+    if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+    
+    // 数値型の従業員IDの場合
+    if (field === 'employeeId') {
+      aVal = parseInt(aVal) || 0;
+      bVal = parseInt(bVal) || 0;
+    }
+    
+    if (aVal < bVal) return direction === 'asc' ? -1 : 1;
+    if (aVal > bVal) return direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  // ソート方向アイコン
+  const getSortIcon = (field) => {
+    if (sortConfig.field !== field) return '↕️';
+    return sortConfig.direction === 'asc' ? '↑' : '↓';
+  };
+
   // 個別招待メール送信
   const sendIndividualInvitationEmail = async (employee) => {
     if (!employee.email) {
@@ -394,17 +430,29 @@ function EmployeeManagement() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                社員番号
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('employeeId')}
+              >
+                社員番号 {getSortIcon('employeeId')}
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                氏名
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('name')}
+              >
+                氏名 {getSortIcon('name')}
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                メールアドレス
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('email')}
+              >
+                メールアドレス {getSortIcon('email')}
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                部門
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('departmentCode')}
+              >
+                部門 {getSortIcon('departmentCode')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 ステータス
@@ -415,14 +463,14 @@ function EmployeeManagement() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {employees.length === 0 ? (
+            {sortedEmployees.length === 0 ? (
               <tr>
                 <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
                   登録されている従業員はいません
                 </td>
               </tr>
             ) : (
-              employees.map(employee => (
+              sortedEmployees.map(employee => (
                 <tr 
                   key={employee.id} 
                   className="hover:bg-gray-50 cursor-pointer"
