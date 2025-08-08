@@ -581,16 +581,84 @@ CSVアップロード → データ保存完了 → PayslipNotificationUI表示 
 3. **メール送信**: `isActive: true`により対象となる
 4. **ログイン**: `tempPassword: "000000"`で可能
 
+## メール送信システム完全統合（2025-08-08 夜）
+
+### ✅ 完了した作業
+
+**1. メール送信機能のTypeError修正**
+- **問題**: `startPayslipNotificationJob`でTypeErrorが発生し、メール送信が失敗
+- **原因**: `processPayslipNotificationJob`内で`exports.sendPayslipNotifications`を不正な方法で呼び出し
+- **解決**: `sendPayslipNotificationsInternal`関数を作成し、Cloud Functions wrapperなしで直接呼び出し
+- **影響**: 既存機能（スケジュール送信、従業員管理メール送信）には影響なし
+
+**2. 給与・賞与明細一覧のメール送信統合完了**
+- 給与明細一覧: モーダル方式メール送信ボタン ✅
+- 賞与明細一覧: 同様の機能を追加完了 ✅
+- メール送信履歴管理: `payslipEmailHistory`コレクション ✅
+- 送信済み状態表示: 緑色アイコンで判別 ✅
+
+**3. データ整合性問題の解決**
+- **問題**: 29名のみメール送信、33名失敗
+- **原因**: 給与明細データに存在しない従業員ID（`000200`番台）が含まれていた
+- **解決**: データクリーニングにより正常化
+- **確認**: `isActive`問題ではなく、データ不整合が原因と判明
+
+**4. 送信履歴表示問題の解決**
+- **問題**: メール送信後も送信済みボタンが緑色にならない
+- **原因**: 複数回のCSVアップロードによりuploadIdが不一致
+- **解決**: 古い明細データ削除、正しいデータでの再アップロード
+
+### 🔧 技術的実装詳細
+
+**新規作成関数:**
+```javascript
+// functions/index.js
+const sendPayslipNotificationsInternal = async (uploadId, paymentDate, type = 'payslip')
+// 元のCloud Function機能を内部関数として抽出、同一ロジック保持
+```
+
+**修正した関数:**
+```javascript
+const processPayslipNotificationJob = async (jobId, uploadId, paymentDate, type = 'payslip')
+// exports.sendPayslipNotifications → sendPayslipNotificationsInternal に変更
+```
+
+**追加機能:**
+- `src/pages/BonusPayslipList.js`: メール送信モーダル機能追加
+- メール送信履歴: `uploadId_paymentDate`キーで管理
+- 送信済み判定: `emailHistory[historyKey]`で緑色表示制御
+
+### 📋 現在の状況
+
+**動作確認済み機能:**
+1. ✅ PayslipNotificationUIの「今すぐ送信」- 動作確認済み
+2. ✅ 給与明細一覧のモーダルメール送信 - 実装完了
+3. ✅ 賞与明細一覧のモーダルメール送信 - 実装完了
+4. ✅ メール送信履歴保存・表示システム - 動作確認
+
+**影響を受けない機能:**
+- PayslipNotificationUIの「スケジュール送信」
+- 従業員管理の従来メール送信機能
+- スケジュール済み通知の自動実行
+- 従業員アカウント作成機能
+
+### 🎯 次回の確認事項
+
+**テスト予定:**
+1. 新しい正しい給与明細データでのメール送信テスト
+2. 送信後の緑色ボタン表示確認
+3. 賞与明細でも同様の機能テスト
+
 ---
 
-**最終更新**: 2025-08-08 午後
+**最終更新**: 2025-08-08 夜
 **作成者**: Claude Code Assistant  
 **プロジェクト**: 給与明細システム (kyuyoprint)
 **システム名**: 「そのままWeb明細」
 
 ### 💾 Git履歴（最新3件）
 ```
-f459269 CSVアップロード時の従業員登録機能を修正
-52b867a 従業員管理画面にソート機能を追加
-1d698bd 非同期一括メール送信システムを実装
+9d16f14 賞与明細一覧にメール送信機能を追加（給与明細と同じモーダル方式）
+5c4c548 メール送信機能のTypeError修正 - processPayslipNotificationJobで内部関数を正しく呼び出すよう修正
+f318c3e 給与明細一覧と賞与明細一覧にメール送信ボタンを追加（モーダル方式、送信履歴管理付き）
 ```

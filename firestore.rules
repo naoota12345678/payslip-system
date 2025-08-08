@@ -87,5 +87,25 @@ service cloud.firestore {
     match /wageLedgerIntegratedConfig/{configId} {
       allow read, write: if request.auth != null;
     }
+    
+    // メール送信履歴（認証済みユーザーのみ）
+    match /payslipEmailHistory/{historyId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // メール送信ジョブ（認証済みユーザーのみ）
+    match /payslipNotificationJobs/{jobId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // メール通知設定（認証済みユーザーのみ）
+    match /emailNotifications/{notificationId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // 一括メールジョブ（認証済みユーザーのみ）
+    match /emailJobs/{jobId} {
+      allow read, write: if request.auth != null;
+    }
   }
 } 
