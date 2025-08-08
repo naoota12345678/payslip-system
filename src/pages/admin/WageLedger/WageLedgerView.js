@@ -535,19 +535,19 @@ function WageLedgerView() {
               console.log(`💜 月データ取得: ${monthKey} ->`, existingMonthData ? `値:${existingMonthData.value}` : 'なし');
               
               if (existingMonthData) {
-                // 同月の給与データに加算
+                // 同月の場合のみ合算（通常は発生しない想定）
                 const oldValue = parseFloat(existingMonthData.value) || 0;
                 const bonusValue = parseFloat(item.value) || 0;
                 existingMonthData.value = oldValue + bonusValue;
                 existingMonthData.type = 'integrated';
-                console.log(`💜 統合成功: ${item.name} 月:${monthKey} ${oldValue} + ${bonusValue} = ${existingMonthData.value}`);
+                console.log(`💜 同月データ合算: ${item.name} 月:${monthKey} ${oldValue} + ${bonusValue} = ${existingMonthData.value}`);
               } else {
-                // 新しい月データとして追加
+                // 別月の賞与データとして追加（これが通常のケース）
                 existingItem.months.set(monthKey, {
                   value: parseFloat(item.value) || 0,
                   type: 'bonus'
                 });
-                console.log(`💜 新月データ追加: ${item.name} 月:${monthKey} 値:${item.value}`);
+                console.log(`💜 項目名統一: ${item.name} 月:${monthKey} 賞与値:${item.value}を給与項目に追加`);
               }
               existingItem.source = 'integrated';
             } else {
