@@ -171,7 +171,6 @@ function EmployeeManagement() {
       setBulkEmailSending(true);
       setError('');
       setSuccess('');
-      setJobStatus(null);
       
       console.log('🚀 非同期一括招待メール送信開始');
       
