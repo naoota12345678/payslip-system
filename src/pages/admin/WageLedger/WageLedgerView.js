@@ -81,6 +81,145 @@ function WageLedgerView() {
     }
   };
 
+  // 統合賃金台帳用の全データ統合処理関数
+  const createIntegratedLedgerData = (salaryPayslips, bonusPayslips, salaryConfig, bonusConfig, integratedConfig) => {
+    console.log('💜 統合データ作成開始');
+    
+    const incomeItems = [];
+    const deductionItems = [];
+    const attendanceItems = [];
+    const otherItems = [];
+    
+    // 月別データマップを作成
+    const monthlyData = {};
+    
+    // 給与明細データを月別に分類
+    salaryPayslips.forEach(payslip => {
+      const payDate = payslip.paymentDate?.toDate ? payslip.paymentDate.toDate() : new Date(payslip.paymentDate);
+      const monthKey = `${payDate.getFullYear()}-${(payDate.getMonth() + 1).toString().padStart(2, '0')}`;
+      
+      if (!monthlyData[monthKey]) monthlyData[monthKey] = {};
+      monthlyData[monthKey].salary = payslip;
+    });
+    
+    // 賞与明細データを月別に分類
+    bonusPayslips.forEach(payslip => {
+      const payDate = payslip.paymentDate?.toDate ? payslip.paymentDate.toDate() : new Date(payslip.paymentDate);
+      const monthKey = `${payDate.getFullYear()}-${(payDate.getMonth() + 1).toString().padStart(2, '0')}`;
+      
+      if (!monthlyData[monthKey]) monthlyData[monthKey] = {};
+      monthlyData[monthKey].bonus = payslip;
+    });
+    
+    // 全期間の項目を収集
+    const allItemsMap = new Map(); // itemName -> {category, config}
+    
+    // 1. 給与項目から基本項目を収集
+    if (salaryConfig) {
+      const salaryCategories = [
+        { items: salaryConfig.incomeItems || [], type: 'income', targetArray: incomeItems },
+        { items: salaryConfig.deductionItems || [], type: 'deduction', targetArray: deductionItems },
+        { items: salaryConfig.attendanceItems || [], type: 'attendance', targetArray: attendanceItems },
+        { items: salaryConfig.totalItems || [], type: 'total', targetArray: otherItems }
+      ];
+      
+      salaryCategories.forEach(category => {
+        category.items.forEach(item => {
+          const displayName = (item.itemName && item.itemName.trim() !== '') 
+            ? item.itemName 
+            : item.headerName;
+          
+          allItemsMap.set(displayName, {
+            id: item.headerName,
+            name: displayName,
+            type: category.type,
+            csvColumn: item.headerName,
+            showZeroValue: item.showZeroValue !== undefined ? item.showZeroValue : false,
+            order: item.displayOrder || item.columnIndex || 0,
+            source: 'salary',
+            config: item
+          });
+        });
+      });
+    }
+    
+    console.log('💜 給与項目収集完了:', allItemsMap.size, '項目');
+    
+    // 2. 賞与項目を統合設定に基づいて処理
+    if (bonusConfig && integratedConfig) {
+      const bonusCategories = [
+        { items: bonusConfig.incomeItems || [], type: 'income' },
+        { items: bonusConfig.deductionItems || [], type: 'deduction' },
+        { items: bonusConfig.attendanceItems || [], type: 'attendance' },
+        { items: bonusConfig.totalItems || [], type: 'total' }
+      ];
+      
+      bonusCategories.forEach(category => {
+        category.items.forEach(item => {
+          const itemId = item.headerName;
+          const displayName = (item.itemName && item.itemName.trim() !== '') 
+            ? item.itemName 
+            : item.headerName;
+          
+          if (integratedConfig.showSeparately.includes(itemId)) {
+            // 別項目として追加
+            const bonusDisplayName = `賞与${displayName}`;
+            allItemsMap.set(bonusDisplayName, {
+              id: `bonus_${itemId}`,
+              name: bonusDisplayName,
+              type: category.type,
+              csvColumn: itemId,
+              showZeroValue: item.showZeroValue !== undefined ? item.showZeroValue : false,
+              order: 1000 + (item.displayOrder || item.columnIndex || 0),
+              source: 'bonus',
+              config: item
+            });
+            console.log('💜 賞与別項目追加:', bonusDisplayName);
+            
+          } else if (integratedConfig.mergeWithSalary.includes(itemId)) {
+            // 給与項目に統合
+            if (allItemsMap.has(displayName)) {
+              // 既存項目あり - 統合対象としてマーク
+              const existingItem = allItemsMap.get(displayName);
+              existingItem.source = 'integrated';
+              existingItem.bonusConfig = item;
+              console.log('💜 統合対象:', displayName);
+            } else {
+              // 既存項目なし - 新規追加
+              allItemsMap.set(displayName, {
+                id: `merged_${itemId}`,
+                name: displayName,
+                type: category.type,
+                csvColumn: itemId,
+                showZeroValue: item.showZeroValue !== undefined ? item.showZeroValue : false,
+                order: 500 + (item.displayOrder || item.columnIndex || 0),
+                source: 'bonus',
+                config: item
+              });
+              console.log('💜 賞与新規項目追加:', displayName);
+            }
+          }
+        });
+      });
+    }
+    
+    console.log('💜 全項目統合完了:', allItemsMap.size, '項目');
+    
+    // 3. 統合された項目データを作成
+    return {
+      id: 'integrated',
+      type: 'integrated',
+      classifiedItems: {
+        incomeItems: Array.from(allItemsMap.values()).filter(item => item.type === 'income'),
+        deductionItems: Array.from(allItemsMap.values()).filter(item => item.type === 'deduction'),
+        attendanceItems: Array.from(allItemsMap.values()).filter(item => item.type === 'attendance'),
+        otherItems: Array.from(allItemsMap.values()).filter(item => item.type === 'total')
+      },
+      monthlyData: monthlyData,
+      allItems: Array.from(allItemsMap.values())
+    };
+  };
+
   // 統合賃金台帳用の分類ロジック
   const classifyItemsForIntegratedLedger = (payslipData, salaryConfig, bonusConfig, integratedConfig) => {
     const incomeItems = [];
@@ -317,6 +456,109 @@ function WageLedgerView() {
     return { incomeItems, deductionItems, attendanceItems, otherItems };
   };
 
+  // 統合賃金台帳用の統合処理関数（順序改善版）
+  const createIntegratedPayslips = (salaryPayslips, bonusPayslips, salaryConfig, bonusConfig, integratedConfig) => {
+    console.log('💜 統合処理開始: 給与項目を先に収集');
+    
+    // 全体の統合項目を管理するマップ
+    const integratedItemsMap = new Map();
+    
+    // 1. 給与明細を処理して基本項目を作成
+    const processedPayslips = [];
+    
+    salaryPayslips.forEach(payslip => {
+      console.log('💜 給与明細処理:', payslip.id);
+      const classifiedItems = classifyItemsForWageLedger(payslip, salaryConfig);
+      
+      // 給与項目を統合マップに追加
+      ['incomeItems', 'deductionItems', 'attendanceItems', 'otherItems'].forEach(category => {
+        classifiedItems[category].forEach(item => {
+          const key = `${item.name}_${item.type}`;
+          if (!integratedItemsMap.has(key)) {
+            integratedItemsMap.set(key, {
+              ...item,
+              source: 'salary',
+              months: new Map()
+            });
+          }
+          
+          // 月データを追加
+          const payDate = payslip.paymentDate?.toDate ? payslip.paymentDate.toDate() : new Date(payslip.paymentDate);
+          const monthKey = `${payDate.getFullYear()}-${(payDate.getMonth() + 1).toString().padStart(2, '0')}`;
+          integratedItemsMap.get(key).months.set(monthKey, {
+            value: item.value,
+            type: 'salary'
+          });
+        });
+      });
+      
+      processedPayslips.push({
+        ...payslip,
+        classifiedItems
+      });
+    });
+    
+    console.log('💜 給与項目収集完了。統合マップ:', integratedItemsMap.size, '項目');
+    
+    // 2. 賞与明細を処理して統合
+    bonusPayslips.forEach(payslip => {
+      console.log('💜 賞与明細処理:', payslip.id);
+      const classifiedItems = classifyItemsForIntegratedLedger(payslip, salaryConfig, bonusConfig, integratedConfig);
+      
+      // 賞与項目を統合マップと照合
+      ['incomeItems', 'deductionItems', 'attendanceItems', 'otherItems'].forEach(category => {
+        classifiedItems[category].forEach(item => {
+          const key = `${item.name}_${item.type}`;
+          const payDate = payslip.paymentDate?.toDate ? payslip.paymentDate.toDate() : new Date(payslip.paymentDate);
+          const monthKey = `${payDate.getFullYear()}-${(payDate.getMonth() + 1).toString().padStart(2, '0')}`;
+          
+          if (integratedItemsMap.has(key) && item.source === 'integrated') {
+            // 既存の給与項目に統合
+            const existingItem = integratedItemsMap.get(key);
+            const existingMonthData = existingItem.months.get(monthKey);
+            
+            if (existingMonthData) {
+              // 同月の給与データに加算
+              existingMonthData.value = (parseFloat(existingMonthData.value) || 0) + (parseFloat(item.value) || 0);
+              existingMonthData.type = 'integrated';
+              console.log(`💜 統合成功: ${item.name} 月:${monthKey} 統合後:${existingMonthData.value}`);
+            } else {
+              // 新しい月データとして追加
+              existingItem.months.set(monthKey, {
+                value: parseFloat(item.value) || 0,
+                type: 'bonus'
+              });
+              console.log(`💜 新月データ追加: ${item.name} 月:${monthKey} 値:${item.value}`);
+            }
+            existingItem.source = 'integrated';
+          } else {
+            // 新規項目として追加
+            if (!integratedItemsMap.has(key)) {
+              integratedItemsMap.set(key, {
+                ...item,
+                months: new Map()
+              });
+            }
+            integratedItemsMap.get(key).months.set(monthKey, {
+              value: parseFloat(item.value) || 0,
+              type: 'bonus'
+            });
+            console.log(`💜 新規項目追加: ${item.name} 月:${monthKey} 値:${item.value}`);
+          }
+        });
+      });
+      
+      processedPayslips.push({
+        ...payslip,
+        classifiedItems
+      });
+    });
+    
+    console.log('💜 統合処理完了。最終項目数:', integratedItemsMap.size);
+    
+    return processedPayslips;
+  };
+
   useEffect(() => {
     const fetchWageLedgerData = async () => {
       if (!userDetails?.companyId || !employeeId) return;
@@ -445,29 +687,39 @@ function WageLedgerView() {
         }
         
         // 各明細データを分類処理
-        const processedPayslips = allPayslips.map(payslip => {
-          let classifiedItems;
+        let processedPayslips;
+        
+        if (ledgerType === 'integrated') {
+          // 統合賃金台帳の場合は特別な処理が必要
+          console.log('💜 統合賃金台帳モード: 給与項目を先に処理してから賞与項目を統合');
           
-          if (ledgerType === 'integrated') {
-            // 統合賃金台帳の場合は専用ロジックを使用
-            classifiedItems = classifyItemsForIntegratedLedger(payslip, mappingConfig, bonusMapping, integratedConfig);
-          } else {
-            // 従来の分類ロジックを使用
-            classifiedItems = classifyItemsForWageLedger(payslip, mappingConfig);
-          }
+          const salaryPayslips = allPayslips.filter(p => p.type === 'salary');
+          const bonusPayslips = allPayslips.filter(p => p.type === 'bonus');
           
-          const { incomeItems, deductionItems, attendanceItems, otherItems } = classifiedItems;
+          console.log(`💜 給与明細: ${salaryPayslips.length}件, 賞与明細: ${bonusPayslips.length}件`);
           
-          return {
-            ...payslip,
-            classifiedItems: {
-              incomeItems,
-              deductionItems, 
-              attendanceItems,
-              otherItems
-            }
-          };
-        });
+          // 統合データを作成（処理順序の改善）
+          processedPayslips = createIntegratedPayslips(
+            salaryPayslips, bonusPayslips, mappingConfig, bonusMapping, integratedConfig
+          );
+          
+        } else {
+          // 従来の分類ロジックを使用
+          processedPayslips = allPayslips.map(payslip => {
+            const classifiedItems = classifyItemsForWageLedger(payslip, mappingConfig);
+            const { incomeItems, deductionItems, attendanceItems, otherItems } = classifiedItems;
+            
+            return {
+              ...payslip,
+              classifiedItems: {
+                incomeItems,
+                deductionItems, 
+                attendanceItems,
+                otherItems
+              }
+            };
+          });
+        }
         
         console.log('📋 分類処理完了:', processedPayslips.length, '件');
         setPayslipData(processedPayslips);
