@@ -1,5 +1,19 @@
 # 給与明細システム - 引継ぎ書類
 
+## ⚠️ **従業員登録の確定仕様（2025-08-08）**
+
+### 🎯 **現在の確定仕様**
+**従業員登録時（CSVアップロード・個別登録）**:
+- **Firebase Auth作成**: 登録時に実行
+- **初期パスワード**: `000000` 固定
+- **isActive**: `true` に設定（メール送信対象）
+- **status**: `"active"` に設定（在職状態）
+- **新規登録制限**: 30名まで（Firebase制限対応）
+
+**この仕様に反する記載があれば無視してください**
+
+---
+
 ## 🚨 開発時の重要な注意事項
 
 ### 必須確認リスト（コード変更前）
@@ -186,7 +200,7 @@ Firebase Console: https://console.firebase.google.com/project/kyuyoprint/functio
 
 ### 従業員向け
 1. **初回ログイン**: メールに記載のURLからアクセス
-2. **パスワード**: 000000（初回のみ）
+2. **✅ パスワード**: 000000（初期パスワード固定）（2025-08-08確定）
 3. **パスワード変更**: 初回ログイン時に必須
 4. **直接アクセス**: https://kyuyoprint.web.app （ブックマーク推奨）
 
@@ -215,7 +229,7 @@ Firebase Console: https://console.firebase.google.com/project/kyuyoprint/functio
    - ローカルテスト時は`functions/.env.local`に記載
 
 3. **isActiveフィールドの確認**
-   - 新規従業員登録時は自動的に`isActive: true`が設定される
+   - ✅ 新規従業員登録時は自動的に`isActive: true`が設定される（2025-08-08確定）
    - 既存従業員でメール送信対象から漏れる場合は、Firebase Consoleで確認
 
 4. **デプロイ方法**
@@ -230,7 +244,7 @@ Firebase Console: https://console.firebase.google.com/project/kyuyoprint/functio
 
 2. **一括送信テスト**
    - 「一括設定メール送信」ボタンをクリック
-   - 対象従業員数が正しいか確認（`isActive: true`の従業員のみ）
+   - ✅ 対象従業員数が正しいか確認（`isActive: true`の従業員のみ）（2025-08-08確定）
 
 ### トラブル時の確認順序
 
@@ -548,16 +562,35 @@ CSVアップロード → データ保存完了 → PayslipNotificationUI表示 
 - Google Cloud Consoleから手動設定
 - または管理者権限でのCLI実行
 
+## 従業員登録機能の修正履歴（2025-08-08）
+
+### ✅ **CSVアップロード機能修正**
+- **実装日**: 2025-08-08
+- **問題**: 29人を超える新規従業員登録でFirebase Auth制限によりエラー
+- **修正内容**:
+  - 新規従業員登録に30名制限を追加
+  - 必須項目を確実に設定（`isActive: true`, `tempPassword: "000000"`, `status: "active"`）
+  - UI表記に制限事項を明記
+- **変更ファイル**: `src/pages/EmployeeManagement.js`
+- **影響**: CSVアップロード機能のみ（他機能への影響なし）
+
+### 🎯 **確定した仕様**
+**従業員登録時の動作**:
+1. **Firebase Auth作成**: 登録時に実行（30名まで安全）
+2. **必須項目自動設定**: `isActive: true`, `tempPassword: "000000"`, `status: "active"`
+3. **メール送信**: `isActive: true`により対象となる
+4. **ログイン**: `tempPassword: "000000"`で可能
+
 ---
 
-**最終更新**: 2025-08-07 午前
+**最終更新**: 2025-08-08 午後
 **作成者**: Claude Code Assistant  
 **プロジェクト**: 給与明細システム (kyuyoprint)
 **システム名**: 「そのままWeb明細」
 
 ### 💾 Git履歴（最新3件）
 ```
-2ddb32f 給与・賞与アップロード画面の重複メール送信機能を修正
-cf146dd 賞与明細一覧の従業員名表示問題を修正
-89b8aa4 CLAUDE.mdに今回の開発経緯を追記
+f459269 CSVアップロード時の従業員登録機能を修正
+52b867a 従業員管理画面にソート機能を追加
+1d698bd 非同期一括メール送信システムを実装
 ```
