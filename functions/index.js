@@ -2642,7 +2642,7 @@ exports.startBulkInvitationEmailJob = onCall({
       jobId: jobRef.id,
       message: `一括メール送信処理を開始しました。対象: ${activeEmployees.length}名`,
       totalCount: activeEmployees.length,
-      estimatedTime: Math.ceil(activeEmployees.length * 0.5) // 1人0.5秒想定
+      estimatedTime: Math.ceil(activeEmployees.length * 5) // 1人5秒想定（Gmail SMTP送信時間）
     };
     
   } catch (error) {

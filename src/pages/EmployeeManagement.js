@@ -14,9 +14,6 @@ function EmployeeManagement() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [bulkEmailSending, setBulkEmailSending] = useState(false);
-  const [currentJobId, setCurrentJobId] = useState(null);
-  const [jobStatus, setJobStatus] = useState(null);
-  const [statusPolling, setStatusPolling] = useState(false);
   const [sortConfig, setSortConfig] = useState({ field: 'employeeId', direction: 'asc' });
 
   // 従業員と部門データを読み込む
@@ -187,11 +184,12 @@ function EmployeeManagement() {
       console.log('🎯 ジョブ開始結果:', result.data);
       
       if (result.data.success) {
-        setCurrentJobId(result.data.jobId);
-        setSuccess(`${result.data.message} (推定時間: 約${result.data.estimatedTime}秒)`);
+        setSuccess(`${result.data.message} (推定時間: 約${result.data.estimatedTime}秒) - 件数が多い場合はさらに時間がかかります。処理完了までしばらくお待ちください。`);
         
-        // ステータス監視を開始
-        startJobStatusPolling(result.data.jobId);
+        // 簡素化: 推定時間後に完了メッセージに変更
+        setTimeout(() => {
+          setSuccess('一括メール送信処理が完了しました。');
+        }, result.data.estimatedTime * 1000 + 30000); // 推定時間 + 30秒のバッファ
       } else {
         setError(result.data.message || 'ジョブの開始に失敗しました');
       }
@@ -203,52 +201,7 @@ function EmployeeManagement() {
     }
   };
 
-  // ジョブステータス監視
-  const startJobStatusPolling = (jobId) => {
-    if (statusPolling) return; // 重複防止
-    
-    setStatusPolling(true);
-    const interval = setInterval(async () => {
-      try {
-        const getStatus = httpsCallable(functions, 'getBulkEmailJobStatus');
-        const result = await getStatus({ jobId });
-        
-        if (result.data.success) {
-          const status = result.data;
-          setJobStatus(status);
-          
-          console.log('📊 ジョブステータス:', status.status, `${status.successCount}/${status.totalCount}`);
-          
-          // 完了またはエラー時は監視停止
-          if (status.status === 'completed') {
-            clearInterval(interval);
-            setStatusPolling(false);
-            setSuccess(`${status.message} - 処理完了しました！`);
-            
-            if (status.results) {
-              console.log('📋 詳細結果:', status.results);
-            }
-          } else if (status.status === 'error') {
-            clearInterval(interval);
-            setStatusPolling(false);
-            setError(`処理エラー: ${status.message}`);
-          }
-        }
-      } catch (pollError) {
-        console.error('❌ ステータス取得エラー:', pollError);
-        // エラーが続く場合は監視停止
-        clearInterval(interval);
-        setStatusPolling(false);
-      }
-    }, 2000); // 2秒間隔でポーリング
-    
-    // 5分後にタイムアウト
-    setTimeout(() => {
-      clearInterval(interval);
-      setStatusPolling(false);
-      console.log('⏰ ステータス監視タイムアウト');
-    }, 300000);
-  };
+  // ジョブステータス監視機能は簡素化のため削除
 
   // ソート機能
   const handleSort = (field) => {
@@ -365,7 +318,7 @@ function EmployeeManagement() {
           disabled={bulkEmailSending}
           className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:bg-blue-300"
         >
-          {bulkEmailSending ? '開始中...' : (statusPolling ? '処理中...' : '一括設定メール送信')}
+          {bulkEmailSending ? '開始中...' : '一括設定メール送信'}
         </button>
         <Link 
           to="/admin/employees/new" 
@@ -387,32 +340,7 @@ function EmployeeManagement() {
         </div>
       )}
 
-      {/* ジョブ進捗表示 */}
-      {jobStatus && statusPolling && (
-        <div className="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">一括メール送信処理中...</p>
-              <p className="text-sm mt-1">
-                進捗: {jobStatus.successCount + jobStatus.failCount} / {jobStatus.totalCount} 
-                (成功: {jobStatus.successCount}件, 失敗: {jobStatus.failCount}件)
-              </p>
-            </div>
-            <div className="flex items-center">
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-            </div>
-          </div>
-          {/* プログレスバー */}
-          <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
-            <div 
-              className="bg-blue-600 h-2 rounded-full transition-all duration-500"
-              style={{
-                width: `${Math.round(((jobStatus.successCount + jobStatus.failCount) / jobStatus.totalCount) * 100)}%`
-              }}
-            ></div>
-          </div>
-        </div>
-      )}
+      {/* 複雑な進捗表示は削除 - シンプルな成功/エラーメッセージのみ表示 */}
       
       {/* CSVアップロード */}
       <div className="bg-white p-6 rounded-lg shadow-md mb-8">
@@ -421,6 +349,28 @@ function EmployeeManagement() {
           従業員データをCSVファイルで一括登録・更新します。
           従業員番号が一致するデータは更新され、新しい従業員番号は新規登録されます。
         </p>
+        
+        <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-yellow-800">
+                重要な注意事項
+              </h3>
+              <div className="mt-2 text-sm text-yellow-700">
+                <ul className="list-disc list-inside space-y-1">
+                  <li><strong>一括登録は30名が上限です</strong> - それ以上の場合は30名ずつに分割してアップロードしてください</li>
+                  <li><strong>初期登録には少し時間がかかります</strong> - Firebase認証アカウントの作成処理のため、しばらくお待ちください</li>
+                  <li>処理中はページを閉じたり更新したりしないでください</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
         
         <CSVUploadForm companyId={userDetails?.companyId} setError={setError} setSuccess={setSuccess} />
       </div>
