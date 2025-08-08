@@ -527,7 +527,12 @@ function WageLedgerView() {
             if (integratedItemsMap.has(key)) {
               // 既存の給与項目に統合
               const existingItem = integratedItemsMap.get(key);
+              console.log(`💜 既存項目取得: ${item.name}`, existingItem ? '成功' : '失敗');
+              console.log(`💜 月データ確認: 対象月:${monthKey}`);
+              console.log(`💜 既存月データ一覧:`, existingItem.months ? Array.from(existingItem.months.keys()) : 'なし');
+              
               const existingMonthData = existingItem.months.get(monthKey);
+              console.log(`💜 月データ取得: ${monthKey} ->`, existingMonthData ? `値:${existingMonthData.value}` : 'なし');
               
               if (existingMonthData) {
                 // 同月の給与データに加算
