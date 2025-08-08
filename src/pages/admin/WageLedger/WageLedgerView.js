@@ -589,6 +589,13 @@ function WageLedgerView() {
     
     console.log('💜 統合処理完了。最終項目数:', integratedItemsMap.size);
     
+    // 統合データに統合項目情報を追加
+    if (processedPayslips.length > 0) {
+      processedPayslips[0].allItems = Array.from(integratedItemsMap.values());
+      processedPayslips[0].integratedItemsMap = integratedItemsMap;
+      console.log('💜 統合データにallItems追加:', processedPayslips[0].allItems.length, '項目');
+    }
+    
     return processedPayslips;
   };
 
