@@ -712,19 +712,33 @@ function WageLedgerView() {
         // 各明細データを分類処理
         let processedPayslips;
         
+        console.log('🔍 現在のledgerType:', ledgerType);
+        
         if (ledgerType === 'integrated') {
           // 統合賃金台帳の場合は特別な処理が必要
-          console.log('💜 統合賃金台帳モード: 給与項目を先に処理してから賞与項目を統合');
+          console.log('💜 統合賃金台帳モード開始');
+          console.log('💜 設定確認:', {
+            mappingConfig: mappingConfig ? 'あり' : 'なし',
+            bonusMapping: bonusMapping ? 'あり' : 'なし', 
+            integratedConfig: integratedConfig ? 'あり' : 'なし'
+          });
           
           const salaryPayslips = allPayslips.filter(p => p.type === 'salary');
           const bonusPayslips = allPayslips.filter(p => p.type === 'bonus');
           
-          console.log(`💜 給与明細: ${salaryPayslips.length}件, 賞与明細: ${bonusPayslips.length}件`);
+          console.log(`💜 フィルター結果: 給与明細:${salaryPayslips.length}件, 賞与明細:${bonusPayslips.length}件`);
+          console.log('💜 createIntegratedPayslips関数を呼び出し開始');
           
-          // 統合データを作成（処理順序の改善）
-          processedPayslips = createIntegratedPayslips(
-            salaryPayslips, bonusPayslips, mappingConfig, bonusMapping, integratedConfig
-          );
+          try {
+            // 統合データを作成（処理順序の改善）
+            processedPayslips = createIntegratedPayslips(
+              salaryPayslips, bonusPayslips, mappingConfig, bonusMapping, integratedConfig
+            );
+            console.log('💜 createIntegratedPayslips完了:', processedPayslips ? processedPayslips.length : 'null');
+          } catch (error) {
+            console.error('💜 createIntegratedPayslipsエラー:', error);
+            throw error;
+          }
           
         } else {
           // 従来の分類ロジックを使用
