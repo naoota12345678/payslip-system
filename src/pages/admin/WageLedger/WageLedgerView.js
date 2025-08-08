@@ -499,6 +499,7 @@ function WageLedgerView() {
     });
     
     console.log('💜 給与項目収集完了。統合マップ:', integratedItemsMap.size, '項目');
+    console.log('💜 統合マップのキー一覧:', Array.from(integratedItemsMap.keys()));
     
     // 2. 賞与明細を処理して統合
     bonusPayslips.forEach(payslip => {
@@ -520,6 +521,8 @@ function WageLedgerView() {
             // 給与項目に統合する設定
             const key = `${item.name}_${item.type}`;
             console.log(`💜 統合設定確認: ${item.name} -> ${key}`);
+            
+            console.log(`💜 統合マップ検索: キー "${key}" -> 存在:${integratedItemsMap.has(key)}`);
             
             if (integratedItemsMap.has(key)) {
               // 既存の給与項目に統合
