@@ -76,17 +76,20 @@ function WageLedgerPeriodSelect() {
           </span>
           <span className="mx-2 text-gray-400">›</span>
           <span className="text-blue-600 font-medium">
-            {ledgerType === 'bonus' ? '賞与' : '給与'}賃金台帳・期間選択
+            {ledgerType === 'integrated' ? '統合' : ledgerType === 'bonus' ? '賞与' : '給与'}賃金台帳・期間選択
           </span>
         </nav>
         <div className="flex items-center space-x-3 mb-2">
-          <div className={`w-3 h-3 rounded-full ${ledgerType === 'bonus' ? 'bg-green-500' : 'bg-blue-500'}`}></div>
+          <div className={`w-3 h-3 rounded-full ${
+            ledgerType === 'integrated' ? 'bg-purple-500' : 
+            ledgerType === 'bonus' ? 'bg-green-500' : 'bg-blue-500'
+          }`}></div>
           <h1 className="text-2xl font-bold text-gray-900">
-            {ledgerType === 'bonus' ? '賞与' : '給与'}賃金台帳 - 期間選択
+            {ledgerType === 'integrated' ? '統合' : ledgerType === 'bonus' ? '賞与' : '給与'}賃金台帳 - 期間選択
           </h1>
         </div>
         <p className="text-gray-600 mt-2">
-          {ledgerType === 'bonus' ? '賞与' : '給与'}賃金台帳を作成する期間を選択してください（最大12ヶ月）
+          {ledgerType === 'integrated' ? '統合（給与・賞与）' : ledgerType === 'bonus' ? '賞与' : '給与'}賃金台帳を作成する期間を選択してください（最大12ヶ月）
         </p>
       </div>
 

@@ -68,6 +68,7 @@ import WageLedgerIndex from './pages/admin/WageLedger/WageLedgerIndex';
 import WageLedgerPeriodSelect from './pages/admin/WageLedger/WageLedgerPeriodSelect';
 import WageLedgerEmployeeList from './pages/admin/WageLedger/WageLedgerEmployeeList';
 import WageLedgerView from './pages/admin/WageLedger/WageLedgerView';
+import WageLedgerBonusMapping from './pages/admin/WageLedger/WageLedgerBonusMapping';
 
 // エラーページ
 import NotFound from './pages/NotFound';
@@ -242,6 +243,7 @@ function App() {
               <Route path="wage-ledger/period-select" element={<WageLedgerPeriodSelect />} />
               <Route path="wage-ledger/employees" element={<WageLedgerEmployeeList />} />
               <Route path="wage-ledger/view" element={<WageLedgerView />} />
+              <Route path="wage-ledger/bonus-mapping" element={<WageLedgerBonusMapping />} />
               
               {/* 賞与明細管理 */}
               <Route path="bonus-upload" element={<BonusCSVUpload />} />

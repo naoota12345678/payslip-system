@@ -58,7 +58,62 @@ function WageLedgerEmployeeList() {
         console.log('📄 Firestoreクエリ実行中...', `タイプ: ${ledgerType}`);
         let allPayslips = [];
         
-        if (ledgerType === 'bonus') {
+        if (ledgerType === 'integrated') {
+          // 統合賃金台帳の場合：給与・賞与両方を取得
+          console.log('💜 統合賃金台帳モード - 給与・賞与データ両方を取得');
+          
+          // 給与明細を取得
+          const payslipsQuery = query(
+            collection(db, 'payslips'),
+            where('companyId', '==', userDetails.companyId),
+            where('paymentDate', '>=', startDate),
+            where('paymentDate', '<=', endDate)
+          );
+          
+          console.log('📄 給与明細クエリ実行中...');
+          const payslipsSnapshot = await Promise.race([
+            getDocs(payslipsQuery),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('payslipsクエリタイムアウト（30秒）')), 30000)
+            )
+          ]);
+          
+          console.log('📄 給与クエリ完了. 取得数:', payslipsSnapshot.size);
+          
+          const payslips = payslipsSnapshot.docs.map(doc => ({
+            id: doc.id,
+            type: 'salary',
+            ...doc.data()
+          }));
+          
+          // 賞与明細を取得
+          const bonusQuery = query(
+            collection(db, 'bonusPayslips'),
+            where('companyId', '==', userDetails.companyId),
+            where('paymentDate', '>=', startDate),
+            where('paymentDate', '<=', endDate)
+          );
+          
+          console.log('🎁 賞与明細クエリ実行中...');
+          const bonusSnapshot = await Promise.race([
+            getDocs(bonusQuery),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('bonusクエリタイムアウト（30秒）')), 30000)
+            )
+          ]);
+          
+          console.log('🎁 賞与クエリ完了. 取得数:', bonusSnapshot.size);
+          
+          const bonusPayslips = bonusSnapshot.docs.map(doc => ({
+            id: doc.id,
+            type: 'bonus',
+            ...doc.data()
+          }));
+          
+          allPayslips = [...payslips, ...bonusPayslips];
+          console.log('📄 取得した給与明細:', payslips.length, '件');
+          console.log('🎁 取得した賞与明細:', bonusPayslips.length, '件');
+        } else if (ledgerType === 'bonus') {
           // 賞与賃金台帳の場合：賞与明細のみ取得
           const bonusQuery = query(
             collection(db, 'bonusPayslips'),
@@ -216,19 +271,25 @@ function WageLedgerEmployeeList() {
           </span>
           <span className="mx-2 text-gray-400">›</span>
           <span className="text-gray-500 cursor-pointer" onClick={() => navigate(`/admin/wage-ledger/period-select?type=${ledgerType}`)}>
-            {ledgerType === 'bonus' ? '賞与' : '給与'}期間選択
+            {ledgerType === 'integrated' ? '統合' : ledgerType === 'bonus' ? '賞与' : '給与'}期間選択
           </span>
           <span className="mx-2 text-gray-400">›</span>
           <span className="text-blue-600 font-medium">従業員選択</span>
         </nav>
         <div className="flex items-center space-x-3 mb-2">
-          <div className={`w-3 h-3 rounded-full ${ledgerType === 'bonus' ? 'bg-green-500' : 'bg-blue-500'}`}></div>
+          <div className={`w-3 h-3 rounded-full ${
+            ledgerType === 'integrated' ? 'bg-purple-500' : 
+            ledgerType === 'bonus' ? 'bg-green-500' : 'bg-blue-500'
+          }`}></div>
           <h1 className="text-2xl font-bold text-gray-900">
-            {ledgerType === 'bonus' ? '賞与' : '給与'}賃金台帳 - 従業員選択
+            {ledgerType === 'integrated' ? '統合' : ledgerType === 'bonus' ? '賞与' : '給与'}賃金台帳 - 従業員選択
           </h1>
         </div>
         <p className="text-gray-600 mt-2">
-          対象期間: {formatPeriod()} | タイプ: {ledgerType === 'bonus' ? '賞与明細' : '給与明細'}
+          対象期間: {formatPeriod()} | タイプ: {
+            ledgerType === 'integrated' ? '統合（給与・賞与）' : 
+            ledgerType === 'bonus' ? '賞与明細' : '給与明細'
+          }
         </p>
       </div>
 

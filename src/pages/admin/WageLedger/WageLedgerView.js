@@ -63,6 +63,163 @@ function WageLedgerView() {
     }
   };
 
+  // 統合賃金台帳設定取得
+  const fetchIntegratedConfigSync = async (companyId) => {
+    try {
+      const configDoc = await getDoc(doc(db, "wageLedgerIntegratedConfig", companyId));
+      if (configDoc.exists()) {
+        const configData = configDoc.data();
+        console.log('💜 統合賃金台帳設定取得:', configData);
+        return configData;
+      } else {
+        console.log('❌ 統合賃金台帳設定が見つかりません');
+        return null;
+      }
+    } catch (err) {
+      console.error('🚨 統合賃金台帳設定取得エラー:', err);
+      return null;
+    }
+  };
+
+  // 統合賃金台帳用の分類ロジック
+  const classifyItemsForIntegratedLedger = (payslipData, salaryConfig, bonusConfig, integratedConfig) => {
+    const incomeItems = [];
+    const deductionItems = [];
+    const attendanceItems = [];
+    const otherItems = [];
+    
+    if (!payslipData.items) {
+      return { incomeItems, deductionItems, attendanceItems, otherItems };
+    }
+
+    // 給与項目の処理（salaryConfigに基づく）
+    if (salaryConfig) {
+      const salaryCategories = [
+        { items: salaryConfig.incomeItems || [], type: 'income', targetArray: incomeItems },
+        { items: salaryConfig.deductionItems || [], type: 'deduction', targetArray: deductionItems },
+        { items: salaryConfig.attendanceItems || [], type: 'attendance', targetArray: attendanceItems },
+        { items: salaryConfig.totalItems || [], type: 'total', targetArray: otherItems }
+      ];
+
+      salaryCategories.forEach(category => {
+        const sortedItems = category.items.slice().sort((a, b) => {
+          const orderA = (typeof a.displayOrder === 'number' && !isNaN(a.displayOrder)) 
+            ? a.displayOrder 
+            : (typeof a.columnIndex === 'number' && !isNaN(a.columnIndex)) 
+              ? a.columnIndex 
+              : 999;
+          const orderB = (typeof b.displayOrder === 'number' && !isNaN(b.displayOrder)) 
+            ? b.displayOrder 
+            : (typeof b.columnIndex === 'number' && !isNaN(b.columnIndex)) 
+              ? b.columnIndex 
+              : 999;
+          return orderA - orderB;
+        });
+
+        sortedItems.forEach((item, index) => {
+          const value = payslipData.items[item.headerName];
+          if (value === undefined || value === null || item.isVisible === false) {
+            return;
+          }
+
+          const displayName = (item.itemName && item.itemName.trim() !== '') 
+            ? item.itemName 
+            : item.headerName;
+
+          const processedItem = {
+            id: item.headerName,
+            name: displayName,
+            value: value,
+            type: category.type,
+            csvColumn: item.headerName,
+            showZeroValue: item.showZeroValue !== undefined ? item.showZeroValue : false,
+            order: (typeof item.displayOrder === 'number' && !isNaN(item.displayOrder)) 
+              ? item.displayOrder 
+              : (typeof item.columnIndex === 'number' && !isNaN(item.columnIndex)) 
+                ? item.columnIndex 
+                : index,
+            source: payslipData.type || 'salary' // データの由来を記録
+          };
+
+          category.targetArray.push(processedItem);
+        });
+      });
+    }
+
+    // 賞与項目の処理（bonusConfigとintegratedConfigに基づく）
+    if (bonusConfig && integratedConfig && payslipData.type === 'bonus') {
+      const bonusCategories = [
+        { items: bonusConfig.incomeItems || [], type: 'income', targetArray: incomeItems },
+        { items: bonusConfig.deductionItems || [], type: 'deduction', targetArray: deductionItems },
+        { items: bonusConfig.attendanceItems || [], type: 'attendance', targetArray: attendanceItems },
+        { items: bonusConfig.totalItems || [], type: 'total', targetArray: otherItems }
+      ];
+
+      bonusCategories.forEach(category => {
+        category.items.forEach((item, index) => {
+          const itemId = item.headerName;
+          const value = payslipData.items[itemId];
+          
+          if (value === undefined || value === null || item.isVisible === false) {
+            return;
+          }
+
+          // 統合設定に基づいて処理
+          if (integratedConfig.showSeparately.includes(itemId)) {
+            // 別項目として表示
+            const displayName = `賞与${(item.itemName && item.itemName.trim() !== '') ? item.itemName : item.headerName}`;
+            
+            const processedItem = {
+              id: `bonus_${itemId}`,
+              name: displayName,
+              value: value,
+              type: category.type,
+              csvColumn: itemId,
+              showZeroValue: item.showZeroValue !== undefined ? item.showZeroValue : false,
+              order: 1000 + index, // 賞与項目は給与項目の後に表示
+              source: 'bonus'
+            };
+
+            category.targetArray.push(processedItem);
+          } else if (integratedConfig.mergeWithSalary.includes(itemId)) {
+            // 給与項目に統合
+            const displayName = (item.itemName && item.itemName.trim() !== '') 
+              ? item.itemName 
+              : item.headerName;
+            
+            // 同名の給与項目を探す
+            const existingItem = category.targetArray.find(salaryItem => 
+              salaryItem.name === displayName && salaryItem.source === 'salary'
+            );
+            
+            if (existingItem) {
+              // 既存項目に加算
+              existingItem.value = (parseFloat(existingItem.value) || 0) + (parseFloat(value) || 0);
+              existingItem.source = 'integrated'; // 統合項目であることを記録
+            } else {
+              // 新規項目として追加
+              const processedItem = {
+                id: `merged_${itemId}`,
+                name: displayName,
+                value: value,
+                type: category.type,
+                csvColumn: itemId,
+                showZeroValue: item.showZeroValue !== undefined ? item.showZeroValue : false,
+                order: 500 + index, // 給与項目と賞与項目の中間に表示
+                source: 'bonus'
+              };
+
+              category.targetArray.push(processedItem);
+            }
+          }
+          // 非表示の場合は何もしない
+        });
+      });
+    }
+
+    return { incomeItems, deductionItems, attendanceItems, otherItems };
+  };
+
   // 給与明細と賞与明細の分類ロジックを適用
   const classifyItemsForWageLedger = (payslipData, mappingConfig) => {
     const incomeItems = [];
@@ -163,7 +320,48 @@ function WageLedgerView() {
         
         let allPayslips = [];
         
-        if (ledgerType === 'bonus') {
+        if (ledgerType === 'integrated') {
+          // 統合賃金台帳の場合：給与・賞与両方を取得
+          console.log('💜 統合賃金台帳モード - 給与・賞与データ両方を取得');
+          
+          // 給与明細を取得
+          const payslipsQuery = query(
+            collection(db, 'payslips'),
+            where('companyId', '==', userDetails.companyId),
+            where('employeeId', '==', employeeId),
+            where('paymentDate', '>=', startDate),
+            where('paymentDate', '<=', endDate),
+            orderBy('paymentDate', 'asc')
+          );
+          
+          const payslipsSnapshot = await getDocs(payslipsQuery);
+          const payslips = payslipsSnapshot.docs.map(doc => ({
+            id: doc.id,
+            type: 'salary',
+            ...doc.data()
+          }));
+          
+          // 賞与明細を取得
+          const bonusQuery = query(
+            collection(db, 'bonusPayslips'),
+            where('companyId', '==', userDetails.companyId),
+            where('employeeId', '==', employeeId),
+            where('paymentDate', '>=', startDate),
+            where('paymentDate', '<=', endDate),
+            orderBy('paymentDate', 'asc')
+          );
+          
+          const bonusSnapshot = await getDocs(bonusQuery);
+          const bonusPayslips = bonusSnapshot.docs.map(doc => ({
+            id: doc.id,
+            type: 'bonus',
+            ...doc.data()
+          }));
+          
+          allPayslips = [...payslips, ...bonusPayslips];
+          console.log('📄 該当する給与明細:', payslips.length, '件');
+          console.log('🎁 該当する賞与明細:', bonusPayslips.length, '件');
+        } else if (ledgerType === 'bonus') {
           // 賞与賃金台帳の場合：賞与明細のみ取得
           const bonusQuery = query(
             collection(db, 'bonusPayslips'),
@@ -215,8 +413,16 @@ function WageLedgerView() {
         console.log('📊 対象データ合計:', allPayslips.length, '件');
 
         // タイプに応じて必要なマッピング設定のみ取得
-        let mappingConfig;
-        if (ledgerType === 'bonus') {
+        let mappingConfig, bonusMapping, integratedConfig;
+        if (ledgerType === 'integrated') {
+          // 統合賃金台帳の場合：給与・賞与・統合設定を取得
+          mappingConfig = await fetchMappingConfigSync(userDetails.companyId);
+          bonusMapping = await fetchBonusMappingConfigSync(userDetails.companyId);
+          integratedConfig = await fetchIntegratedConfigSync(userDetails.companyId);
+          console.log('📋 給与マッピング設定取得結果:', mappingConfig ? '✅あり' : '❌なし');
+          console.log('📋 賞与マッピング設定取得結果:', bonusMapping ? '✅あり' : '❌なし');
+          console.log('📋 統合設定取得結果:', integratedConfig ? '✅あり' : '❌なし');
+        } else if (ledgerType === 'bonus') {
           mappingConfig = await fetchBonusMappingConfigSync(userDetails.companyId);
           console.log('📋 賞与マッピング設定取得結果:', mappingConfig ? '✅あり' : '❌なし');
         } else {
@@ -226,8 +432,17 @@ function WageLedgerView() {
         
         // 各明細データを分類処理
         const processedPayslips = allPayslips.map(payslip => {
-          const { incomeItems, deductionItems, attendanceItems, otherItems } = 
-            classifyItemsForWageLedger(payslip, mappingConfig);
+          let classifiedItems;
+          
+          if (ledgerType === 'integrated') {
+            // 統合賃金台帳の場合は専用ロジックを使用
+            classifiedItems = classifyItemsForIntegratedLedger(payslip, mappingConfig, bonusMapping, integratedConfig);
+          } else {
+            // 従来の分類ロジックを使用
+            classifiedItems = classifyItemsForWageLedger(payslip, mappingConfig);
+          }
+          
+          const { incomeItems, deductionItems, attendanceItems, otherItems } = classifiedItems;
           
           return {
             ...payslip,
@@ -470,23 +685,28 @@ function WageLedgerView() {
           </span>
           <span className="mx-2 text-gray-400">›</span>
           <span className="text-gray-500 cursor-pointer" onClick={() => navigate(`/admin/wage-ledger/period-select?type=${ledgerType}`)}>
-            {ledgerType === 'bonus' ? '賞与' : '給与'}期間選択
+            {ledgerType === 'integrated' ? '統合' : ledgerType === 'bonus' ? '賞与' : '給与'}期間選択
           </span>
           <span className="mx-2 text-gray-400">›</span>
           <span className="text-gray-500 cursor-pointer" onClick={() => navigate(`/admin/wage-ledger/employees?${searchParams.toString()}`)}>
             従業員選択
           </span>
           <span className="mx-2 text-gray-400">›</span>
-          <span className="text-blue-600 font-medium">{ledgerType === 'bonus' ? '賞与' : '給与'}賃金台帳</span>
+          <span className="text-blue-600 font-medium">
+            {ledgerType === 'integrated' ? '統合' : ledgerType === 'bonus' ? '賞与' : '給与'}賃金台帳
+          </span>
         </nav>
         <div className="flex items-center space-x-3 mb-2">
-          <div className={`w-3 h-3 rounded-full ${ledgerType === 'bonus' ? 'bg-green-500' : 'bg-blue-500'}`}></div>
+          <div className={`w-3 h-3 rounded-full ${
+            ledgerType === 'integrated' ? 'bg-purple-500' : 
+            ledgerType === 'bonus' ? 'bg-green-500' : 'bg-blue-500'
+          }`}></div>
           <h1 className="text-2xl font-bold text-gray-900">
-            {ledgerType === 'bonus' ? '賞与' : '給与'}賃金台帳
+            {ledgerType === 'integrated' ? '統合' : ledgerType === 'bonus' ? '賞与' : '給与'}賃金台帳
           </h1>
         </div>
         <p className="text-gray-600 mt-2">
-          {employeeName}さんの{ledgerType === 'bonus' ? '賞与' : '給与'}賃金台帳（{formatPeriod()}）
+          {employeeName}さんの{ledgerType === 'integrated' ? '統合（給与・賞与）' : ledgerType === 'bonus' ? '賞与' : '給与'}賃金台帳（{formatPeriod()}）
         </p>
       </div>
 
@@ -521,10 +741,13 @@ function WageLedgerView() {
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-medium text-gray-900">
-            {ledgerType === 'bonus' ? '賞与' : '給与'}賃金台帳（項目別表示）
+            {ledgerType === 'integrated' ? '統合' : ledgerType === 'bonus' ? '賞与' : '給与'}賃金台帳（項目別表示）
           </h2>
           <p className="text-sm text-gray-600 mt-1">
-            横軸：各月、縦軸：{ledgerType === 'bonus' ? '賞与明細' : '給与明細'}の実際の項目
+            横軸：各月、縦軸：{
+              ledgerType === 'integrated' ? '給与・賞与明細の統合' : 
+              ledgerType === 'bonus' ? '賞与明細' : '給与明細'
+            }項目
           </p>
         </div>
         

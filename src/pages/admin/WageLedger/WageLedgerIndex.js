@@ -73,6 +73,34 @@ function WageLedgerIndex() {
             </button>
           </div>
         </div>
+        {/* 統合賃金台帳 */}
+        <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-500">
+          <div className="text-center">
+            <div className="mb-4">
+              <div className="mx-auto w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-3">
+                <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                統合賃金台帳
+              </h2>
+              <p className="text-gray-600 mb-4">
+                給与と賞与を統合して表示する賃金台帳です。
+                <br />
+                賞与項目の表示設定を行ってから作成します。
+              </p>
+            </div>
+            
+            <button
+              onClick={() => navigate('/admin/wage-ledger/bonus-mapping?type=integrated')}
+              className="w-full px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
+            >
+              統合賃金台帳を作成
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* 機能説明 */}
