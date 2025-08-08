@@ -38,7 +38,8 @@
       "Bash(gsutil lifecycle set:*)",
       "Bash(gcloud config:*)",
       "Bash(cp:*)",
-      "Bash(gcloud logging read:*)"
+      "Bash(gcloud logging read:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": []
   }

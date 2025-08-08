@@ -761,6 +761,22 @@ function CSVUploadForm({ companyId, setError, setSuccess }) {
       // バッチ処理用
       const batch = writeBatch(db);
       
+      // 30名制限チェック（新規従業員のみカウント）
+      let newEmployeeCount = 0;
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        const values = line.split(/[,\t]/).map(v => v.trim());
+        const employeeId = values[employeeIdIndex];
+        if (employeeId && !existingEmployees[employeeId]) {
+          newEmployeeCount++;
+        }
+      }
+      
+      if (newEmployeeCount > 30) {
+        throw new Error(`新規従業員が${newEmployeeCount}名います。一度にアップロードできるのは30名までです。分割してアップロードしてください。`);
+      }
+
       // データ行を処理
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i].trim();
@@ -838,6 +854,9 @@ function CSVUploadForm({ companyId, setError, setSuccess }) {
             // 新規従業員を追加
             const docRef = doc(collection(db, "employees"));
             employee.createdAt = new Date();
+            employee.isActive = true; // 必須：メール送信対象とするため
+            employee.tempPassword = "000000"; // 必須：初期パスワード
+            employee.status = "active"; // 必須：在職状態
             batch.set(docRef, employee);
             result.created++;
           }
@@ -1049,6 +1068,7 @@ function CSVUploadForm({ companyId, setError, setSuccess }) {
           <ul className="text-xs text-blue-700 space-y-1 list-disc pl-5">
             <li><strong>必須項目</strong>: 社員番号（既存の社員番号と一致する場合は更新、新規の場合は登録）</li>
             <li>氏名、メールアドレスは設定することをお勧めします</li>
+            <li><strong>制限</strong>: 新規従業員は一度に30名まで登録可能です。それを超える場合は分割してアップロードしてください</li>
             <li>新規従業員には自動的にFirebase Authログインアカウントが作成されます（パスワード: 000000）</li>
             <li>部署コードは会社設定の部門管理で登録した部門コードと一致する必要があります</li>
             <li>カンマ区切りまたはタブ区切りのCSVファイルに対応しています</li>
