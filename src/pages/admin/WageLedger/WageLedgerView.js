@@ -837,6 +837,16 @@ function WageLedgerView() {
         }
         
         console.log('📋 分類処理完了:', processedPayslips.length, '件');
+        
+        // 統合賃金台帳のデバッグ情報
+        if (ledgerType === 'integrated' && processedPayslips.length > 0) {
+          console.log('💜 統合データ確認:', processedPayslips[0]);
+          console.log('💜 allItems存在:', processedPayslips[0].allItems ? 'あり' : 'なし');
+          if (processedPayslips[0].allItems) {
+            console.log('💜 allItems件数:', processedPayslips[0].allItems.length);
+          }
+        }
+        
         setPayslipData(processedPayslips);
 
         // 従業員情報を取得
