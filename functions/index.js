@@ -2353,6 +2353,269 @@ exports.sendDocumentDeliveryNotification = onCall({
   }
 });
 
+// =============================================================================
+// 非同期一括招待メール送信システム
+// =============================================================================
+
+// 一括招待メール送信ジョブを開始（非同期）
+exports.startBulkInvitationEmailJob = onCall({ 
+  enforceAppCheck: false,
+  invoker: 'public',
+  timeoutSeconds: 60  // 短時間で応答
+}, async (request) => {
+  console.log('🚀 非同期一括招待メール送信ジョブ開始');
+  
+  // 認証確認
+  if (!request.auth || !request.auth.uid) {
+    throw new HttpsError('unauthenticated', 'この機能を使用するには管理者認証が必要です');
+  }
+  
+  try {
+    const { companyId } = request.data;
+    
+    if (!companyId) {
+      throw new HttpsError('invalid-argument', 'companyIdは必須です');
+    }
+    
+    // 重複実行チェック
+    const existingJobsSnapshot = await db.collection('emailJobs')
+      .where('companyId', '==', companyId)
+      .where('type', '==', 'bulk_invitation')
+      .where('status', 'in', ['pending', 'running'])
+      .get();
+      
+    if (!existingJobsSnapshot.empty) {
+      console.log('⚠️ 既に実行中のジョブがあります');
+      const runningJob = existingJobsSnapshot.docs[0];
+      return {
+        success: false,
+        message: '既に送信処理が実行中です。しばらくお待ちください。',
+        jobId: runningJob.id,
+        status: runningJob.data().status
+      };
+    }
+    
+    // 対象従業員数を事前確認（安全性チェック）
+    const employeesSnapshot = await db.collection('employees')
+      .where('companyId', '==', companyId)
+      .get();
+      
+    const activeEmployees = [];
+    employeesSnapshot.forEach(doc => {
+      const data = doc.data();
+      if (data.isActive !== false) {
+        activeEmployees.push({
+          id: doc.id,
+          employeeId: data.employeeId,
+          name: data.name,
+          email: data.email
+        });
+      }
+    });
+    
+    if (activeEmployees.length === 0) {
+      throw new HttpsError('not-found', 'アクティブな従業員が見つかりません');
+    }
+    
+    // ジョブを作成
+    const jobRef = await db.collection('emailJobs').add({
+      companyId,
+      type: 'bulk_invitation',
+      status: 'pending',
+      totalCount: activeEmployees.length,
+      successCount: 0,
+      failCount: 0,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdBy: request.auth.uid,
+      employees: activeEmployees.map(emp => ({
+        employeeId: emp.employeeId,
+        name: emp.name,
+        email: emp.email,
+        status: 'pending'
+      }))
+    });
+    
+    console.log(`✅ ジョブ作成完了: ${jobRef.id} (対象: ${activeEmployees.length}名)`);
+    
+    // バックグラウンド処理をトリガー（非同期実行）
+    await db.collection('emailJobs').doc(jobRef.id).update({
+      status: 'queued',
+      queuedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    
+    // 即座に応答（重要：ここでクライアントに返す）
+    return {
+      success: true,
+      jobId: jobRef.id,
+      message: `一括メール送信処理を開始しました。対象: ${activeEmployees.length}名`,
+      totalCount: activeEmployees.length,
+      estimatedTime: Math.ceil(activeEmployees.length * 0.5) // 1人0.5秒想定
+    };
+    
+  } catch (error) {
+    console.error('❌ ジョブ作成エラー:', error);
+    throw new HttpsError('internal', `ジョブ作成中にエラーが発生しました: ${error.message}`);
+  }
+});
+
+// ジョブステータス確認用関数
+exports.getBulkEmailJobStatus = onCall({ 
+  enforceAppCheck: false,
+  invoker: 'public'
+}, async (request) => {
+  // 認証確認
+  if (!request.auth || !request.auth.uid) {
+    throw new HttpsError('unauthenticated', 'この機能を使用するには認証が必要です');
+  }
+  
+  try {
+    const { jobId } = request.data;
+    
+    if (!jobId) {
+      throw new HttpsError('invalid-argument', 'jobIdは必須です');
+    }
+    
+    const jobDoc = await db.collection('emailJobs').doc(jobId).get();
+    
+    if (!jobDoc.exists) {
+      throw new HttpsError('not-found', 'ジョブが見つかりません');
+    }
+    
+    const jobData = jobDoc.data();
+    
+    return {
+      success: true,
+      jobId,
+      status: jobData.status,
+      totalCount: jobData.totalCount || 0,
+      successCount: jobData.successCount || 0,
+      failCount: jobData.failCount || 0,
+      message: jobData.message || '',
+      createdAt: jobData.createdAt,
+      completedAt: jobData.completedAt,
+      results: jobData.results || []
+    };
+    
+  } catch (error) {
+    console.error('❌ ジョブステータス取得エラー:', error);
+    throw new HttpsError('internal', `ジョブステータス取得中にエラーが発生しました: ${error.message}`);
+  }
+});
+
+// Firestore トリガーによるバックグラウンド処理実行
+exports.processBulkEmailJob = onDocumentUpdated('emailJobs/{jobId}', async (event) => {
+  const jobData = event.data.after.data();
+  const jobId = event.params.jobId;
+  
+  // キューに入った場合のみ処理開始
+  if (jobData.status !== 'queued') {
+    return null;
+  }
+  
+  console.log(`🔄 バックグラウンド処理開始: ${jobId}`);
+  
+  try {
+    // ジョブを実行中に更新
+    await db.collection('emailJobs').doc(jobId).update({
+      status: 'running',
+      startedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    
+    // Gmail設定を初期化
+    const gmailInitialized = await initializeGmail();
+    if (!gmailInitialized) {
+      throw new Error('Gmail SMTP設定の初期化に失敗しました');
+    }
+    
+    const results = [];
+    let successCount = 0;
+    let failCount = 0;
+    
+    // 各従業員にメール送信
+    for (const employee of jobData.employees) {
+      try {
+        console.log(`🔄 処理中: ${employee.employeeId} (${employee.name}) - ${employee.email}`);
+        
+        if (!employee.email) {
+          console.warn(`⚠️ メールアドレスなし: ${employee.employeeId}`);
+          failCount++;
+          results.push({
+            employeeId: employee.employeeId,
+            name: employee.name,
+            email: null,
+            success: false,
+            error: 'メールアドレスが設定されていません'
+          });
+          continue;
+        }
+        
+        // 招待メール送信
+        const htmlContent = createInvitationEmailContent(
+          employee.name || employee.employeeId,
+          '000000'  // TEST_PASSWORD
+        );
+        
+        const emailResult = await sendEmail(employee.email, '給与明細システム - ログイン情報', htmlContent);
+        
+        if (emailResult.success) {
+          successCount++;
+          console.log(`✅ メール送信成功: ${employee.email}`);
+        } else {
+          failCount++;
+          console.error(`❌ メール送信失敗: ${employee.email}`, emailResult.error);
+        }
+        
+        results.push({
+          employeeId: employee.employeeId,
+          name: employee.name,
+          email: employee.email,
+          success: emailResult.success,
+          error: emailResult.error || null
+        });
+        
+        // API制限を避けるため少し待機
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+      } catch (employeeError) {
+        console.error(`❌ 従業員処理エラー: ${employee.employeeId}`, employeeError);
+        failCount++;
+        results.push({
+          employeeId: employee.employeeId,
+          name: employee.name,
+          email: employee.email,
+          success: false,
+          error: employeeError.message
+        });
+      }
+    }
+    
+    // ジョブ完了
+    await db.collection('emailJobs').doc(jobId).update({
+      status: 'completed',
+      successCount,
+      failCount,
+      results,
+      completedAt: admin.firestore.FieldValue.serverTimestamp(),
+      message: `送信完了: 成功 ${successCount}件、失敗 ${failCount}件`
+    });
+    
+    console.log(`🎉 バックグラウンド処理完了: ${jobId} - 成功 ${successCount}件、失敗 ${failCount}件`);
+    
+  } catch (error) {
+    console.error(`❌ バックグラウンド処理エラー: ${jobId}`, error);
+    
+    // ジョブをエラー状態に更新
+    await db.collection('emailJobs').doc(jobId).update({
+      status: 'error',
+      error: error.message,
+      completedAt: admin.firestore.FieldValue.serverTimestamp(),
+      message: `処理中にエラーが発生しました: ${error.message}`
+    });
+  }
+  
+  return null;
+});
+
 // PDF配信通知メールテンプレート
 const createDocumentNotificationEmailContent = (employeeName, documentTitle) => {
   const systemUrl = 'https://kyuyoprint.web.app';

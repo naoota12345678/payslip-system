@@ -14,6 +14,9 @@ function EmployeeManagement() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [bulkEmailSending, setBulkEmailSending] = useState(false);
+  const [currentJobId, setCurrentJobId] = useState(null);
+  const [jobStatus, setJobStatus] = useState(null);
+  const [statusPolling, setStatusPolling] = useState(false);
 
   // 従業員と部門データを読み込む
   useEffect(() => {
@@ -122,8 +125,8 @@ function EmployeeManagement() {
     return '-';
   };
 
-  // 一括招待メール送信
-  const sendBulkInvitationEmails = async () => {
+  // 旧版一括招待メール送信（バックアップ保持）
+  const sendBulkInvitationEmailsLegacy = async () => {
     if (!window.confirm('全ての在職従業員に設定メールを送信しますか？')) {
       return;
     }
@@ -133,7 +136,7 @@ function EmployeeManagement() {
       setError('');
       setSuccess('');
       
-      console.log('🔥 一括招待メール送信開始');
+      console.log('🔥 一括招待メール送信開始（旧版）');
       
       const sendBulkEmails = httpsCallable(functions, 'sendBulkInvitationEmails');
       const result = await sendBulkEmails({
@@ -158,6 +161,92 @@ function EmployeeManagement() {
     } finally {
       setBulkEmailSending(false);
     }
+  };
+
+  // 新版：非同期一括招待メール送信
+  const sendBulkInvitationEmails = async () => {
+    if (!window.confirm('全ての在職従業員に設定メールを送信しますか？\n\n処理は数分かかる場合があります。')) {
+      return;
+    }
+    
+    try {
+      setBulkEmailSending(true);
+      setError('');
+      setSuccess('');
+      setJobStatus(null);
+      
+      console.log('🚀 非同期一括招待メール送信開始');
+      
+      // ジョブを開始
+      const startJob = httpsCallable(functions, 'startBulkInvitationEmailJob');
+      const result = await startJob({
+        companyId: userDetails.companyId
+      });
+      
+      console.log('🎯 ジョブ開始結果:', result.data);
+      
+      if (result.data.success) {
+        setCurrentJobId(result.data.jobId);
+        setSuccess(`${result.data.message} (推定時間: 約${result.data.estimatedTime}秒)`);
+        
+        // ステータス監視を開始
+        startJobStatusPolling(result.data.jobId);
+      } else {
+        setError(result.data.message || 'ジョブの開始に失敗しました');
+      }
+    } catch (error) {
+      console.error('❌ 非同期一括招待メール送信エラー:', error);
+      setError(`送信開始エラー: ${error.message}`);
+    } finally {
+      setBulkEmailSending(false);
+    }
+  };
+
+  // ジョブステータス監視
+  const startJobStatusPolling = (jobId) => {
+    if (statusPolling) return; // 重複防止
+    
+    setStatusPolling(true);
+    const interval = setInterval(async () => {
+      try {
+        const getStatus = httpsCallable(functions, 'getBulkEmailJobStatus');
+        const result = await getStatus({ jobId });
+        
+        if (result.data.success) {
+          const status = result.data;
+          setJobStatus(status);
+          
+          console.log('📊 ジョブステータス:', status.status, `${status.successCount}/${status.totalCount}`);
+          
+          // 完了またはエラー時は監視停止
+          if (status.status === 'completed') {
+            clearInterval(interval);
+            setStatusPolling(false);
+            setSuccess(`${status.message} - 処理完了しました！`);
+            
+            if (status.results) {
+              console.log('📋 詳細結果:', status.results);
+            }
+          } else if (status.status === 'error') {
+            clearInterval(interval);
+            setStatusPolling(false);
+            setError(`処理エラー: ${status.message}`);
+          }
+        }
+      } catch (pollError) {
+        console.error('❌ ステータス取得エラー:', pollError);
+        // エラーが続く場合は監視停止
+        clearInterval(interval);
+        setStatusPolling(false);
+      }
+    }, 2000); // 2秒間隔でポーリング
+    
+    // 5分後にタイムアウト
+    setTimeout(() => {
+      clearInterval(interval);
+      setStatusPolling(false);
+      console.log('⏰ ステータス監視タイムアウト');
+    }, 300000);
   };
 
   // 個別招待メール送信
@@ -240,7 +329,7 @@ function EmployeeManagement() {
           disabled={bulkEmailSending}
           className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:bg-blue-300"
         >
-          {bulkEmailSending ? '送信中...' : '一括設定メール送信'}
+          {bulkEmailSending ? '開始中...' : (statusPolling ? '処理中...' : '一括設定メール送信')}
         </button>
         <Link 
           to="/admin/employees/new" 
@@ -259,6 +348,33 @@ function EmployeeManagement() {
       {success && (
         <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6">
           <p>{success}</p>
+        </div>
+      )}
+
+      {/* ジョブ進捗表示 */}
+      {jobStatus && statusPolling && (
+        <div className="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">一括メール送信処理中...</p>
+              <p className="text-sm mt-1">
+                進捗: {jobStatus.successCount + jobStatus.failCount} / {jobStatus.totalCount} 
+                (成功: {jobStatus.successCount}件, 失敗: {jobStatus.failCount}件)
+              </p>
+            </div>
+            <div className="flex items-center">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+            </div>
+          </div>
+          {/* プログレスバー */}
+          <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
+            <div 
+              className="bg-blue-600 h-2 rounded-full transition-all duration-500"
+              style={{
+                width: `${Math.round(((jobStatus.successCount + jobStatus.failCount) / jobStatus.totalCount) * 100)}%`
+              }}
+            ></div>
+          </div>
         </div>
       )}
       

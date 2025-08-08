@@ -37,7 +37,8 @@
       "Bash(mkdir:*)",
       "Bash(gsutil lifecycle set:*)",
       "Bash(gcloud config:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(gcloud logging read:*)"
     ],
     "deny": []
   }
