@@ -39,7 +39,8 @@
       "Bash(gcloud config:*)",
       "Bash(cp:*)",
       "Bash(gcloud logging read:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }

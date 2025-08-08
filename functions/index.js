@@ -2902,3 +2902,131 @@ const createDocumentNotificationEmailContent = (employeeName, documentTitle) => 
 </html>
   `;
 };
+
+// 給与明細通知メール送信ジョブ開始（非同期）
+exports.startPayslipNotificationJob = onCall({ 
+  enforceAppCheck: false,
+  invoker: 'public',
+  timeoutSeconds: 60  // 短時間で応答
+}, async (request) => {
+  console.log('🚀 非同期給与明細通知メール送信ジョブ開始');
+  
+  // 認証確認
+  if (!request.auth || !request.auth.uid) {
+    throw new HttpsError('unauthenticated', 'この機能を使用するには管理者認証が必要です');
+  }
+  
+  try {
+    const { uploadId, paymentDate, type = 'payslip' } = request.data;
+    
+    if (!uploadId || !paymentDate) {
+      throw new HttpsError('invalid-argument', 'uploadId と paymentDate は必須です');
+    }
+    
+    // 対象コレクションを決定
+    const collectionName = type === 'bonus' ? 'bonusPayslips' : 'payslips';
+    
+    // 該当する明細データを取得して対象数を確認
+    const payslipsSnapshot = await db.collection(collectionName)
+      .where('uploadId', '==', uploadId)
+      .get();
+      
+    if (payslipsSnapshot.empty) {
+      throw new HttpsError('not-found', `指定されたuploadIdの${type === 'bonus' ? '賞与' : '給与'}明細が見つかりません`);
+    }
+    
+    // 重複実行チェック
+    const existingJobsSnapshot = await db.collection('payslipNotificationJobs')
+      .where('uploadId', '==', uploadId)
+      .where('status', 'in', ['pending', 'running'])
+      .get();
+      
+    if (!existingJobsSnapshot.empty) {
+      console.log('⚠️ 既に実行中のジョブがあります');
+      return {
+        success: false,
+        message: 'この明細のメール送信は既に実行中です'
+      };
+    }
+    
+    // 推定送信時間を計算（1件あたり5秒）
+    const targetCount = payslipsSnapshot.size;
+    const estimatedTime = Math.max(30, targetCount * 5);
+    
+    // ジョブをデータベースに登録
+    const jobDoc = await db.collection('payslipNotificationJobs').add({
+      uploadId,
+      paymentDate,
+      type,
+      targetCount,
+      status: 'pending',
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdBy: request.auth.uid,
+      estimatedTime
+    });
+    
+    console.log(`📋 ジョブ登録完了: ${jobDoc.id}, 対象件数: ${targetCount}件`);
+    
+    // バックグラウンドでジョブ処理を開始（非同期）
+    processPayslipNotificationJob(jobDoc.id, uploadId, paymentDate, type).catch(error => {
+      console.error(`❌ バックグラウンドジョブエラー: ${jobDoc.id}`, error);
+    });
+    
+    return {
+      success: true,
+      message: `給与明細メール送信処理を開始しました。対象: ${targetCount}名`,
+      targetCount,
+      estimatedTime,
+      jobId: jobDoc.id
+    };
+    
+  } catch (error) {
+    console.error('❌ 給与明細通知ジョブ開始エラー:', error);
+    throw new HttpsError('internal', `給与明細通知ジョブ開始中にエラーが発生しました: ${error.message}`);
+  }
+});
+
+// 給与明細通知メール送信ジョブ処理（バックグラウンド）
+const processPayslipNotificationJob = async (jobId, uploadId, paymentDate, type = 'payslip') => {
+  console.log(`🔄 ジョブ処理開始: ${jobId}`);
+  
+  try {
+    // ジョブステータスを'running'に更新
+    const jobRef = db.collection('payslipNotificationJobs').doc(jobId);
+    await jobRef.update({
+      status: 'running',
+      startedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    
+    // 実際のメール送信処理を実行
+    const result = await exports.sendPayslipNotifications({
+      data: {
+        uploadId,
+        paymentDate,
+        type
+      },
+      auth: { uid: 'system' } // システム実行として扱う
+    });
+    
+    // ジョブ完了
+    await jobRef.update({
+      status: 'completed',
+      completedAt: admin.firestore.FieldValue.serverTimestamp(),
+      result: result.data || result,
+      successCount: result.data?.successCount || 0,
+      failCount: result.data?.failCount || 0
+    });
+    
+    console.log(`✅ ジョブ完了: ${jobId}`, result.data || result);
+    
+  } catch (error) {
+    console.error(`❌ ジョブ処理エラー: ${jobId}`, error);
+    
+    // エラーステータスに更新
+    await db.collection('payslipNotificationJobs').doc(jobId).update({
+      status: 'error',
+      errorMessage: error.message,
+      errorAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+  }
+};
