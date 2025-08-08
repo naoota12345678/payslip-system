@@ -1027,6 +1027,11 @@ function WageLedgerView() {
   };
 
   const getClassifiedTotals = () => {
+    // 統合賃金台帳の場合は専用の合計計算を使用
+    if (ledgerType === 'integrated') {
+      return getIntegratedTotals();
+    }
+    
     const { matrix, allMonths } = generateClassifiedItemMatrix();
     const totals = {};
     
@@ -1038,6 +1043,30 @@ function WageLedgerView() {
       totals[row.itemName] = itemTotal;
     });
     
+    return totals;
+  };
+
+  // 統合賃金台帳用の合計計算関数
+  const getIntegratedTotals = () => {
+    const { matrix, allMonths } = generateIntegratedItemMatrix();
+    const totals = {};
+    
+    console.log('💜 統合合計計算開始');
+    
+    matrix.forEach(row => {
+      const itemTotal = allMonths.reduce((sum, month) => {
+        const monthData = row.months[month.monthKey];
+        const value = monthData.hasData ? monthData.value : 0;
+        return sum + value;
+      }, 0);
+      totals[row.itemName] = itemTotal;
+      
+      if (itemTotal !== 0) {
+        console.log(`💜 合計計算: ${row.itemName} = ${itemTotal}`);
+      }
+    });
+    
+    console.log('💜 統合合計計算完了');
     return totals;
   };
 
