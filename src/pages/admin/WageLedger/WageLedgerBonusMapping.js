@@ -62,16 +62,17 @@ function WageLedgerBonusMapping() {
 
   // 賞与項目をカテゴリ別に分類
   const getBonusItemsByCategory = () => {
-    if (!bonusMapping) return { incomeItems: [], deductionItems: [], attendanceItems: [] };
+    if (!bonusMapping) return { incomeItems: [], deductionItems: [], attendanceItems: [], totalItems: [] };
 
     return {
       incomeItems: bonusMapping.incomeItems || [],
       deductionItems: bonusMapping.deductionItems || [],
-      attendanceItems: bonusMapping.attendanceItems || []
+      attendanceItems: bonusMapping.attendanceItems || [],
+      totalItems: bonusMapping.totalItems || []
     };
   };
 
-  const { incomeItems, deductionItems, attendanceItems } = getBonusItemsByCategory();
+  const { incomeItems, deductionItems, attendanceItems, totalItems } = getBonusItemsByCategory();
 
   // 項目の表示設定を変更
   const handleItemToggle = (itemId, displayType) => {
@@ -264,6 +265,9 @@ function WageLedgerBonusMapping() {
           
           {/* 勤怠項目 */}
           {renderItemList(attendanceItems, '賞与勤怠項目', 'text-blue-600')}
+          
+          {/* 合計項目 */}
+          {renderItemList(totalItems, '賞与合計項目', 'text-purple-600')}
 
           {/* 設定サマリー */}
           <div className="bg-gray-50 p-4 rounded-lg">
@@ -280,7 +284,7 @@ function WageLedgerBonusMapping() {
               <div>
                 <span className="font-medium text-gray-700">非表示: </span>
                 <span className="text-gray-600">
-                  {(incomeItems.length + deductionItems.length + attendanceItems.length) - 
+                  {(incomeItems.length + deductionItems.length + attendanceItems.length + totalItems.length) - 
                    (bonusMappingConfig.showSeparately.length + bonusMappingConfig.mergeWithSalary.length)}項目
                 </span>
               </div>
