@@ -16,12 +16,6 @@ function EmployeeManagement() {
   const [bulkEmailSending, setBulkEmailSending] = useState(false);
   const [sortConfig, setSortConfig] = useState({ field: 'employeeId', direction: 'asc' });
 
-  // ランダムパスワード生成関数
-  const generateSecurePassword = () => {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    return Array.from({length: 8}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-  };
-
   // 従業員と部門データを読み込む
   useEffect(() => {
     const fetchData = async () => {
@@ -715,7 +709,6 @@ function CSVUploadForm({ companyId, setError, setSuccess }) {
       
       // バッチ処理用
       const batch = writeBatch(db);
-      const newEmployeePasswords = {}; // 新規従業員のパスワードを一時保存
       
       // 30名制限チェック（新規従業員のみカウント）
       let newEmployeeCount = 0;
@@ -811,9 +804,7 @@ function CSVUploadForm({ companyId, setError, setSuccess }) {
             const docRef = doc(collection(db, "employees"));
             employee.createdAt = new Date();
             employee.isActive = true; // 必須：メール送信対象とするため
-            const tempPassword = generateSecurePassword(); // ランダムパスワード生成
-            employee.tempPassword = tempPassword;
-            newEmployeePasswords[employeeId] = tempPassword; // Auth作成用に保存
+            employee.tempPassword = "000000"; // 必須：初期パスワード
             employee.status = "active"; // 必須：在職状態
             batch.set(docRef, employee);
             result.created++;
@@ -859,8 +850,7 @@ function CSVUploadForm({ companyId, setError, setSuccess }) {
                     employeeId,
                     name: name || employeeId,
                     email,
-                    companyId,
-                    tempPassword: newEmployeePasswords[employeeId] // パスワードを渡す
+                    companyId
                   }
                 });
                 
@@ -1028,7 +1018,7 @@ function CSVUploadForm({ companyId, setError, setSuccess }) {
             <li><strong>必須項目</strong>: 社員番号（既存の社員番号と一致する場合は更新、新規の場合は登録）</li>
             <li>氏名、メールアドレスは設定することをお勧めします</li>
             <li><strong>制限</strong>: 新規従業員は一度に30名まで登録可能です。それを超える場合は分割してアップロードしてください</li>
-            <li>新規従業員には自動的にFirebase Authログインアカウントが作成されます（パスワード: ランダム生成）</li>
+            <li>新規従業員には自動的にFirebase Authログインアカウントが作成されます（パスワード: 000000）</li>
             <li>部署コードは会社設定の部門管理で登録した部門コードと一致する必要があります</li>
             <li>カンマ区切りまたはタブ区切りのCSVファイルに対応しています</li>
             <li>UTF-8エンコードのCSVファイルを使用してください</li>
