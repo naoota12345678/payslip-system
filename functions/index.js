@@ -2760,8 +2760,17 @@ exports.processBulkEmailJob = onDocumentUpdated('emailJobs/{jobId}', async (even
         }
         
         // Firestoreから実際のtempPasswordを取得
-        const employeeDoc = await db.collection('employees').doc(employee.employeeId).get();
-        const actualPassword = employeeDoc.data()?.tempPassword || 'パスワード取得エラー - 管理者にお問い合わせください';
+        const employeeQuery = await db.collection('employees')
+          .where('employeeId', '==', employee.employeeId)
+          .where('companyId', '==', jobData.companyId)
+          .limit(1)
+          .get();
+        
+        let actualPassword = 'パスワード取得エラー - 管理者にお問い合わせください';
+        if (!employeeQuery.empty) {
+          const employeeDoc = employeeQuery.docs[0];
+          actualPassword = employeeDoc.data()?.tempPassword || actualPassword;
+        }
 
         // 招待メール送信（実際のパスワード使用）
         const htmlContent = createInvitationEmailContent(
