@@ -168,6 +168,7 @@ function Navigation({ isMobile = false, onItemClick = () => {} }) {
               </Link>
             </li>
             
+{/* 部門設定メニューを非表示化（会社情報内の部門管理タブで対応）
             <li>
               <Link 
                 to="/admin/departments" 
@@ -180,6 +181,7 @@ function Navigation({ isMobile = false, onItemClick = () => {} }) {
                 部門設定
               </Link>
             </li>
+            */}
             
             <li>
               <Link 
