@@ -39,7 +39,7 @@ function Layout() {
         setPageTitle('従業員詳細');
       }
     } else if (path === '/settings') {
-      setPageTitle('システム設定');
+      setPageTitle('会社情報');
     } else if (path === '/settings/departments') {
       setPageTitle('部門設定');
     } else if (path === '/settings/payroll-items') {
@@ -49,7 +49,7 @@ function Layout() {
     } else if (path === '/settings/notifications') {
       setPageTitle('通知設定');
     } else if (path === '/profile') {
-      setPageTitle('プロフィール');
+      setPageTitle('アカウント');
     } else if (path === '/admin/pdf-delivery') {
       setPageTitle('PDF配信管理');
     } else if (path === '/employee/documents') {
