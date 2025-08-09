@@ -2759,10 +2759,24 @@ exports.processBulkEmailJob = onDocumentUpdated('emailJobs/{jobId}', async (even
           continue;
         }
         
-        // 招待メール送信
+        // Firestoreから実際のtempPasswordを取得
+        let actualPassword = '000000'; // デフォルト値
+        try {
+          const employeeDoc = await db.collection('employees').doc(employee.employeeId).get();
+          if (employeeDoc.exists && employeeDoc.data().tempPassword) {
+            actualPassword = employeeDoc.data().tempPassword;
+            console.log(`🔐 実際のパスワード取得: ${employee.employeeId}`);
+          } else {
+            console.warn(`⚠️ tempPasswordが見つからない: ${employee.employeeId}, デフォルト使用`);
+          }
+        } catch (passwordError) {
+          console.error(`❌ パスワード取得エラー: ${employee.employeeId}`, passwordError);
+        }
+
+        // 招待メール送信（実際のパスワード使用）
         const htmlContent = createInvitationEmailContent(
           employee.name || employee.employeeId,
-          '000000'  // TEST_PASSWORD
+          actualPassword
         );
         
         const emailResult = await sendEmail(employee.email, '給与明細システム - ログイン情報', htmlContent);
