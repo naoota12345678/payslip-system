@@ -234,6 +234,7 @@ function Navigation({ isMobile = false, onItemClick = () => {} }) {
               </Link>
             </li>
             
+{/* データバックアップメニューを非表示化
             <li>
               <Link 
                 to="/admin/settings/backup" 
@@ -246,6 +247,7 @@ function Navigation({ isMobile = false, onItemClick = () => {} }) {
                 データバックアップ
               </Link>
             </li>
+            */}
           </>
         )}
       </ul>
