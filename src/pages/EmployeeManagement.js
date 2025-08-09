@@ -485,7 +485,7 @@ function EmployeeManagement() {
 }
 
 // CSVアップロードフォームコンポーネント - 改善版
-function CSVUploadForm({ companyId, setError, setSuccess }) {
+const CSVUploadForm = React.memo(function CSVUploadForm({ companyId, setError, setSuccess }) {
     const [file, setFile] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [departments, setDepartments] = useState([]);
@@ -518,7 +518,7 @@ function CSVUploadForm({ companyId, setError, setSuccess }) {
       };
       
       fetchDepartments();
-    }, [companyId, setError]);
+    }, [companyId]); // setErrorを依存配列から削除
     
     const handleFileChange = (e) => {
       const selectedFile = e.target.files[0];
@@ -1045,6 +1045,6 @@ function CSVUploadForm({ companyId, setError, setSuccess }) {
         </div>
       </form>
     );
-  }
+  });
 
 export default EmployeeManagement;
