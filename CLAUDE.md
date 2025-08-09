@@ -642,22 +642,77 @@ const processPayslipNotificationJob = async (jobId, uploadId, paymentDate, type 
 - スケジュール済み通知の自動実行
 - 従業員アカウント作成機能
 
-### 🎯 次回の確認事項
+### 🎯 完成した機能の最終確認
 
-**テスト予定:**
-1. 新しい正しい給与明細データでのメール送信テスト
-2. 送信後の緑色ボタン表示確認
-3. 賞与明細でも同様の機能テスト
+**✅ 全機能テスト完了（2025-08-08 夜）:**
+1. ✅ 正しい給与明細データでのメール送信 - 成功
+2. ✅ 送信後のボタン表示 - グレー色で無効化
+3. ✅ 賞与明細でも同様の機能 - 正常動作確認
+4. ✅ Firestoreセキュリティルール - 権限問題解決
+
+### 🔒 送信済み再送信防止機能（2025-08-08 最終実装）
+
+**実装内容:**
+- 送信済みの場合、ボタンを`disabled`に設定
+- ボタン色をグレー（`text-gray-400`）に変更
+- カーソルを禁止マーク（`cursor-not-allowed`）に変更
+- 給与明細・賞与明細の両方で同一実装
+
+### 📚 トラブルシューティング履歴
+
+**1. 29名送信制限問題**
+- **症状**: 62名中29名のみ送信成功
+- **原因**: 給与明細データに存在しない従業員ID（000200番台）
+- **解決**: データ不整合であり、システムは正常動作
+
+**2. 送信済みボタンが緑色にならない問題**
+- **症状**: メール送信後も送信済み表示されない
+- **原因1**: 複数CSVアップロードによるuploadId不一致
+- **原因2**: Firestoreセキュリティルール未設定
+- **解決**: 
+  - 古いデータ削除と再アップロード
+  - `payslipEmailHistory`コレクションのルール追加
+
+**3. TypeError問題**
+- **症状**: `Cannot read properties of undefined (reading 'on')`
+- **原因**: Cloud Functions内部呼び出しの誤り
+- **解決**: `sendPayslipNotificationsInternal`関数作成
+
+### 📋 最終的なシステム仕様
+
+**メール送信フロー:**
+1. CSVアップロード時: メール送信なし（データのみ）
+2. 明細一覧画面: 手動でメール送信ボタンをクリック
+3. 送信済み判定: グレー表示で再送信防止
+4. 履歴管理: `payslipEmailHistory`コレクション
+
+**関連ファイル:**
+- `functions/index.js`: バックエンド処理
+  - `startPayslipNotificationJob`: 非同期メール送信
+  - `sendPayslipNotificationsInternal`: 内部処理関数
+  - `processPayslipNotificationJob`: バックグラウンド処理
+- `src/pages/PayslipList.js`: 給与明細一覧
+- `src/pages/BonusPayslipList.js`: 賞与明細一覧
+- `src/pages/PayslipNotificationUI.js`: メール送信UI
+- `firestore.rules`: セキュリティルール設定
+
+**必要なFirestoreコレクション:**
+- `payslipEmailHistory`: メール送信履歴
+- `payslipNotificationJobs`: 非同期ジョブ管理
+- `emailNotifications`: スケジュール送信設定
+- `emailJobs`: 一括メールジョブ
 
 ---
 
-**最終更新**: 2025-08-08 夜
+**最終更新**: 2025-08-08 夜（完成版）
 **作成者**: Claude Code Assistant  
 **プロジェクト**: 給与明細システム (kyuyoprint)
 **システム名**: 「そのままWeb明細」
 
-### 💾 Git履歴（最新3件）
+### 💾 Git履歴（最新5件）
 ```
+b11c97d 送信済みメールの再送信を無効化 - 給与明細と賞与明細の両方で実装
+41fdcec Firestoreセキュリティルールにメール送信関連コレクションを追加
 9d16f14 賞与明細一覧にメール送信機能を追加（給与明細と同じモーダル方式）
 5c4c548 メール送信機能のTypeError修正 - processPayslipNotificationJobで内部関数を正しく呼び出すよう修正
 f318c3e 給与明細一覧と賞与明細一覧にメール送信ボタンを追加（モーダル方式、送信履歴管理付き）
