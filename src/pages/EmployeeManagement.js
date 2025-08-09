@@ -16,12 +16,6 @@ function EmployeeManagement() {
   const [bulkEmailSending, setBulkEmailSending] = useState(false);
   const [sortConfig, setSortConfig] = useState({ field: 'employeeId', direction: 'asc' });
 
-  // ランダムパスワード生成関数
-  const generateSecurePassword = () => {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    return Array.from({length: 8}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-  };
-
   // 従業員と部門データを読み込む
   useEffect(() => {
     const fetchData = async () => {
@@ -656,6 +650,12 @@ function CSVUploadForm({ companyId, setError, setSuccess }) {
     
     // CSVデータを処理する関数
     const processCSV = async (csvData, companyId, departments) => {
+      // ランダムパスワード生成関数（processCSV内で定義）
+      const generateSecurePassword = () => {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        return Array.from({length: 8}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+      };
+
       // CSVのヘッダー行とデータ行を分割
       const lines = csvData.split('\n');
       if (lines.length < 2) {
