@@ -689,11 +689,10 @@ exports.createEmployeeAuthOnly = onCall({
         
         console.log('👤 Firebase Authユーザー作成開始...');
         
-        // Firebase Authでユーザー作成（Firestoreから渡されたパスワードを使用）
-        const password = employeeData?.tempPassword || TEST_PASSWORD; // tempPasswordがあれば使用、なければフォールバック
+        // Firebase Authでユーザー作成
         userRecord = await admin.auth().createUser({
           email: email,
-          password: password,
+          password: TEST_PASSWORD, // テスト用固定パスワード
           displayName: name,
           emailVerified: false
         });
