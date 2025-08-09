@@ -498,6 +498,12 @@ function CSVUploadForm({ companyId, setError, setSuccess }) {
     const [previewData, setPreviewData] = useState(null);
     const [importResult, setImportResult] = useState(null);
     
+    // ランダムパスワード生成関数
+    const generateSecurePassword = () => {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      return Array.from({length: 8}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    };
+    
     // 部門データを読み込む
     useEffect(() => {
       const fetchDepartments = async () => {
