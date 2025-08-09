@@ -128,7 +128,13 @@ const sendEmail = async (to, subject, htmlContent, textContent = null) => {
   }
 };
 
-// テスト用固定パスワード
+// パスワード生成関数
+const generateSecurePassword = () => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({length: 8}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+};
+
+// 旧テスト用固定パスワード（互換性のため残す）
 const TEST_PASSWORD = '000000';
 
 // Gmail設定テスト関数
@@ -455,6 +461,10 @@ exports.createEmployeeAccount = onCall({
     
     console.log('✅ パラメータ検証完了:', { email, name });
     
+    // ランダムパスワード生成
+    const randomPassword = generateSecurePassword();
+    console.log('🔐 ランダムパスワード生成完了:', randomPassword);
+    
     // 既存ユーザーの確認
     let userRecord;
     try {
@@ -471,7 +481,7 @@ exports.createEmployeeAccount = onCall({
         // Firebase Authでユーザー作成
         userRecord = await admin.auth().createUser({
           email: email,
-          password: TEST_PASSWORD, // テスト用固定パスワード
+          password: randomPassword, // ランダムパスワード使用
           displayName: name,
           emailVerified: false
         });
@@ -506,7 +516,7 @@ exports.createEmployeeAccount = onCall({
           role: 'employee',
           status: 'auth_created',
           isFirstLogin: true,
-          tempPassword: TEST_PASSWORD,
+          tempPassword: randomPassword,
           isActive: true,
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
@@ -534,7 +544,7 @@ exports.createEmployeeAccount = onCall({
           role: 'employee',
           status: 'auth_created',
           isFirstLogin: true,
-          tempPassword: TEST_PASSWORD,
+          tempPassword: randomPassword,
           isActive: true,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
@@ -717,7 +727,7 @@ exports.createEmployeeAuthOnly = onCall({
           role: 'employee',
           status: 'auth_created',
           isFirstLogin: true,
-          tempPassword: TEST_PASSWORD,
+          tempPassword: randomPassword,
           isActive: true,
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
@@ -745,7 +755,7 @@ exports.createEmployeeAuthOnly = onCall({
           role: 'employee',
           status: 'auth_created',
           isFirstLogin: true,
-          tempPassword: TEST_PASSWORD,
+          tempPassword: randomPassword,
           isActive: true,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
@@ -876,7 +886,7 @@ const createInvitationEmailContent = (employeeName, tempPassword, loginUrl) => {
       <h3>ログイン手順</h3>
       <ol>
         <li>上記のログインボタンまたはURLからアクセス</li>
-        <li>メールアドレスと初回ログイン用パスワード「000000」でログイン</li>
+        <li>メールアドレスと初回ログイン用パスワード「${tempPassword}」でログイン</li>
         <li>初回ログイン時に新しいパスワードを設定（パスワード変更通知メールが送信されます）</li>
         <li>以降は新しいパスワードでログイン</li>
       </ol>
@@ -893,7 +903,7 @@ const createInvitationEmailContent = (employeeName, tempPassword, loginUrl) => {
       
       <div class="warning-box">
         <p style="color: #856404; margin: 0;"><strong>🔐 セキュリティに関する重要なお願い</strong></p>
-        <p style="color: #856404; margin: 5px 0;">初回ログイン用パスワード「000000」は仮パスワードです。</p>
+        <p style="color: #856404; margin: 5px 0;">初回ログイン用パスワード「${tempPassword}」は仮パスワードです。</p>
         <p style="color: #856404; margin: 5px 0;">セキュリティ確保のため、<strong>必ず初回ログイン時に新しいパスワードに変更</strong>してください。</p>
       </div>
       
