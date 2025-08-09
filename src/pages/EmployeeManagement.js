@@ -533,18 +533,11 @@ const CSVUploadForm = React.memo(function CSVUploadForm({ companyId, setError, s
     
     // CSVファイルのプレビュー表示
     const previewCSV = (file) => {
-      // ファイルサイズが1MB以上の場合はプレビューをスキップ
-      if (file.size > 1024 * 1024) {
-        setPreviewData(null);
-        console.log('ファイルサイズが大きいためプレビューをスキップします');
-        return;
-      }
-      
       const reader = new FileReader();
       reader.onload = (event) => {
         try {
           const csvData = event.target.result;
-          const lines = csvData.split('\n').slice(0, 100); // 最初の100行のみ処理
+          const lines = csvData.split('\n'); // 全行処理に戻す
           
           if (lines.length < 2) {
             setError("CSVファイルに十分なデータがありません");
