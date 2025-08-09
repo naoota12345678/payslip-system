@@ -485,7 +485,7 @@ function EmployeeManagement() {
 }
 
 // CSVアップロードフォームコンポーネント - 改善版
-const CSVUploadForm = React.memo(function CSVUploadForm({ companyId, setError, setSuccess }) {
+function CSVUploadForm({ companyId, setError, setSuccess }) {
     const [file, setFile] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [departments, setDepartments] = useState([]);
@@ -518,16 +518,14 @@ const CSVUploadForm = React.memo(function CSVUploadForm({ companyId, setError, s
       };
       
       fetchDepartments();
-    }, [companyId]); // setErrorを依存配列から削除
+    }, [companyId, setError]);
     
     const handleFileChange = (e) => {
       const selectedFile = e.target.files[0];
       if (selectedFile) {
         setFile(selectedFile);
-        // ファイルが選択されたら非同期でプレビュー表示
-        setTimeout(() => {
-          previewCSV(selectedFile);
-        }, 0);
+        // ファイルが選択されたらプレビュー表示
+        previewCSV(selectedFile);
       }
     };
     
@@ -537,7 +535,7 @@ const CSVUploadForm = React.memo(function CSVUploadForm({ companyId, setError, s
       reader.onload = (event) => {
         try {
           const csvData = event.target.result;
-          const lines = csvData.split('\n'); // 全行処理に戻す
+          const lines = csvData.split('\n');
           
           if (lines.length < 2) {
             setError("CSVファイルに十分なデータがありません");
@@ -1038,6 +1036,6 @@ const CSVUploadForm = React.memo(function CSVUploadForm({ companyId, setError, s
         </div>
       </form>
     );
-  });
+  }
 
 export default EmployeeManagement;
