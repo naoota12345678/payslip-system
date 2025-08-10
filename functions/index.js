@@ -568,7 +568,7 @@ exports.createEmployeeAccount = onCall({
     // メール送信（詳細ログ付き）
     try {
       console.log('🚀 メール送信開始...');
-      await sendEmployeeInvitationEmail(email, name, TEST_PASSWORD);
+      await sendEmployeeInvitationEmail(email, name, randomPassword);
       console.log('✅ メール送信完了');
     } catch (mailError) {
       console.error('❌ メール送信エラー（詳細）:', {
@@ -584,7 +584,7 @@ exports.createEmployeeAccount = onCall({
       success: true,
       uid: userRecord.uid,
       email: email,
-      testPassword: TEST_PASSWORD,
+      testPassword: randomPassword,
       message: userRecord.metadata?.creationTime ? '従業員アカウントが作成されました' : '既存のアカウントを使用しました（既に存在していました）'
     };
     
