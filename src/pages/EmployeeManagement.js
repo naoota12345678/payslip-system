@@ -620,12 +620,17 @@ function CSVUploadForm({ companyId, setError, setSuccess }) {
             setPreviewData(null);
             setImportResult(result);
             
-            // 成功メッセージを作成
-            let successMessage = `従業員データを更新しました（新規: ${result.created}件、更新: ${result.updated}件`;
-            if (result.authCreated !== undefined) {
-              successMessage += `、Authアカウント作成: ${result.authCreated}件`;
+            // 成功メッセージを作成（シンプル版）
+            let successMessage;
+            if (result.created > 0 && result.updated > 0) {
+              successMessage = `従業員を${result.created + result.updated}件処理しました（新規: ${result.created}件、更新: ${result.updated}件）`;
+            } else if (result.created > 0) {
+              successMessage = `新規従業員を${result.created}件登録しました`;
+            } else if (result.updated > 0) {
+              successMessage = `従業員情報を${result.updated}件更新しました`;
+            } else {
+              successMessage = '従業員データの処理が完了しました';
             }
-            successMessage += `）`;
             
             setSuccess(successMessage);
             
