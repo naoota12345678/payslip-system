@@ -195,25 +195,7 @@ function EmployeeForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // 最初にデバッグ情報を表示
-    const debugInfo = {
-      authUID: currentUser?.uid,
-      userDetailsUID: userDetails?.uid,
-      companyId: userDetails?.companyId,
-      role: userDetails?.role,
-      userType: userDetails?.userType,
-      isEditMode: isEditMode,
-      employeeId: employeeId
-    };
-    
-    alert(`認証デバッグ情報:
-Auth UID: ${debugInfo.authUID}
-userDetails UID: ${debugInfo.userDetailsUID}
-会社ID: ${debugInfo.companyId}
-role: ${debugInfo.role}
-userType: ${debugInfo.userType}
-編集モード: ${debugInfo.isEditMode}
-対象ID: ${debugInfo.employeeId}`);
+    // 認証デバッグ情報は開発完了により削除
     
     // 権限チェック（名前変更の場合）
     if (isEditMode && userDetails?.role !== 'admin') {
@@ -261,11 +243,7 @@ userType: ${debugInfo.userType}
         const targetEmployeeDoc = await getDoc(doc(db, 'employees', employeeId));
         const targetEmployeeData = targetEmployeeDoc.data();
         
-        alert(`編集対象の従業員情報:
-従業員companyId: ${targetEmployeeData?.companyId}
-管理者companyId: ${userDetails?.companyId}
-companyID一致: ${targetEmployeeData?.companyId === userDetails?.companyId}
-対象従業員名: ${targetEmployeeData?.name}`);
+        // 編集対象の従業員情報確認（デバッグalert削除）
         
         // 既存従業員の更新
         await updateDoc(doc(db, 'employees', employeeId), saveData);
@@ -296,22 +274,12 @@ companyID一致: ${targetEmployeeData?.companyId === userDetails?.companyId}
         
         console.log('✅ 従業員アカウント作成結果:', result.data);
         
-        // 詳細デバッグ情報を表示
-        const debugMessage = `従業員登録結果:
-${result.data.success ? '✅ 成功' : '❌ 失敗'}
-
-📧 ログイン情報:
-メール: ${saveData.email}
-パスワード: ${result.data.testPassword}
-
-🔍 デバッグ情報:
-UID: ${result.data.uid}
-メッセージ: ${result.data.message || 'なし'}
-
-※テスト用の固定パスワードです
-※Firestoreのemployeesコレクションも確認してください`;
-
-        alert(debugMessage);
+        // 成功メッセージを表示
+        if (result.data.success) {
+          alert('従業員を登録しました');
+        } else {
+          alert('従業員登録に失敗しました');
+        }
         
         navigate('/admin/employees');
       }
