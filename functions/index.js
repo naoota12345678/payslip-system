@@ -2059,7 +2059,7 @@ exports.sendPayslipNotifications = onCall(async (request) => {
         uploadId,
         paymentDate,
         type,
-        scheduleDate: new Date(scheduleDate),
+        scheduleDate: admin.firestore.Timestamp.fromDate(new Date(scheduleDate)),
         status: 'scheduled',
         targetCount: payslipsSnapshot.size,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -2372,6 +2372,13 @@ exports.scheduledEmailNotifications = onSchedule({
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    console.log('📅 検索範囲:', {
+      today: today.toISOString(),
+      tomorrow: tomorrow.toISOString(),
+      todayTimestamp: admin.firestore.Timestamp.fromDate(today),
+      tomorrowTimestamp: admin.firestore.Timestamp.fromDate(tomorrow)
+    });
     
     // 今日送信予定の通知を取得
     const notificationsSnapshot = await db.collection('emailNotifications')
