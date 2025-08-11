@@ -5,6 +5,7 @@
 1. CSV一括登録の成功メッセージが技術的すぎる問題
 2. 個別従業員登録でメール送信されるパスワードが固定値（000000）になっている問題
 3. 個別従業員登録のデバッグalertが詳細すぎる問題
+4. メール予約送信機能のエラー修正
 
 ---
 
@@ -165,11 +166,65 @@ if (result.data.success) {
 
 ---
 
+## 4. メール予約送信機能のエラー修正
+
+### 問題
+- スケジュール送信（毎日9時実行）でエラーが発生し、メールが送信されない
+- エラーメッセージ: `TypeError: Cannot read properties of undefined (reading 'on')`
+
+### 原因
+- `scheduledEmailNotifications`関数内で`exports.sendPayslipNotifications`を呼び出していた
+- Cloud Functions用のラッパーを内部から呼び出すことはできない
+
+### 修正内容
+**ファイル**: `functions/index.js` (2416行)
+
+**変更前**:
+```javascript
+const result = await exports.sendPayslipNotifications({
+  data: {
+    uploadId: notificationData.uploadId,
+    paymentDate: notificationData.paymentDate,
+    type: notificationData.type
+  },
+  auth: { uid: notificationData.createdBy }
+});
+```
+
+**変更後**:
+```javascript
+const result = await sendPayslipNotificationsInternal(
+  notificationData.uploadId,
+  notificationData.paymentDate,
+  notificationData.type
+);
+```
+
+### 影響範囲の検証
+- **`sendPayslipNotificationsInternal`関数**: 内部処理用の関数（Cloud Functionsラッパーなし）
+- **他の呼び出し箇所**: `processPayslipNotificationJob`も同じ関数を使用しており、正常動作中
+- **パラメータ互換性**: 同じパラメータ（uploadId, paymentDate, type）を受け取る
+- **戻り値互換性**: 同じ形式のレスポンスを返す
+
+### コミット
+- **コミットID**: 3851c04
+- **メッセージ**: メール予約送信の実行エラーを修正 - スケジュール実行時の内部関数呼び出しエラー解決
+
+---
+
 ## 作業完了時刻
 2025年8月10日 - 全作業完了
 
 ## 次回の課題
 - なし（現時点で全ての指摘事項を修正完了）
+
+## Git履歴（本日の作業）
+```
+3851c04 メール予約送信の実行エラーを修正 - スケジュール実行時の内部関数呼び出しエラー解決
+567f533 個別従業員登録の詳細デバッグalertを削除 - ユーザーフレンドリーなメッセージに変更
+e3fa524 個別従業員登録のメール送信パスワード修正 - ランダムパスワードを正しく送信するよう変更
+4699413 従業員登録成功メッセージのUI改善 - 技術的詳細を削除してユーザーフレンドリーなメッセージに変更
+```
 
 ---
 
