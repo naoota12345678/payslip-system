@@ -2412,15 +2412,12 @@ exports.scheduledEmailNotifications = onSchedule({
             executionStartedAt: admin.firestore.FieldValue.serverTimestamp()
           });
           
-          // 実際の通知を送信
-          const result = await exports.sendPayslipNotifications({
-            data: {
-              uploadId: notificationData.uploadId,
-              paymentDate: notificationData.paymentDate,
-              type: notificationData.type
-            },
-            auth: { uid: notificationData.createdBy }
-          });
+          // 実際の通知を送信（内部関数を直接呼び出し）
+          const result = await sendPayslipNotificationsInternal(
+            notificationData.uploadId,
+            notificationData.paymentDate,
+            notificationData.type
+          );
           
           // 実行完了に更新
           await notificationDoc.ref.update({
