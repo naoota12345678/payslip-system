@@ -127,17 +127,60 @@ function AdminDashboard() {
             where("paymentDate", "==", latestPaymentDate)
           );
           const samePaymentDateSnapshot = await getDocs(samePaymentDateQuery);
-          monthlyPayslips = samePaymentDateSnapshot.size;
           
-          // 総支給額計算
-          console.log(`🔍 AdminDashboard: 支給額を計算中... (明細数: ${samePaymentDateSnapshot.size})`);
+          // uploadIdでグループ化して最新のuploadIdを特定
+          const uploadGroups = {};
+          let latestUploadTime = null;
+          let latestUploadId = null;
+          
+          console.log(`🔍 AdminDashboard: 同じ支払日の明細を分析中... (総明細数: ${samePaymentDateSnapshot.size})`);
+          
           samePaymentDateSnapshot.forEach(doc => {
             const data = doc.data();
-            const income = data.totalIncome || 0;
-            totalAmount += income;
-            console.log(`従業員: ${data.employeeId}, 支給額: ${income}`);
+            const uploadId = data.uploadId;
+            const uploadedAt = data.uploadedAt;
+            
+            if (!uploadGroups[uploadId]) {
+              uploadGroups[uploadId] = {
+                uploadedAt: uploadedAt,
+                payslips: []
+              };
+            }
+            uploadGroups[uploadId].payslips.push(data);
+            
+            // 最新のuploadIdを特定
+            if (!latestUploadTime || (uploadedAt && uploadedAt > latestUploadTime)) {
+              latestUploadTime = uploadedAt;
+              latestUploadId = uploadId;
+            }
           });
-          console.log(`📊 最新支払日の総支給額: ${totalAmount}`);
+          
+          // 最新のuploadIdのデータのみを集計
+          if (latestUploadId && uploadGroups[latestUploadId]) {
+            const latestPayslips = uploadGroups[latestUploadId].payslips;
+            monthlyPayslips = latestPayslips.length;
+            
+            console.log(`📊 最新のアップロード(uploadId: ${latestUploadId})のみを集計中... (明細数: ${monthlyPayslips})`);
+            
+            latestPayslips.forEach(data => {
+              const income = data.totalIncome || 0;
+              totalAmount += income;
+              console.log(`従業員: ${data.employeeId}, 支給額: ${income}`);
+            });
+            console.log(`✅ 最新支払日の総支給額（重複除外）: ${totalAmount}`);
+          } else {
+            // uploadIdがない古いデータの場合は従来通り処理
+            monthlyPayslips = samePaymentDateSnapshot.size;
+            console.log(`⚠️ uploadIdが見つからないため、全明細を集計します (明細数: ${monthlyPayslips})`);
+            
+            samePaymentDateSnapshot.forEach(doc => {
+              const data = doc.data();
+              const income = data.totalIncome || 0;
+              totalAmount += income;
+              console.log(`従業員: ${data.employeeId}, 支給額: ${income}`);
+            });
+            console.log(`📊 最新支払日の総支給額: ${totalAmount}`);
+          }
         } else {
           console.log('⚠️ AdminDashboard: 給与明細データがありません');
         }
