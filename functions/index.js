@@ -105,12 +105,15 @@ const sendEmail = async (to, subject, htmlContent, textContent = null) => {
     const mailOptions = {
       from: process.env.GMAIL_USER, // Gmail送信者アドレス
       to: to,
-      subject: subject,
-      html: htmlContent
+      subject: subject
     };
     
+    // HTMLとテキストコンテンツの設定
     if (textContent) {
       mailOptions.text = textContent;
+    }
+    if (htmlContent) {
+      mailOptions.html = htmlContent;
     }
     
     const result = await transporter.sendMail(mailOptions);
@@ -925,53 +928,20 @@ const createInvitationEmailContent = (employeeName, tempPassword, loginUrl) => {
 </html>`;
 };
 
-// 給与明細通知メールテンプレート
+// 給与明細通知メールテンプレート（シンプルテキスト版）
 const createPayslipNotificationContent = (employeeName, paymentDate, loginUrl, type = 'payslip') => {
   const isBonus = type === 'bonus';
-  const title = isBonus ? '賞与明細のお知らせ' : '給与明細のお知らせ';
   const description = isBonus ? '賞与明細' : '給与明細';
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    .container { max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif; }
-    .header { background-color: ${isBonus ? '#fd7e14' : '#28a745'}; color: white; padding: 20px; text-align: center; }
-    .content { padding: 30px; background-color: #ffffff; }
-    .payslip-info { background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
-    .button { display: inline-block; background-color: ${isBonus ? '#fd7e14' : '#28a745'}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 10px 0; }
-    .footer { background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #666; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>${title}</h1>
-    </div>
-    <div class="content">
-      <h2>${employeeName} 様</h2>
-      <p>${paymentDate}の${description}をご確認いただけます。</p>
-      
-      <div class="payslip-info">
-        <h3>${description}確認</h3>
-        <p>下記のボタンをクリックして給与明細システムにログインし、明細をご確認ください。</p>
-        <a href="${loginUrl}" class="button">${description}を確認する</a>
-      </div>
-      
-      <p><strong>注意事項:</strong></p>
-      <ul>
-        <li>${description}は機密情報です。第三者に開示しないでください。</li>
-        <li>内容に関するご質問は人事部までお問い合わせください。</li>
-        <li>ログインできない場合は、システム管理者にお問い合わせください。</li>
-      </ul>
-    </div>
-    <div class="footer">
-      <p>このメールに心当たりがない場合は、システム管理者にお問い合わせください。</p>
-    </div>
-  </div>
-</body>
-</html>`;
+  return `${employeeName} 様
+
+${paymentDate}の${description}が発行されました。
+以下のリンクから確認してください。
+
+${loginUrl}
+
+送信元: 給与明細システム
+
+※ このメールに心当たりがない場合は、システム管理者にお問い合わせください。`;
 };
 
 // タイムスタンプ生成用のヘルパー関数
@@ -1626,15 +1596,15 @@ exports.sendPayslipNotifications = onCall(async (request) => {
           continue;
         }
         
-        // メール送信
-        const htmlContent = createPayslipNotificationContent(
+        // メール送信（テキスト形式）
+        const textContent = createPayslipNotificationContent(
           employeeData.name || payslipData.employeeId,
           paymentDate,
           loginUrl
         );
         const subject = `【給与明細】${paymentDate}の給与明細のお知らせ`;
         
-        const result = await sendEmail(employeeData.email, subject, htmlContent);
+        const result = await sendEmail(employeeData.email, subject, null, textContent);
         
         if (result.success) {
           successCount++;
@@ -2138,14 +2108,14 @@ exports.sendPayslipNotifications = onCall(async (request) => {
         // メール送信
         const subjectPrefix = type === 'bonus' ? '【賞与明細】' : '【給与明細】';
         const subject = `${subjectPrefix}${paymentDate}の明細のお知らせ`;
-        const htmlContent = createPayslipNotificationContent(
+        const textContent = createPayslipNotificationContent(
           employeeData.name || payslipData.employeeId,
           paymentDate,
           loginUrl,
           type
         );
         
-        const result = await sendEmail(employeeData.email, subject, htmlContent);
+        const result = await sendEmail(employeeData.email, subject, null, textContent);
         
         if (result.success) {
           successCount++;
@@ -3098,14 +3068,14 @@ const sendPayslipNotificationsInternal = async (uploadId, paymentDate, type = 'p
         // メール送信
         const subjectPrefix = type === 'bonus' ? '【賞与明細】' : '【給与明細】';
         const subject = `${subjectPrefix}${paymentDate}の明細のお知らせ`;
-        const htmlContent = createPayslipNotificationContent(
+        const textContent = createPayslipNotificationContent(
           employeeData.name || payslipData.employeeId,
           paymentDate,
           loginUrl,
           type
         );
         
-        const result = await sendEmail(employeeData.email, subject, htmlContent);
+        const result = await sendEmail(employeeData.email, subject, null, textContent);
         
         if (result.success) {
           successCount++;
