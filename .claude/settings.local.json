@@ -41,7 +41,8 @@
       "Bash(gcloud logging read:*)",
       "Bash(git checkout:*)",
       "Bash(grep:*)",
-      "Bash(git revert:*)"
+      "Bash(git revert:*)",
+      "Read(//c/Users/naoot/Downloads/**)"
     ],
     "deny": []
   }

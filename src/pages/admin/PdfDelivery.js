@@ -46,8 +46,8 @@ function PdfDeliveryManagement() {
       try {
         const q = query(
           collection(db, 'employees'),
-          where('companyId', '==', userDetails.companyId),
-          where('isActive', '==', true)
+          where('companyId', '==', userDetails.companyId)
+          // isActive条件を削除 - 退職者も選択可能にする
         );
         
         const querySnapshot = await getDocs(q);
@@ -309,16 +309,26 @@ function PdfDeliveryManagement() {
 
       const docRef = await addDoc(collection(db, 'documents'), documentData);
 
-      // メール通知送信
+      // メール通知送信（在職者のみ）
       try {
-        const sendNotification = httpsCallable(functions, 'sendDocumentDeliveryNotification');
-        const notificationResult = await sendNotification({
-          documentId: docRef.id,
-          documentTitle: documentTitle,
-          recipientEmployeeIds: selectedEmployees
+        // 選択された従業員の中で在職者（isActive: true）のみをフィルタリング
+        const activeEmployeeIds = selectedEmployees.filter(empId => {
+          const employee = employees.find(emp => emp.employeeId === empId);
+          return employee?.isActive === true;
         });
-        
-        console.log('📧 通知メール送信結果:', notificationResult.data);
+
+        if (activeEmployeeIds.length > 0) {
+          const sendNotification = httpsCallable(functions, 'sendDocumentDeliveryNotification');
+          const notificationResult = await sendNotification({
+            documentId: docRef.id,
+            documentTitle: documentTitle,
+            recipientEmployeeIds: activeEmployeeIds
+          });
+          
+          console.log(`📧 通知メール送信結果: ${activeEmployeeIds.length}名に送信`, notificationResult.data);
+        } else {
+          console.log('📧 メール送信対象者なし（退職者のみ選択）');
+        }
       } catch (emailError) {
         console.error('📧 通知メール送信エラー:', emailError);
         // メール送信失敗は配信成功を妨げない
@@ -405,16 +415,26 @@ function PdfDeliveryManagement() {
       
       const docRef = await addDoc(collection(db, 'documents'), documentData);
       
-      // メール通知送信
+      // メール通知送信（在職者のみ）
       try {
-        const sendNotification = httpsCallable(functions, 'sendDocumentDeliveryNotification');
-        const notificationResult = await sendNotification({
-          documentId: docRef.id,
-          documentTitle: bulkTitle,
-          recipientEmployeeIds: Object.keys(assignments)
+        // 配信対象の従業員の中で在職者（isActive: true）のみをフィルタリング
+        const activeEmployeeIds = Object.keys(assignments).filter(empId => {
+          const employee = employees.find(emp => emp.employeeId === empId);
+          return employee?.isActive === true;
         });
-        
-        console.log('📧 一括配信通知メール送信結果:', notificationResult.data);
+
+        if (activeEmployeeIds.length > 0) {
+          const sendNotification = httpsCallable(functions, 'sendDocumentDeliveryNotification');
+          const notificationResult = await sendNotification({
+            documentId: docRef.id,
+            documentTitle: bulkTitle,
+            recipientEmployeeIds: activeEmployeeIds
+          });
+          
+          console.log(`📧 一括配信通知メール送信結果: ${activeEmployeeIds.length}名に送信`, notificationResult.data);
+        } else {
+          console.log('📧 一括配信メール送信対象者なし（退職者のみ）');
+        }
       } catch (emailError) {
         console.error('📧 一括配信通知メール送信エラー:', emailError);
         // メール送信失敗は配信成功を妨げない
@@ -931,8 +951,15 @@ function PdfDeliveryManagement() {
                             }}
                             className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                           />
-                          <span className="ml-3 text-sm">
+                          <span className={`ml-3 text-sm ${
+                            emp.isActive === false ? 'text-gray-500 line-through' : ''
+                          }`}>
                             {emp.name} ({emp.employeeId}) - {emp.department || '未設定'}
+                            {emp.isActive === false && (
+                              <span className="ml-2 px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
+                                退職済み
+                              </span>
+                            )}
                           </span>
                         </label>
                       ))
