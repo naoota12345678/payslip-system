@@ -95,24 +95,15 @@ export function AuthProvider({ children }) {
         console.log('userDetailsを設定しました (employees版):', employeeData);
         return employeeData;
       } else {
-        console.warn('⚠️ 従業員データが見つかりません (uid:', user.uid, ')');
-        console.warn('📧 Authメール:', user.email);
-        console.warn('🔍 対処法: Firebase Consoleでemployeesコレクションを確認してください');
+        console.warn('従業員データが見つかりません。認証を拒否します (uid:', user.uid, ')');
+        console.warn('Firebase Authアカウントは存在しますが、対応するFirestore従業員データがありません');
         
-        // 一時的な対処: 最小限のデータでログインを許可
-        const tempEmployeeData = {
-          uid: user.uid,
-          email: user.email,
-          userType: 'employee',
-          role: 'employee',
-          name: user.email.split('@')[0],
-          isActive: true,
-          tempLogin: true // 一時ログインフラグ
-        };
+        // ユーザーをログアウトさせて適切なログイン画面にリダイレクト
+        await signOut(auth);
+        setUserDetails(null);
+        setCurrentUser(null);
         
-        console.warn('⚠️ 一時的なデータでログインを許可します:', tempEmployeeData);
-        setUserDetails(tempEmployeeData);
-        return tempEmployeeData;
+        return null;
       }
     } catch (error) {
       console.error("=== fetchUserDetails エラー (employees版) ===");
@@ -120,28 +111,11 @@ export function AuthProvider({ children }) {
       console.error("エラーコード:", error.code);
       console.error("エラーメッセージ:", error.message);
       
-      // 権限エラーの場合も一時的にログインを許可
-      if (error.message?.includes('Missing or insufficient permissions')) {
-        console.warn('⚠️ Firestore権限エラー - 一時的なデータでログインを許可');
-        
-        const tempEmployeeData = {
-          uid: user.uid,
-          email: user.email,
-          userType: 'employee',
-          role: 'employee',
-          name: user.email.split('@')[0],
-          isActive: true,
-          tempLogin: true,
-          firestoreError: true // Firestoreエラーフラグ
-        };
-        
-        setUserDetails(tempEmployeeData);
-        return tempEmployeeData;
-      }
-      
-      // その他のエラーの場合はログアウト
-      if (error.code === 'auth/invalid-credential') {
-        console.warn('認証エラー - ユーザーをログアウト');
+      // 権限エラーまたは認証エラーの場合はログアウト
+      if (error.code === 'auth/invalid-credential' || 
+          error.code === 'permission-denied' ||
+          error.message?.includes('Missing or insufficient permissions')) {
+        console.warn('認証エラーまたは権限エラー - ユーザーをログアウト');
         try {
           await signOut(auth);
           setCurrentUser(null);

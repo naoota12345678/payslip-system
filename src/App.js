@@ -63,6 +63,9 @@ import DataBackup from './pages/DataBackup';
 import PdfDeliveryManagement from './pages/admin/PdfDelivery';
 import EmployeeDocuments from './pages/employee/Documents';
 
+// デバッグツール
+import AuthDebug from './pages/admin/AuthDebug';
+
 // 賃金台帳関連
 import WageLedgerIndex from './pages/admin/WageLedger/WageLedgerIndex';
 import WageLedgerPeriodSelect from './pages/admin/WageLedger/WageLedgerPeriodSelect';
@@ -257,6 +260,9 @@ function App() {
               <Route path="settings/departments" element={<DepartmentSettings />} />
               <Route path="settings/notifications" element={<NotificationSettings />} />
               <Route path="settings/backup" element={<DataBackup />} />
+              
+              {/* デバッグツール */}
+              <Route path="debug/auth" element={<AuthDebug />} />
             </Route>
             
             {/* 従業員パスワードリセット（認証前） */}

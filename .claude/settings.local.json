@@ -42,7 +42,10 @@
       "Bash(git checkout:*)",
       "Bash(grep:*)",
       "Bash(git revert:*)",
-      "Read(//c/Users/naoot/Downloads/**)"
+      "Read(//c/Users/naoot/Downloads/**)",
+      "WebFetch(domain:console.firebase.google.com)",
+      "WebSearch",
+      "WebFetch(domain:firebase.google.com)"
     ],
     "deny": []
   }
