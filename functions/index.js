@@ -3176,3 +3176,292 @@ const processPayslipNotificationJob = async (jobId, uploadId, paymentDate, type 
     });
   }
 };
+
+// PDF配信通知メール送信（非同期ジョブ開始）
+exports.startDocumentNotificationJob = onCall({
+  enforceAppCheck: false,
+  invoker: 'public'
+}, async (request) => {
+  console.log('🚀 PDF配信通知ジョブ開始');
+  
+  // 認証確認
+  if (!request.auth || !request.auth.uid) {
+    throw new HttpsError('unauthenticated', 'この機能を使用するには認証が必要です');
+  }
+  
+  try {
+    const { documentId, documentTitle, recipientEmployeeIds, scheduledDate, sendImmediately = true } = request.data;
+    
+    if (!documentId || !documentTitle || !recipientEmployeeIds || recipientEmployeeIds.length === 0) {
+      throw new HttpsError('invalid-argument', '必要なパラメータが不足しています');
+    }
+    
+    // ユーザー情報を取得
+    const userDoc = await db.collection('employees')
+      .where('uid', '==', request.auth.uid)
+      .limit(1)
+      .get();
+    
+    const userData = userDoc.empty ? {} : userDoc.docs[0].data();
+    const companyId = userData.companyId || 'unknown';
+    
+    if (sendImmediately) {
+      // 即時送信の場合
+      console.log(`📄 即時送信: ${recipientEmployeeIds.length}名`);
+      
+      // ジョブドキュメント作成
+      const jobRef = await db.collection('documentNotificationJobs').add({
+        companyId: companyId,
+        documentId: documentId,
+        documentTitle: documentTitle,
+        recipientEmployeeIds: recipientEmployeeIds,
+        targetCount: recipientEmployeeIds.length,
+        status: 'pending',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdBy: request.auth.uid,
+        type: 'immediate'
+      });
+      
+      // バックグラウンドでジョブを処理
+      processDocumentNotificationJob(jobRef.id, documentId, documentTitle, recipientEmployeeIds)
+        .catch(error => {
+          console.error('バックグラウンドジョブエラー:', error);
+        });
+      
+      return {
+        success: true,
+        message: `PDF配信通知の送信を開始しました (${recipientEmployeeIds.length}名)`,
+        jobId: jobRef.id,
+        estimatedTime: Math.max(10, recipientEmployeeIds.length * 2)
+      };
+      
+    } else if (scheduledDate) {
+      // 予約送信の場合
+      const scheduledDateTime = new Date(scheduledDate);
+      console.log(`📅 予約送信設定: ${scheduledDateTime.toISOString()}`);
+      
+      // 予約ジョブを保存
+      const scheduleRef = await db.collection('documentEmailSchedules').add({
+        companyId: companyId,
+        documentId: documentId,
+        documentTitle: documentTitle,
+        recipientEmployeeIds: recipientEmployeeIds,
+        targetCount: recipientEmployeeIds.length,
+        scheduledDate: admin.firestore.Timestamp.fromDate(scheduledDateTime),
+        status: 'scheduled',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdBy: request.auth.uid
+      });
+      
+      return {
+        success: true,
+        message: `PDF配信通知を${scheduledDateTime.toLocaleDateString('ja-JP')} ${scheduledDateTime.toLocaleTimeString('ja-JP')}に予約しました`,
+        scheduleId: scheduleRef.id,
+        scheduledCount: recipientEmployeeIds.length
+      };
+    } else {
+      // 送信しない場合
+      return {
+        success: true,
+        message: 'メール送信はスキップされました'
+      };
+    }
+    
+  } catch (error) {
+    console.error('❌ PDF配信通知ジョブ開始エラー:', error);
+    throw new HttpsError('internal', error.message);
+  }
+});
+
+// PDF配信通知メール送信ジョブ処理（バックグラウンド）
+const processDocumentNotificationJob = async (jobId, documentId, documentTitle, recipientEmployeeIds) => {
+  console.log(`🔄 PDF配信ジョブ処理開始: ${jobId}`);
+  
+  try {
+    // ジョブステータスを'running'に更新
+    const jobRef = db.collection('documentNotificationJobs').doc(jobId);
+    await jobRef.update({
+      status: 'running',
+      startedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    
+    // 実際のメール送信処理
+    let successCount = 0;
+    let failCount = 0;
+    const results = [];
+    
+    for (const employeeId of recipientEmployeeIds) {
+      try {
+        // 従業員情報取得
+        const employeeSnapshot = await db.collection('employees')
+          .where('employeeId', '==', employeeId)
+          .limit(1)
+          .get();
+        
+        if (employeeSnapshot.empty) {
+          failCount++;
+          results.push({
+            employeeId: employeeId,
+            success: false,
+            error: '従業員が見つかりません'
+          });
+          continue;
+        }
+        
+        const employeeData = employeeSnapshot.docs[0].data();
+        
+        if (!employeeData.email) {
+          failCount++;
+          results.push({
+            employeeId: employeeId,
+            success: false,
+            error: 'メールアドレスが設定されていません'
+          });
+          continue;
+        }
+        
+        // メール送信
+        const emailContent = createDocumentNotificationContent(
+          employeeData.name || '従業員',
+          documentTitle
+        );
+        
+        await sendEmail(
+          employeeData.email,
+          `【書類配信】${documentTitle}が配信されました`,
+          emailContent
+        );
+        
+        successCount++;
+        results.push({
+          employeeId: employeeId,
+          email: employeeData.email,
+          success: true
+        });
+        
+        console.log(`✅ PDF配信通知送信成功: ${employeeData.name} (${employeeData.email})`);
+        
+      } catch (error) {
+        failCount++;
+        results.push({
+          employeeId: employeeId,
+          success: false,
+          error: error.message
+        });
+        console.error(`❌ 従業員 ${employeeId} への送信失敗:`, error);
+      }
+    }
+    
+    // ジョブ完了
+    await jobRef.update({
+      status: 'completed',
+      completedAt: admin.firestore.FieldValue.serverTimestamp(),
+      successCount: successCount,
+      failCount: failCount,
+      results: results
+    });
+    
+    console.log(`✅ PDF配信ジョブ完了: 成功 ${successCount}件、失敗 ${failCount}件`);
+    
+  } catch (error) {
+    console.error(`❌ PDF配信ジョブ処理エラー: ${jobId}`, error);
+    
+    // エラーステータスに更新
+    await db.collection('documentNotificationJobs').doc(jobId).update({
+      status: 'error',
+      errorMessage: error.message,
+      errorAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+  }
+};
+
+// PDF配信通知メールコンテンツ作成
+const createDocumentNotificationContent = (employeeName, documentTitle) => {
+  return `${employeeName} 様
+
+「${documentTitle}」が配信されました。
+以下のリンクから確認してください。
+
+https://kyuyoprint.web.app/employee/login
+
+送信元: 給与明細システム
+
+※ このメールに心当たりがない場合は、システム管理者にお問い合わせください。`;
+};
+
+// PDF配信予約実行（スケジューラー関数）
+exports.executeScheduledDocumentNotifications = onSchedule({
+  schedule: 'every 1 hours',
+  timeZone: 'Asia/Tokyo'
+}, async (context) => {
+  console.log('📅 PDF配信予約実行チェック開始');
+  
+  try {
+    const now = admin.firestore.Timestamp.now();
+    
+    // 実行待ちの予約を取得
+    const schedulesSnapshot = await db.collection('documentEmailSchedules')
+      .where('status', '==', 'scheduled')
+      .where('scheduledDate', '<=', now)
+      .get();
+    
+    console.log(`📅 実行対象の予約: ${schedulesSnapshot.size}件`);
+    
+    for (const doc of schedulesSnapshot.docs) {
+      const schedule = doc.data();
+      console.log(`📅 予約実行: ${schedule.documentTitle}`);
+      
+      try {
+        // ステータスを処理中に更新
+        await doc.ref.update({
+          status: 'processing',
+          processedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // ジョブを作成して実行
+        const jobRef = await db.collection('documentNotificationJobs').add({
+          companyId: schedule.companyId,
+          documentId: schedule.documentId,
+          documentTitle: schedule.documentTitle,
+          recipientEmployeeIds: schedule.recipientEmployeeIds,
+          targetCount: schedule.targetCount,
+          status: 'pending',
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          createdBy: schedule.createdBy,
+          type: 'scheduled',
+          scheduleId: doc.id
+        });
+        
+        // バックグラウンドでジョブを処理
+        await processDocumentNotificationJob(
+          jobRef.id,
+          schedule.documentId,
+          schedule.documentTitle,
+          schedule.recipientEmployeeIds
+        );
+        
+        // 予約を完了に更新
+        await doc.ref.update({
+          status: 'completed',
+          completedAt: admin.firestore.FieldValue.serverTimestamp(),
+          jobId: jobRef.id
+        });
+        
+      } catch (error) {
+        console.error(`❌ 予約実行エラー (${doc.id}):`, error);
+        
+        // エラーステータスに更新
+        await doc.ref.update({
+          status: 'error',
+          errorMessage: error.message,
+          errorAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+      }
+    }
+    
+    console.log('📅 PDF配信予約実行チェック完了');
+    
+  } catch (error) {
+    console.error('❌ PDF配信予約実行エラー:', error);
+  }
+});

@@ -34,6 +34,14 @@ function PdfDeliveryManagement() {
   const [cancelling, setCancelling] = useState(false);
   const [recipientDetails, setRecipientDetails] = useState([]);
   const [loadingRecipients, setLoadingRecipients] = useState(false);
+  
+  // メール送信設定の状態
+  const [emailSendOption, setEmailSendOption] = useState('immediate'); // 'immediate', 'scheduled', 'none'
+  const [scheduledDate, setScheduledDate] = useState('');
+  const [scheduledTime, setScheduledTime] = useState('09:00');
+  const [bulkEmailSendOption, setBulkEmailSendOption] = useState('immediate');
+  const [bulkScheduledDate, setBulkScheduledDate] = useState('');
+  const [bulkScheduledTime, setBulkScheduledTime] = useState('09:00');
 
   // テスト会社かどうかのチェック
   const isTestCompany = userDetails?.companyId?.includes('test-') || false;
@@ -850,6 +858,63 @@ function PdfDeliveryManagement() {
                     )}
                   </div>
                 )}
+                
+                {/* メール送信設定（一括配信用） */}
+                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                  <h4 className="text-sm font-medium text-gray-700 mb-3">📧 メール通知設定</h4>
+                  <div className="space-y-3">
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="bulkEmailOption"
+                        value="immediate"
+                        checked={bulkEmailSendOption === 'immediate'}
+                        onChange={(e) => setBulkEmailSendOption(e.target.value)}
+                        className="mr-2"
+                      />
+                      <span className="text-sm">今すぐメール送信</span>
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="bulkEmailOption"
+                        value="scheduled"
+                        checked={bulkEmailSendOption === 'scheduled'}
+                        onChange={(e) => setBulkEmailSendOption(e.target.value)}
+                        className="mr-2"
+                      />
+                      <span className="text-sm">日時を指定して送信</span>
+                    </label>
+                    {bulkEmailSendOption === 'scheduled' && (
+                      <div className="ml-6 flex gap-2">
+                        <input
+                          type="date"
+                          value={bulkScheduledDate}
+                          onChange={(e) => setBulkScheduledDate(e.target.value)}
+                          min={new Date().toISOString().split('T')[0]}
+                          className="px-2 py-1 border border-gray-300 rounded text-sm"
+                        />
+                        <input
+                          type="time"
+                          value={bulkScheduledTime}
+                          onChange={(e) => setBulkScheduledTime(e.target.value)}
+                          className="px-2 py-1 border border-gray-300 rounded text-sm"
+                        />
+                      </div>
+                    )}
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="bulkEmailOption"
+                        value="none"
+                        checked={bulkEmailSendOption === 'none'}
+                        onChange={(e) => setBulkEmailSendOption(e.target.value)}
+                        className="mr-2"
+                      />
+                      <span className="text-sm">メール送信しない</span>
+                    </label>
+                  </div>
+                </div>
 
                 {/* アクションボタン */}
                 <div className="flex justify-end gap-3">
@@ -988,6 +1053,63 @@ function PdfDeliveryManagement() {
                       💡 <strong>一斉配信モード:</strong> 全従業員 ({employees.length}名) に同じ書類が配信されます
                     </div>
                   )}
+                </div>
+                
+                {/* メール送信設定 */}
+                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                  <h4 className="text-sm font-medium text-gray-700 mb-3">📧 メール通知設定</h4>
+                  <div className="space-y-3">
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="emailOption"
+                        value="immediate"
+                        checked={emailSendOption === 'immediate'}
+                        onChange={(e) => setEmailSendOption(e.target.value)}
+                        className="mr-2"
+                      />
+                      <span className="text-sm">今すぐメール送信</span>
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="emailOption"
+                        value="scheduled"
+                        checked={emailSendOption === 'scheduled'}
+                        onChange={(e) => setEmailSendOption(e.target.value)}
+                        className="mr-2"
+                      />
+                      <span className="text-sm">日時を指定して送信</span>
+                    </label>
+                    {emailSendOption === 'scheduled' && (
+                      <div className="ml-6 flex gap-2">
+                        <input
+                          type="date"
+                          value={scheduledDate}
+                          onChange={(e) => setScheduledDate(e.target.value)}
+                          min={new Date().toISOString().split('T')[0]}
+                          className="px-2 py-1 border border-gray-300 rounded text-sm"
+                        />
+                        <input
+                          type="time"
+                          value={scheduledTime}
+                          onChange={(e) => setScheduledTime(e.target.value)}
+                          className="px-2 py-1 border border-gray-300 rounded text-sm"
+                        />
+                      </div>
+                    )}
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="emailOption"
+                        value="none"
+                        checked={emailSendOption === 'none'}
+                        onChange={(e) => setEmailSendOption(e.target.value)}
+                        className="mr-2"
+                      />
+                      <span className="text-sm">メール送信しない</span>
+                    </label>
+                  </div>
                 </div>
 
                 {/* アクションボタン */}
