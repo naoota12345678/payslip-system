@@ -45,7 +45,8 @@
       "Read(//c/Users/naoot/Downloads/**)",
       "WebFetch(domain:console.firebase.google.com)",
       "WebSearch",
-      "WebFetch(domain:firebase.google.com)"
+      "WebFetch(domain:firebase.google.com)",
+      "Read(//c/Users/naoot/Pictures/Screenshots/**)"
     ],
     "deny": []
   }
