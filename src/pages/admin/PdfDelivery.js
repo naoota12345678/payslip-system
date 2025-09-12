@@ -317,29 +317,42 @@ function PdfDeliveryManagement() {
 
       const docRef = await addDoc(collection(db, 'documents'), documentData);
 
-      // メール通知送信（在職者のみ）
-      try {
-        // 選択された従業員の中で在職者（isActive: true）のみをフィルタリング
-        const activeEmployeeIds = selectedEmployees.filter(empId => {
-          const employee = employees.find(emp => emp.employeeId === empId);
-          return employee?.isActive === true;
-        });
-
-        if (activeEmployeeIds.length > 0) {
-          const sendNotification = httpsCallable(functions, 'sendDocumentDeliveryNotification');
-          const notificationResult = await sendNotification({
-            documentId: docRef.id,
-            documentTitle: documentTitle,
-            recipientEmployeeIds: activeEmployeeIds
-          });
-          
-          console.log(`📧 通知メール送信結果: ${activeEmployeeIds.length}名に送信`, notificationResult.data);
-        } else {
-          console.log('📧 メール送信対象者なし（退職者のみ選択）');
+      // メール通知送信（全対象者）
+      if (emailSendOption !== 'none') {
+        try {
+          if (selectedEmployees.length > 0) {
+            if (emailSendOption === 'immediate') {
+              // 即時送信（従来の処理）
+              const sendNotification = httpsCallable(functions, 'sendDocumentDeliveryNotification');
+              const notificationResult = await sendNotification({
+                documentId: docRef.id,
+                documentTitle: documentTitle,
+                recipientEmployeeIds: selectedEmployees
+              });
+              
+              console.log(`📧 通知メール送信結果: ${selectedEmployees.length}名に送信`, notificationResult.data);
+            } else if (emailSendOption === 'scheduled') {
+              // 予約送信（新機能）
+              const scheduledDateTime = new Date(`${scheduledDate}T${scheduledTime}:00`);
+              const startJob = httpsCallable(functions, 'startDocumentNotificationJob');
+              const jobResult = await startJob({
+                documentId: docRef.id,
+                documentTitle: documentTitle,
+                recipientEmployeeIds: selectedEmployees,
+                scheduledDate: scheduledDateTime.toISOString(),
+                sendImmediately: false
+              });
+              
+              console.log(`📅 メール予約送信設定: ${selectedEmployees.length}名に${scheduledDateTime.toLocaleString('ja-JP')}に送信予約`, jobResult.data);
+              alert(`メール送信を${scheduledDateTime.toLocaleString('ja-JP')}に予約しました（${selectedEmployees.length}名）`);
+            }
+          } else {
+            console.log('📧 メール送信対象者なし');
+          }
+        } catch (emailError) {
+          console.error('📧 通知メール送信エラー:', emailError);
+          // メール送信失敗は配信成功を妨げない
         }
-      } catch (emailError) {
-        console.error('📧 通知メール送信エラー:', emailError);
-        // メール送信失敗は配信成功を妨げない
       }
 
       // リセット
@@ -423,29 +436,44 @@ function PdfDeliveryManagement() {
       
       const docRef = await addDoc(collection(db, 'documents'), documentData);
       
-      // メール通知送信（在職者のみ）
-      try {
-        // 配信対象の従業員の中で在職者（isActive: true）のみをフィルタリング
-        const activeEmployeeIds = Object.keys(assignments).filter(empId => {
-          const employee = employees.find(emp => emp.employeeId === empId);
-          return employee?.isActive === true;
-        });
-
-        if (activeEmployeeIds.length > 0) {
-          const sendNotification = httpsCallable(functions, 'sendDocumentDeliveryNotification');
-          const notificationResult = await sendNotification({
-            documentId: docRef.id,
-            documentTitle: bulkTitle,
-            recipientEmployeeIds: activeEmployeeIds
-          });
+      // メール通知送信（全対象者）
+      if (bulkEmailSendOption !== 'none') {
+        try {
+          const recipientEmployeeIds = Object.keys(assignments);
           
-          console.log(`📧 一括配信通知メール送信結果: ${activeEmployeeIds.length}名に送信`, notificationResult.data);
-        } else {
-          console.log('📧 一括配信メール送信対象者なし（退職者のみ）');
+          if (recipientEmployeeIds.length > 0) {
+            if (bulkEmailSendOption === 'immediate') {
+              // 即時送信（従来の処理）
+              const sendNotification = httpsCallable(functions, 'sendDocumentDeliveryNotification');
+              const notificationResult = await sendNotification({
+                documentId: docRef.id,
+                documentTitle: bulkTitle,
+                recipientEmployeeIds: recipientEmployeeIds
+              });
+              
+              console.log(`📧 一括配信通知メール送信結果: ${recipientEmployeeIds.length}名に送信`, notificationResult.data);
+            } else if (bulkEmailSendOption === 'scheduled') {
+              // 予約送信（新機能）
+              const scheduledDateTime = new Date(`${bulkScheduledDate}T${bulkScheduledTime}:00`);
+              const startJob = httpsCallable(functions, 'startDocumentNotificationJob');
+              const jobResult = await startJob({
+                documentId: docRef.id,
+                documentTitle: bulkTitle,
+                recipientEmployeeIds: recipientEmployeeIds,
+                scheduledDate: scheduledDateTime.toISOString(),
+                sendImmediately: false
+              });
+              
+              console.log(`📅 一括メール予約送信設定: ${recipientEmployeeIds.length}名に${scheduledDateTime.toLocaleString('ja-JP')}に送信予約`, jobResult.data);
+              alert(`メール送信を${scheduledDateTime.toLocaleString('ja-JP')}に予約しました（${recipientEmployeeIds.length}名）`);
+            }
+          } else {
+            console.log('📧 一括配信メール送信対象者なし');
+          }
+        } catch (emailError) {
+          console.error('📧 一括配信通知メール送信エラー:', emailError);
+          // メール送信失敗は配信成功を妨げない
         }
-      } catch (emailError) {
-        console.error('📧 一括配信通知メール送信エラー:', emailError);
-        // メール送信失敗は配信成功を妨げない
       }
       
       // 成功メッセージ表示
