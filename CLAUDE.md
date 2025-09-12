@@ -779,7 +779,70 @@ https://kyuyoprint.web.app/employee/login
 
 ---
 
-**最終更新**: 2025-09-10（PDF配信・メール改善版）
+---
+
+## Firebase Authentication SMTP設定によるメール問題解決（2025-09-12）
+
+### ✅ 解決した問題
+
+**1. パスワードリセットメールが届かない問題**
+- **原因**: Firebaseデフォルトドメイン（`noreply@kyuyoprint.firebaseapp.com`）がスパムフィルタでブロック
+- **解決**: Gmail SMTP設定により `roumu3737@gmail.com` から送信
+
+**2. 従業員ログイン問題**
+- **原因**: 
+  - 一部従業員のFirebase AuthアカウントのUIDなし
+  - パスワードリセット不可によるログイン不能
+- **解決**: 
+  - Firebase ConsoleでUID手動追加
+  - SMTP設定でメール配信改善
+
+### 🔧 実装内容
+
+**Firebase Authentication SMTP設定**:
+```
+送信者のアドレス: roumu3737@gmail.com
+SMTP サーバーホスト: smtp.gmail.com
+SMTP サーバーポート: 587
+SMTP アカウントのユーザー名: roumu3737@gmail.com
+SMTP アカウントのパスワード: [Googleアプリパスワード]
+SMTP セキュリティ モード: TLS/STARTTLS
+```
+
+**設定場所**: Firebase Console → Authentication → テンプレート → SMTP設定
+
+### 📊 改善効果
+
+1. **メール配信改善**
+   - 企業メール（Microsoft 365等）でのブロック回避
+   - 配信成功率の大幅向上
+   - 迷惑メールフォルダ振り分けの減少
+
+2. **運用改善**
+   - パスワードリセット機能の正常動作
+   - 従業員サポート負荷の軽減
+   - システム信頼性向上
+
+### 🔑 初期パスワード仕様（最新版）
+
+**現在の仕様**:
+- **生成方法**: `generateSecurePassword()` でランダム8文字
+- **文字構成**: `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`（紛らわしい文字除外）
+- **保存場所**: Firestoreの`tempPassword`フィールド
+- **確認方法**: Firebase Console → employees → 該当従業員 → tempPassword
+
+### ⚠️ セキュリティ対応
+
+**削除した危険な機能**:
+- デバッグツール（AuthDebug.js）
+- グローバルデバッグ関数（window.debugEmployeeData等）
+- 全従業員データへの無制限アクセス機能
+
+**理由**: データ破損リスク、セキュリティホール、権限昇格の危険性
+
+---
+
+**最終更新**: 2025-09-12（Firebase Authentication SMTP設定・認証問題解決版）
 **作成者**: Claude Code Assistant  
 **プロジェクト**: 給与明細システム (kyuyoprint)
 **システム名**: 「そのままWeb明細」
