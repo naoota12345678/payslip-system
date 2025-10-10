@@ -130,16 +130,15 @@ function AdminDashboard() {
           
           // uploadIdでグループ化して最新のuploadIdを特定
           const uploadGroups = {};
-          let latestUploadTime = null;
           let latestUploadId = null;
-          
+
           console.log(`🔍 AdminDashboard: 同じ支払日の明細を分析中... (総明細数: ${samePaymentDateSnapshot.size})`);
-          
+
           samePaymentDateSnapshot.forEach(doc => {
             const data = doc.data();
             const uploadId = data.uploadId;
             const uploadedAt = data.uploadedAt;
-            
+
             if (!uploadGroups[uploadId]) {
               uploadGroups[uploadId] = {
                 uploadedAt: uploadedAt,
@@ -147,13 +146,18 @@ function AdminDashboard() {
               };
             }
             uploadGroups[uploadId].payslips.push(data);
-            
-            // 最新のuploadIdを特定
-            if (!latestUploadTime || (uploadedAt && uploadedAt > latestUploadTime)) {
-              latestUploadTime = uploadedAt;
-              latestUploadId = uploadId;
-            }
           });
+
+          // グループ化後に最新のuploadIdを特定
+          const uploadIds = Object.keys(uploadGroups);
+          if (uploadIds.length > 0) {
+            latestUploadId = uploadIds.reduce((latest, current) => {
+              const latestTime = uploadGroups[latest].uploadedAt?.toMillis?.() || 0;
+              const currentTime = uploadGroups[current].uploadedAt?.toMillis?.() || 0;
+              return currentTime > latestTime ? current : latest;
+            });
+            console.log(`📊 最新のuploadIdを特定: ${latestUploadId}`);
+          }
           
           // 最新のuploadIdのデータのみを集計
           if (latestUploadId && uploadGroups[latestUploadId]) {
