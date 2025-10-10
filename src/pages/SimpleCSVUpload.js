@@ -593,26 +593,23 @@ const SimpleCSVUpload = () => {
         }
 
         // マッピング設定を適用してCSVデータを処理
-        let totalIncome = 0;
-        let totalDeduction = 0;
-        
         headers.forEach(header => {
           // ヘッダーが存在する項目を処理（空白も含む）
           if (header && header.trim() !== '') {
             // 値を取得（空白も含む）
             let rawValue = rowData[header] || ''; // undefined/nullは空文字列に変換
             rawValue = String(rawValue).trim(); // 前後の空白を除去
-            
+
             // マッピング設定から情報を取得
             const displayName = mappingSettings.simpleMapping[header] || header;
             const category = mappingSettings.itemCategories[header] || 'other';
             const isVisible = mappingSettings.visibilitySettings[header] !== false; // デフォルトは表示
-            
+
             // 部門コード、従業員コード、従業員氏名、勤怠項目などの文字列項目は文字列として保持
-            const isStringField = ['部門コード', '部署コード', '従業員コード', '従業員氏名', '氏名', '社員番号', '社員ID', '識別コード'].some(field => 
+            const isStringField = ['部門コード', '部署コード', '従業員コード', '従業員氏名', '氏名', '社員番号', '社員ID', '識別コード'].some(field =>
               header.includes(field) || displayName.includes(field)
             ) || category === 'attendance'; // 勤怠項目は文字列として処理
-            
+
             // 数値に変換を試行（文字列フィールド以外で空白でない場合のみ）
             let finalValue;
             if (rawValue === '') {
@@ -623,29 +620,46 @@ const SimpleCSVUpload = () => {
               const numericValue = parseFloat(rawValue.replace(/,/g, '').replace(/¥/g, ''));
               finalValue = isNaN(numericValue) ? rawValue : numericValue; // 数値変換できない場合は文字列として保存
             }
-            
+
             // 項目データを保存
             payslipData.items[header] = finalValue;
             payslipData.itemCategories[header] = category;
             payslipData.itemVisibility[header] = isVisible;
-            
-            // 分類別合計計算（数値項目のみ）
-            if (!isStringField && typeof finalValue === 'number') {
-              if (category === 'income' && finalValue > 0) {
-                totalIncome += finalValue;
-              } else if (category === 'deduction' && finalValue > 0) {
-                totalDeduction += finalValue;
-              }
-            }
-            
+
             console.log(`📊 項目処理: ${header} → ${displayName} (${category}) = ${finalValue} ${isStringField ? '(文字列)' : '(数値)'}`);
           }
         });
-        
+
+        // 合計値はmainFieldsのマッピング設定から取得（計算しない、スタンプするだけ）
+        let totalIncome = 0;
+        let totalDeduction = 0;
+        let netAmount = 0;
+
+        if (mappingSettings.mainFields?.totalSalary?.headerName) {
+          const totalSalaryHeader = mappingSettings.mainFields.totalSalary.headerName;
+          const rawValue = rowData[totalSalaryHeader] || '0';
+          totalIncome = parseFloat(String(rawValue).replace(/,/g, '').replace(/¥/g, '')) || 0;
+          console.log(`💰 総支給額: カラム "${totalSalaryHeader}" → ${totalIncome}`);
+        }
+
+        if (mappingSettings.mainFields?.totalDeductions?.headerName) {
+          const totalDeductionsHeader = mappingSettings.mainFields.totalDeductions.headerName;
+          const rawValue = rowData[totalDeductionsHeader] || '0';
+          totalDeduction = parseFloat(String(rawValue).replace(/,/g, '').replace(/¥/g, '')) || 0;
+          console.log(`💰 控除額: カラム "${totalDeductionsHeader}" → ${totalDeduction}`);
+        }
+
+        if (mappingSettings.mainFields?.netSalary?.headerName) {
+          const netSalaryHeader = mappingSettings.mainFields.netSalary.headerName;
+          const rawValue = rowData[netSalaryHeader] || '0';
+          netAmount = parseFloat(String(rawValue).replace(/,/g, '').replace(/¥/g, '')) || 0;
+          console.log(`💰 差引支給額: カラム "${netSalaryHeader}" → ${netAmount}`);
+        }
+
         // 合計値を設定
         payslipData.totalIncome = totalIncome;
         payslipData.totalDeduction = totalDeduction;
-        payslipData.netAmount = totalIncome - totalDeduction;
+        payslipData.netAmount = netAmount;
         
         console.log(`💰 給与明細合計: 支給=${totalIncome}, 控除=${totalDeduction}, 差引=${payslipData.netAmount}`);
 
