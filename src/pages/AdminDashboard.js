@@ -185,11 +185,25 @@ function AdminDashboard() {
               console.log(`  - ${uid}: ${uploadGroups[uid].payslips.length}件 (アップロード: ${date}, タイムスタンプ: ${timestamp})`);
             });
 
+            // デバッグ: 従業員IDの重複チェック
+            const employeeIds = latestPayslips.map(d => d.employeeId);
+            const uniqueEmployeeIds = [...new Set(employeeIds)];
+            console.log(`👥 従業員ID: 全${employeeIds.length}件, ユニーク${uniqueEmployeeIds.length}件`);
+            if (employeeIds.length !== uniqueEmployeeIds.length) {
+              console.warn(`⚠️ 重複している従業員IDがあります！`);
+              const duplicates = employeeIds.filter((id, index) => employeeIds.indexOf(id) !== index);
+              console.warn(`重複ID: ${[...new Set(duplicates)].join(', ')}`);
+            }
+
+            // デバッグ: 最初と最後の5件を表示
+            console.log(`📝 最初の5件:`);
+            latestPayslips.slice(0, 5).forEach((data, i) => {
+              console.log(`  ${i + 1}. 従業員${data.employeeId}: ¥${data.totalIncome?.toLocaleString()}`);
+            });
+
             latestPayslips.forEach(data => {
               const income = data.totalIncome || 0;
               totalAmount += income;
-              // 詳細ログは削除（パフォーマンス改善）
-              // console.log(`従業員: ${data.employeeId}, 支給額: ${income}`);
             });
             console.log(`✅ 最新支払日の総支給額（重複除外）: ${totalAmount}`);
           } else {
