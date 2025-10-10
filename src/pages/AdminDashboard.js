@@ -152,8 +152,18 @@ function AdminDashboard() {
           const uploadIds = Object.keys(uploadGroups);
           if (uploadIds.length > 0) {
             latestUploadId = uploadIds.reduce((latest, current) => {
-              const latestTime = uploadGroups[latest].uploadedAt?.toMillis?.() || 0;
-              const currentTime = uploadGroups[current].uploadedAt?.toMillis?.() || 0;
+              // uploadIdからタイムスタンプを抽出（upload_TIMESTAMP_RANDOM形式）
+              const extractTimestamp = (uploadId) => {
+                if (!uploadId || uploadId === 'undefined') return 0;
+                const match = uploadId.match(/upload_(\d+)_/);
+                return match ? parseInt(match[1]) : 0;
+              };
+
+              const latestTime = extractTimestamp(latest);
+              const currentTime = extractTimestamp(current);
+
+              console.log(`🔍 比較: ${latest} (${latestTime}) vs ${current} (${currentTime})`);
+
               return currentTime > latestTime ? current : latest;
             });
             console.log(`📊 最新のuploadIdを特定: ${latestUploadId}`);
