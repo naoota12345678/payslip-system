@@ -165,11 +165,18 @@ function AdminDashboard() {
             monthlyPayslips = latestPayslips.length;
             
             console.log(`📊 最新のアップロード(uploadId: ${latestUploadId})のみを集計中... (明細数: ${monthlyPayslips})`);
-            
+
+            // デバッグ: uploadId別の明細数を確認
+            console.log(`📋 uploadGroups分析:`);
+            Object.keys(uploadGroups).forEach(uid => {
+              console.log(`  - ${uid}: ${uploadGroups[uid].payslips.length}件`);
+            });
+
             latestPayslips.forEach(data => {
               const income = data.totalIncome || 0;
               totalAmount += income;
-              console.log(`従業員: ${data.employeeId}, 支給額: ${income}`);
+              // 詳細ログは削除（パフォーマンス改善）
+              // console.log(`従業員: ${data.employeeId}, 支給額: ${income}`);
             });
             console.log(`✅ 最新支払日の総支給額（重複除外）: ${totalAmount}`);
           } else {
