@@ -166,10 +166,13 @@ function AdminDashboard() {
             
             console.log(`📊 最新のアップロード(uploadId: ${latestUploadId})のみを集計中... (明細数: ${monthlyPayslips})`);
 
-            // デバッグ: uploadId別の明細数を確認
+            // デバッグ: uploadId別の明細数とタイムスタンプを確認
             console.log(`📋 uploadGroups分析:`);
             Object.keys(uploadGroups).forEach(uid => {
-              console.log(`  - ${uid}: ${uploadGroups[uid].payslips.length}件`);
+              const uploadedAt = uploadGroups[uid].uploadedAt;
+              const timestamp = uploadedAt?.toMillis?.() || uploadedAt?.seconds ? uploadedAt.seconds * 1000 : 0;
+              const date = timestamp ? new Date(timestamp).toLocaleString('ja-JP') : '不明';
+              console.log(`  - ${uid}: ${uploadGroups[uid].payslips.length}件 (アップロード: ${date}, タイムスタンプ: ${timestamp})`);
             });
 
             latestPayslips.forEach(data => {
