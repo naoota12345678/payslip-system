@@ -45,8 +45,8 @@ jobs:
         # Set up authentication
         export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/service-account.json"
 
-        # Install Firebase CLI
-        npm install -g firebase-tools
+        # Install older Firebase CLI (before Extensions check was added)
+        npm install -g firebase-tools@12.4.0
 
         # Deploy hosting, functions, firestore rules/indexes only
         firebase deploy --only hosting,functions,firestore:rules,firestore:indexes --project kyuyoprint --non-interactive
