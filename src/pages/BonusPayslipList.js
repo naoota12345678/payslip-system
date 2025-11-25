@@ -270,14 +270,26 @@ function BonusPayslipList() {
 
   // メール送信モーダルを開く
   const openEmailModal = (paymentDate, payslipsForDate) => {
-    const uploadId = payslipsForDate[0]?.uploadId;
-    if (!uploadId) {
+    // 同じ日の全uploadIdを収集（重複排除）
+    const uploadIds = [...new Set(payslipsForDate.map(p => p.uploadId).filter(Boolean))];
+
+    if (uploadIds.length === 0) {
       alert('uploadIdが取得できませんでした');
       return;
     }
-    
+
+    // 複数uploadIdがある場合は警告表示
+    if (uploadIds.length > 1) {
+      const confirmed = window.confirm(
+        `この日は${uploadIds.length}回アップロードされています。\n` +
+        `全${payslipsForDate.length}件の明細にメール送信します。\n\n` +
+        `よろしいですか？`
+      );
+      if (!confirmed) return;
+    }
+
     setSelectedEmailData({
-      uploadId,
+      uploadIds,  // 配列で渡す
       paymentDate,
       type: 'bonus'
     });
