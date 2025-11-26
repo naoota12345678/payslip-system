@@ -46,7 +46,9 @@
       "WebFetch(domain:console.firebase.google.com)",
       "WebSearch",
       "WebFetch(domain:firebase.google.com)",
-      "Read(//c/Users/naoot/Pictures/Screenshots/**)"
+      "Read(//c/Users/naoot/Pictures/Screenshots/**)",
+      "Bash(cat:*)",
+      "Bash(python -m json.tool:*)"
     ],
     "deny": []
   }
