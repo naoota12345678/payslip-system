@@ -2468,15 +2468,31 @@ exports.sendDocumentDeliveryNotification = onCall({
     }
     
     console.log(`📄 配信通知対象: ${recipientEmployeeIds.length}名`);
-    
-    // 対象従業員のメールアドレスを取得
+
+    // ドキュメントデータを取得してcompanyIdを確認（セキュリティ重要）
+    const documentSnapshot = await db.collection('documents').doc(documentId).get();
+    if (!documentSnapshot.exists) {
+      throw new HttpsError('not-found', '配信ドキュメントが見つかりません');
+    }
+
+    const documentData = documentSnapshot.data();
+    const companyId = documentData.companyId;
+
+    if (!companyId) {
+      throw new HttpsError('invalid-argument', 'ドキュメントにcompanyIdが設定されていません');
+    }
+
+    console.log(`🔒 配信対象会社: ${companyId}`);
+
+    // 対象従業員のメールアドレスを取得（companyIdフィルタリング必須）
     const employees = [];
     for (const employeeId of recipientEmployeeIds) {
       const employeeSnapshot = await db.collection('employees')
         .where('employeeId', '==', employeeId)
+        .where('companyId', '==', companyId)
         .limit(1)
         .get();
-      
+
       if (!employeeSnapshot.empty) {
         const employeeData = employeeSnapshot.docs[0].data();
         if (employeeData.email && employeeData.isActive) {
