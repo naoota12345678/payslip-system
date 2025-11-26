@@ -499,7 +499,7 @@ function BonusPayslipList() {
             </div>
             <div className="p-4">
               <PayslipNotificationUI
-                uploadId={selectedEmailData.uploadId}
+                uploadIds={selectedEmailData.uploadIds}
                 paymentDate={selectedEmailData.paymentDate}
                 type={selectedEmailData.type}
               />
