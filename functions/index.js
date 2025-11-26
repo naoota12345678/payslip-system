@@ -506,9 +506,18 @@ exports.createEmployeeAccount = onCall({
     console.log('🔄 Firestoreの従業員データ処理中...');
     
     try {
-      // メールアドレスで従業員ドキュメントを検索
-      const employeesQuery = db.collection('employees').where('email', '==', email);
+      // メールアドレスとcompanyIdで従業員ドキュメントを検索（セキュリティ重要）
+      const companyId = employeeData?.companyId;
+      if (!companyId) {
+        throw new Error('companyIdが提供されていません');
+      }
+
+      const employeesQuery = db.collection('employees')
+        .where('email', '==', email)
+        .where('companyId', '==', companyId);
       const employeesSnapshot = await employeesQuery.get();
+
+      console.log(`🔍 従業員検索結果: ${employeesSnapshot.size}件 (email: ${email}, companyId: ${companyId})`);
       
       if (!employeesSnapshot.empty) {
         // 既存の従業員ドキュメントが見つかった場合、UIDを更新
@@ -717,9 +726,18 @@ exports.createEmployeeAuthOnly = onCall({
     console.log('🔄 Firestoreの従業員データ処理中...');
     
     try {
-      // メールアドレスで従業員ドキュメントを検索
-      const employeesQuery = db.collection('employees').where('email', '==', email);
+      // メールアドレスとcompanyIdで従業員ドキュメントを検索（セキュリティ重要）
+      const companyId = employeeData?.companyId;
+      if (!companyId) {
+        throw new Error('companyIdが提供されていません');
+      }
+
+      const employeesQuery = db.collection('employees')
+        .where('email', '==', email)
+        .where('companyId', '==', companyId);
       const employeesSnapshot = await employeesQuery.get();
+
+      console.log(`🔍 従業員検索結果: ${employeesSnapshot.size}件 (email: ${email}, companyId: ${companyId})`);
       
       if (!employeesSnapshot.empty) {
         // 既存の従業員ドキュメントが見つかった場合、UIDを更新
