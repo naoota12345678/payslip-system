@@ -2468,6 +2468,7 @@ exports.sendDocumentDeliveryNotification = onCall({
     }
     
     console.log(`📄 配信通知対象: ${recipientEmployeeIds.length}名`);
+    console.log(`🔍 受信したemployeeIds:`, JSON.stringify(recipientEmployeeIds));
 
     // ドキュメントデータを取得してcompanyIdを確認（セキュリティ重要）
     const documentSnapshot = await db.collection('documents').doc(documentId).get();
@@ -2487,6 +2488,8 @@ exports.sendDocumentDeliveryNotification = onCall({
     // 対象従業員のメールアドレスを取得（companyIdフィルタリング必須）
     const employees = [];
     for (const employeeId of recipientEmployeeIds) {
+      console.log(`🔍 従業員検索中: employeeId=${employeeId}, companyId=${companyId}`);
+
       const employeeSnapshot = await db.collection('employees')
         .where('employeeId', '==', employeeId)
         .where('companyId', '==', companyId)
@@ -2495,13 +2498,20 @@ exports.sendDocumentDeliveryNotification = onCall({
 
       if (!employeeSnapshot.empty) {
         const employeeData = employeeSnapshot.docs[0].data();
+        console.log(`✅ 従業員発見: ${employeeData.name} (${employeeData.employeeId}), isActive=${employeeData.isActive}, email=${employeeData.email}`);
+
         if (employeeData.email && employeeData.isActive) {
           employees.push({
             employeeId: employeeData.employeeId,
             name: employeeData.name,
             email: employeeData.email
           });
+          console.log(`➕ メール送信対象に追加: ${employeeData.name}`);
+        } else {
+          console.log(`⚠️ スキップ: isActive=${employeeData.isActive}, email=${employeeData.email}`);
         }
+      } else {
+        console.log(`❌ 従業員が見つかりません: employeeId=${employeeId}, companyId=${companyId}`);
       }
     }
     
