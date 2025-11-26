@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../firebase';
 
-function PayslipNotificationUI({ uploadId, paymentDate, type = 'payslip' }) {
+function PayslipNotificationUI({ uploadId, uploadIds, paymentDate, type = 'payslip' }) {
   const [sending, setSending] = useState(false);
   const [scheduled, setScheduled] = useState(false);
   const [scheduleDate, setScheduleDate] = useState('');
@@ -25,8 +25,12 @@ function PayslipNotificationUI({ uploadId, paymentDate, type = 'payslip' }) {
       
       // 非同期ジョブを開始
       const startJob = httpsCallable(functions, 'startPayslipNotificationJob');
+
+      // uploadIds配列を優先、なければuploadIdを配列化
+      const targetUploadIds = uploadIds || (uploadId ? [uploadId] : null);
+
       const result = await startJob({
-        uploadId,
+        uploadIds: targetUploadIds,
         paymentDate,
         type
       });
@@ -68,8 +72,12 @@ function PayslipNotificationUI({ uploadId, paymentDate, type = 'payslip' }) {
       scheduledDateTime.setHours(9, 0, 0, 0);
 
       const sendPayslipNotifications = httpsCallable(functions, 'sendPayslipNotifications');
+
+      // uploadIds配列を優先、なければuploadIdを配列化
+      const targetUploadIds = uploadIds || (uploadId ? [uploadId] : null);
+
       const result = await sendPayslipNotifications({
-        uploadId,
+        uploadIds: targetUploadIds,
         paymentDate,
         type,
         scheduleDate: scheduledDateTime.toISOString()
