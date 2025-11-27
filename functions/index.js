@@ -2013,66 +2013,80 @@ exports.sendPayslipNotifications = onCall(async (request) => {
     throw new HttpsError('unauthenticated', 'ユーザー認証が必要です');
   }
   
-  const { 
-    uploadId, 
-    paymentDate, 
+  const {
+    uploadId,
+    uploadIds,
+    paymentDate,
     scheduleDate, // 送信予定日時（指定日の9時）
     type = 'payslip' // 'payslip' または 'bonus'
   } = data;
-  
-  if (!uploadId || !paymentDate) {
-    throw new HttpsError('invalid-argument', 'uploadId と paymentDate は必須です');
+
+  // uploadIds配列またはuploadId単体のどちらかが必須
+  const targetUploadIds = uploadIds || (uploadId ? [uploadId] : null);
+
+  if (!targetUploadIds || targetUploadIds.length === 0 || !paymentDate) {
+    throw new HttpsError('invalid-argument', 'uploadId(s) と paymentDate は必須です');
   }
   
   try {
-    console.log('📧 給与明細通知メール送信開始:', { uploadId, paymentDate, type, scheduleDate });
-    
+    console.log('📧 給与明細通知メール送信開始:', { targetUploadIds, paymentDate, type, scheduleDate });
+
     // 対象コレクションを決定
     const collectionName = type === 'bonus' ? 'bonusPayslips' : 'payslips';
-    
-    // 該当する明細データを取得
-    const payslipsSnapshot = await db.collection(collectionName)
-      .where('uploadId', '==', uploadId)
-      .get();
-      
-    if (payslipsSnapshot.empty) {
+
+    // 全uploadIdの明細データを取得
+    let allPayslipDocs = [];
+    let totalCount = 0;
+
+    for (const uid of targetUploadIds) {
+      const payslipsSnapshot = await db.collection(collectionName)
+        .where('uploadId', '==', uid)
+        .get();
+
+      if (!payslipsSnapshot.empty) {
+        allPayslipDocs = allPayslipDocs.concat(payslipsSnapshot.docs);
+        totalCount += payslipsSnapshot.size;
+      }
+    }
+
+    if (allPayslipDocs.length === 0) {
       throw new HttpsError('not-found', `指定されたuploadIdの${type === 'bonus' ? '賞与' : '給与'}明細が見つかりません`);
     }
-    
-    console.log(`📋 対象明細数: ${payslipsSnapshot.size}件`);
-    
+
+    console.log(`📋 対象明細数: ${totalCount}件 (uploadIds: ${targetUploadIds.length}個)`);
+
     // スケジュール送信の場合は通知設定を保存して終了
     if (scheduleDate) {
       const notificationDoc = {
-        uploadId,
+        uploadIds: targetUploadIds,
         paymentDate,
         type,
         scheduleDate: admin.firestore.Timestamp.fromDate(new Date(scheduleDate)),
         status: 'scheduled',
-        targetCount: payslipsSnapshot.size,
+        targetCount: totalCount,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         createdBy: auth.uid
       };
-      
+
       await db.collection('emailNotifications').add(notificationDoc);
-      
+
       console.log('📅 スケジュール送信設定完了:', scheduleDate);
       return {
         success: true,
-        message: `${scheduleDate}に${payslipsSnapshot.size}件の通知メール送信をスケジュールしました`,
-        scheduledCount: payslipsSnapshot.size,
+        message: `${scheduleDate}に${totalCount}件の通知メール送信をスケジュールしました`,
+        scheduledCount: totalCount,
         scheduleDate
       };
     }
-    
+
     // 即座に送信する場合
     const loginUrl = process.env.APP_URL || 'https://kyuyoprint.web.app/employee/login';
     const results = [];
     let successCount = 0;
     let failCount = 0;
-    
+
     // 各従業員にメール送信
-    for (const payslipDoc of payslipsSnapshot.docs) {
+    for (const payslipDoc of allPayslipDocs) {
       const payslipData = payslipDoc.data();
       
       try {
@@ -2166,16 +2180,16 @@ exports.sendPayslipNotifications = onCall(async (request) => {
     }
     
     console.log(`📧 ${type}明細通知メール送信完了: 成功 ${successCount}件、失敗 ${failCount}件`);
-    
+
     return {
       success: true,
-      totalCount: payslipsSnapshot.size,
+      totalCount: totalCount,
       successCount,
       failCount,
       results,
       type
     };
-    
+
   } catch (error) {
     console.error(`❌ ${type}明細通知メール送信エラー:`, error);
     throw new HttpsError('internal', `${type}明細通知メール送信中にエラーが発生しました: ` + error.message);
