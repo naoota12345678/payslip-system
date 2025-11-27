@@ -56,6 +56,50 @@
 
 ---
 
+## 📦 デプロイルール（2025-11-27確定）
+
+### 自動デプロイの仕組み
+- **GitHub Actions**: `git push`で自動デプロイ
+- **ワークフロー**: `.github/workflows/firebase-hosting.yml`
+- **デプロイ対象**: Hosting, Functions, Firestore Rules, Firestore Indexes
+
+### デプロイ手順（推奨）
+```bash
+# 1. コード変更をコミット
+git add -A
+git commit -m "変更内容"
+
+# 2. GitHubにプッシュ（自動デプロイ開始）
+git push origin main
+
+# 3. デプロイ確認（2-3分後）
+# https://github.com/naoota12345678/payslip-system/actions
+```
+
+### 環境変数の管理
+**GitHub Secrets設定済み**:
+- `GMAIL_USER`: roumu3737@gmail.com
+- `GMAIL_APP_PASSWORD`: Googleアプリパスワード（16文字）
+- `FIREBASE_SERVICE_ACCOUNT_KYUYOPRINT`: Firebase認証情報
+
+**ローカル開発時**: `functions/.env.local`に記載
+
+### デプロイ失敗時の対処
+1. **GitHub Actionsログ確認**: https://github.com/naoota12345678/payslip-system/actions
+2. **エラー内容の確認**: 赤いバツマークをクリック
+3. **よくあるエラー**:
+   - 権限エラー → Firebase Console で権限確認
+   - ビルドエラー → ローカルで`npm run build`実行
+   - 環境変数エラー → GitHub Secrets確認
+
+### 重要な注意事項
+- ❌ `firebase deploy`コマンドを直接実行しない（環境変数が設定されない）
+- ✅ 必ずGitHub経由でデプロイ
+- ✅ デプロイ前にローカルで`npm run build`テスト推奨
+- ✅ Firebase Console権限: Owner または Firebase Extensions Admin
+
+---
+
 ## 現在の状況
 
 ### ✅ 完了した作業
@@ -896,3 +940,109 @@ d5a9bac 開発ログを更新 - 2025年8月10日の全作業記録
 567f533 個別従業員登録の詳細デバッグalertを削除 - ユーザーフレンドリーなメッセージに変更
 e3fa524 個別従業員登録のメール送信パスワード修正 - ランダムパスワードを正しく送信するよう変更
 ```
+
+---
+
+## PDF配信システム - セキュリティ修正（2025-11-27）
+
+### 🚨 緊急修正: 他社従業員への誤送信バグ
+
+**発見された問題**:
+- PDF配信の個別メール送信で、選択した従業員以外（他社の従業員）にメールが送信される重大なセキュリティバグ
+- 原因: `employeeId`だけで従業員を検索していたため、`companyId`が異なる従業員が検索されていた
+
+### ✅ 修正内容
+
+**1. companyIdフィルタリング追加** (`functions/index.js:2472-2515`)
+```javascript
+// 修正前（危険）
+const employeeSnapshot = await db.collection('employees')
+  .where('employeeId', '==', employeeId)
+  .limit(1)
+  .get();
+
+// 修正後（安全）
+// ドキュメントレコードからcompanyIdを取得
+const documentSnapshot = await db.collection('documents').doc(documentId).get();
+const companyId = documentSnapshot.data().companyId;
+
+// companyIdフィルタを追加
+const employeeSnapshot = await db.collection('employees')
+  .where('employeeId', '==', employeeId)
+  .where('companyId', '==', companyId)  // ← 追加
+  .limit(1)
+  .get();
+```
+
+**2. デバッグログ追加**
+- 受信したemployeeIds配列の記録
+- 各従業員検索の詳細プロセス
+- メール送信対象の追加/スキップ理由
+- 従業員発見時の`isActive`とメールアドレス確認
+
+**3. スケジュール送信のuploadIds配列対応** (`functions/index.js:2016-2197`)
+- `sendPayslipNotifications`関数を複数`uploadId`に対応
+- 同日に複数回アップロードした場合でもスケジュール送信可能
+
+**4. エラー表示改善** (`src/pages/admin/PdfDelivery.js:352-356`)
+- メール送信エラー時にアラート表示を追加
+- ユーザーにエラー内容を明示
+
+### 🔒 セキュリティ改善効果
+
+**修正前**:
+- ❌ 他社の同じ`employeeId`を持つ従業員にメールが送信される
+- ❌ 選択した従業員にメールが届かない場合がある
+- ❌ データ漏洩のリスク
+
+**修正後**:
+- ✅ 選択した従業員だけにメールが送信される
+- ✅ 他社の従業員には絶対に送信されない
+- ✅ `companyId`で確実にフィルタリング
+- ✅ ログで対象会社を確認可能
+
+### 📋 動作確認
+
+**テスト実行結果**（2025-11-27 13:11:45）:
+```
+🔍 受信したemployeeIds: ["2","4","3","5","6","9","10","12","14","15"]
+🔒 配信対象会社: bjIZZAAweEYwEEYcOoQakjHvZnw1
+📧 メール送信対象: 10名
+📄 PDF配信通知完了: 成功 10件、失敗 0件
+```
+
+**確認事項**:
+- ✅ 全10名に正常にメール送信
+- ✅ companyIdフィルタリングが正常動作
+- ✅ 他社従業員への誤送信なし
+
+### 🔧 技術的詳細
+
+**影響範囲**:
+- `sendDocumentDeliveryNotification` 関数（PDF配信個別メール送信）
+- `sendPayslipNotifications` 関数（給与明細スケジュール送信）
+
+**関連ファイル**:
+- `functions/index.js`: バックエンド処理
+- `src/pages/admin/PdfDelivery.js`: フロントエンド（エラー表示改善）
+
+**デプロイ方法**:
+```bash
+git add -A
+git commit -m "緊急修正: PDF配信個別メール送信の他社従業員への誤送信バグを修正"
+git push origin main
+# GitHub Actionsで自動デプロイ（2-3分）
+```
+
+### 📝 今後の注意事項
+
+**従業員検索時の鉄則**:
+- ❌ `employeeId`だけで検索しない
+- ✅ 必ず`companyId`フィルタを追加
+- ✅ セキュリティログで対象会社を記録
+
+**理由**: `employeeId`は企業間で重複する可能性があり、`companyId`による明示的なフィルタリングが必須
+
+---
+
+**最終更新**: 2025-11-27（PDF配信セキュリティ修正・デプロイルール追加版）
