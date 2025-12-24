@@ -14,7 +14,11 @@ function AdminDashboard() {
     totalEmployees: 0,
     totalPayslips: 0,
     monthlyPayslips: 0,
-    totalAmount: 0
+    totalAmount: 0,
+    // 賞与用フィールド
+    totalBonusPayslips: 0,
+    bonusMonthlyPayslips: 0,
+    bonusTotalAmount: 0
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -222,12 +226,110 @@ function AdminDashboard() {
         } else {
           console.log('⚠️ AdminDashboard: 給与明細データがありません');
         }
-        
+
+        // ========== 賞与明細の統計計算 ==========
+        console.log('🎁 AdminDashboard: 賞与明細の統計計算開始...');
+
+        // 賞与明細の総数
+        const allBonusQuery = query(
+          collection(db, "bonusPayslips"),
+          where("companyId", "==", userDetails.companyId)
+        );
+        const allBonusSnapshot = await getDocs(allBonusQuery);
+        const totalBonusPayslips = allBonusSnapshot.size;
+        console.log(`📊 賞与明細総数: ${totalBonusPayslips}件`);
+
+        let bonusMonthlyPayslips = 0;
+        let bonusTotalAmount = 0;
+
+        // 最新の賞与支払日を取得
+        const latestBonusQuery = query(
+          collection(db, "bonusPayslips"),
+          where("companyId", "==", userDetails.companyId),
+          orderBy("paymentDate", "desc"),
+          limit(1)
+        );
+        const latestBonusSnapshot = await getDocs(latestBonusQuery);
+
+        if (!latestBonusSnapshot.empty) {
+          const latestBonusPaymentDate = latestBonusSnapshot.docs[0].data().paymentDate;
+          console.log('🎁 AdminDashboard: 最新賞与支払日の明細を取得中...', {
+            paymentDate: latestBonusPaymentDate?.toDate()
+          });
+
+          // 同じ支払日の全ての賞与明細を取得
+          const sameBonusPaymentDateQuery = query(
+            collection(db, "bonusPayslips"),
+            where("companyId", "==", userDetails.companyId),
+            where("paymentDate", "==", latestBonusPaymentDate)
+          );
+          const sameBonusPaymentDateSnapshot = await getDocs(sameBonusPaymentDateQuery);
+
+          // uploadIdでグループ化して最新のuploadIdを特定（給与と同じロジック）
+          const bonusUploadGroups = {};
+          let latestBonusUploadId = null;
+
+          sameBonusPaymentDateSnapshot.forEach(doc => {
+            const data = doc.data();
+            const uploadId = data.uploadId;
+
+            if (!bonusUploadGroups[uploadId]) {
+              bonusUploadGroups[uploadId] = {
+                uploadedAt: data.uploadedAt,
+                payslips: []
+              };
+            }
+            bonusUploadGroups[uploadId].payslips.push(data);
+          });
+
+          // 最新のuploadIdを特定
+          const bonusUploadIds = Object.keys(bonusUploadGroups);
+          if (bonusUploadIds.length > 0) {
+            latestBonusUploadId = bonusUploadIds.reduce((latest, current) => {
+              const extractTimestamp = (uploadId) => {
+                if (!uploadId || uploadId === 'undefined') return 0;
+                const match = uploadId.match(/upload_(\d+)_/);
+                return match ? parseInt(match[1]) : 0;
+              };
+              const latestTime = extractTimestamp(latest);
+              const currentTime = extractTimestamp(current);
+              return currentTime > latestTime ? current : latest;
+            });
+            console.log(`📊 最新の賞与uploadIdを特定: ${latestBonusUploadId}`);
+          }
+
+          // 最新のuploadIdのデータのみを集計
+          if (latestBonusUploadId && bonusUploadGroups[latestBonusUploadId]) {
+            const latestBonusPayslips = bonusUploadGroups[latestBonusUploadId].payslips;
+            bonusMonthlyPayslips = latestBonusPayslips.length;
+
+            latestBonusPayslips.forEach(data => {
+              const income = data.totalIncome || 0;
+              bonusTotalAmount += income;
+            });
+            console.log(`✅ 最新賞与支払日の総支給額（重複除外）: ${bonusTotalAmount}`);
+          } else {
+            // uploadIdがない古いデータの場合
+            bonusMonthlyPayslips = sameBonusPaymentDateSnapshot.size;
+            sameBonusPaymentDateSnapshot.forEach(doc => {
+              const data = doc.data();
+              bonusTotalAmount += data.totalIncome || 0;
+            });
+            console.log(`📊 最新賞与支払日の総支給額: ${bonusTotalAmount}`);
+          }
+        } else {
+          console.log('⚠️ AdminDashboard: 賞与明細データがありません');
+        }
+
         setStats({
           totalEmployees,
           totalPayslips,
           monthlyPayslips,
-          totalAmount
+          totalAmount,
+          // 賞与統計
+          totalBonusPayslips,
+          bonusMonthlyPayslips,
+          bonusTotalAmount
         });
       } catch (err) {
         console.error("統計データの計算エラー:", err);
@@ -321,7 +423,40 @@ function AdminDashboard() {
           </p>
         </div>
       </div>
-      
+
+      {/* 賞与統計カード */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        {/* 空欄（従業員数は上で表示済み） */}
+        <div className="hidden md:block"></div>
+
+        {/* 賞与明細総数 */}
+        <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-yellow-400">
+          <h3 className="text-sm font-medium text-gray-500 uppercase mb-1">賞与明細総数</h3>
+          <p className="text-2xl font-bold text-yellow-600">{stats.totalBonusPayslips}</p>
+          <p className="text-sm text-gray-500 mt-2">
+            処理済み賞与明細の総数
+          </p>
+        </div>
+
+        {/* 最新支払日の賞与支給数 */}
+        <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-yellow-400">
+          <h3 className="text-sm font-medium text-gray-500 uppercase mb-1">最新支払日の賞与支給数</h3>
+          <p className="text-2xl font-bold text-yellow-600">{stats.bonusMonthlyPayslips}</p>
+          <p className="text-sm text-gray-500 mt-2">
+            最新支払日の賞与明細件数
+          </p>
+        </div>
+
+        {/* 最新支払日の賞与支給総額 */}
+        <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-yellow-400">
+          <h3 className="text-sm font-medium text-gray-500 uppercase mb-1">最新支払日の賞与支給総額</h3>
+          <p className="text-2xl font-bold text-orange-600">{formatCurrency(stats.bonusTotalAmount)}</p>
+          <p className="text-sm text-gray-500 mt-2">
+            最新支払日の賞与総支給額
+          </p>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* 最近の給与明細 */}
         <div className="bg-white p-6 rounded-lg shadow-md">
