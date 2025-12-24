@@ -1,6 +1,6 @@
 // src/pages/PayslipList.js
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, query, where, orderBy, getDocs, doc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,6 +8,7 @@ import PayslipNotificationUI from './PayslipNotificationUI';
 
 function PayslipList() {
   const { currentUser, userDetails } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [payslips, setPayslips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -325,6 +326,16 @@ function PayslipList() {
 
     fetchPayslips();
   }, [currentUser, userDetails]);
+
+  // URLパラメータから支払日を読み取り、自動的に支払日別表示に切り替え
+  useEffect(() => {
+    const paymentDateParam = searchParams.get('paymentDate');
+    if (paymentDateParam && groupedPayslips[paymentDateParam]) {
+      setSelectedPaymentDate(paymentDateParam);
+      // URLパラメータをクリア（ブラウザバックで元に戻れるようにするため）
+      // setSearchParams({});
+    }
+  }, [searchParams, groupedPayslips]);
 
   // 日付を整形する関数
   const formatDate = (date) => {

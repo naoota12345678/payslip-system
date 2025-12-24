@@ -1,6 +1,6 @@
 // src/pages/BonusPayslipList.js
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, getDocs, doc, getDoc, deleteDoc, query, where } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,6 +8,7 @@ import PayslipNotificationUI from './PayslipNotificationUI';
 
 function BonusPayslipList() {
   const { currentUser, userDetails } = useAuth();
+  const [searchParams] = useSearchParams();
   const [bonusPayslips, setBonusPayslips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -87,6 +88,24 @@ function BonusPayslipList() {
 
     fetchScheduleHistory();
   }, [userDetails]);
+
+  // URLパラメータから支払日を読み取り、自動的に展開
+  useEffect(() => {
+    const paymentDateParam = searchParams.get('paymentDate');
+    if (paymentDateParam && bonusPayslips.length > 0) {
+      // 該当する支払日があるか確認
+      const hasDate = bonusPayslips.some(p => {
+        const dateStr = p.paymentDate instanceof Date
+          ? p.paymentDate.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' })
+          : formatDate(p.paymentDate);
+        return dateStr === paymentDateParam;
+      });
+
+      if (hasDate) {
+        setExpandedDates(new Set([paymentDateParam]));
+      }
+    }
+  }, [searchParams, bonusPayslips]);
 
   // 従業員情報を取得する関数（employeeIdベース）
   const fetchEmployeeNames = useCallback(async (payslipList) => {

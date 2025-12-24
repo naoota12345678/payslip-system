@@ -1,6 +1,6 @@
 // src/pages/PayslipDetail.js
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import PayslipPreview from '../components/payslip/PayslipPreview';
 import { db, functions } from '../firebase';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
@@ -10,12 +10,15 @@ import { useAuth } from '../contexts/AuthContext';
 function PayslipDetail() {
   const { payslipId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { currentUser, userDetails } = useAuth();
   const [payslip, setPayslip] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [viewLogged, setViewLogged] = useState(false);
   const [relatedPayslips, setRelatedPayslips] = useState([]);
+  const [sameDatePayslips, setSameDatePayslips] = useState([]); // 同じ支払日の明細一覧
+  const [currentIndex, setCurrentIndex] = useState(-1); // 現在の明細のインデックス
   const [employeeName, setEmployeeName] = useState('N/A');
   const [departmentName, setDepartmentName] = useState('');
   const [companyName, setCompanyName] = useState('N/A');
@@ -232,6 +235,15 @@ function PayslipDetail() {
         if (payslipData.employeeId && payslipData.userId) {
           fetchRelatedPayslips(payslipData.userId, payslipData.employeeId, payslipId);
         }
+
+        // 同じ支払日の明細一覧を取得（管理者用・前後移動用）
+        if (payslipData.companyId && payslipData.paymentDate) {
+          const paymentDateObj = payslipData.paymentDate?.toDate?.() || payslipData.paymentDate;
+          const paymentDateStr = paymentDateObj instanceof Date
+            ? paymentDateObj.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' })
+            : String(payslipData.paymentDate);
+          fetchSameDatePayslips(payslipData.companyId, paymentDateStr, payslipId);
+        }
       } catch (err) {
         console.error("給与明細データの取得エラー:", err);
         setError("給与明細データの取得中にエラーが発生しました");
@@ -407,6 +419,52 @@ function PayslipDetail() {
     }
   };
 
+  // 同じ支払日の明細一覧を取得する関数（管理者用・前後移動用）
+  const fetchSameDatePayslips = async (companyId, paymentDateStr, currentPayslipId) => {
+    if (userDetails?.role !== 'admin') return; // 管理者のみ
+
+    try {
+      const payslipsQuery = query(
+        collection(db, "payslips"),
+        where("companyId", "==", companyId)
+      );
+
+      const snapshot = await getDocs(payslipsQuery);
+
+      if (!snapshot.empty) {
+        // 支払日でフィルタリングし、従業員番号でソート
+        const sameDate = snapshot.docs
+          .map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            paymentDate: doc.data().paymentDate?.toDate?.() || doc.data().paymentDate
+          }))
+          .filter(p => {
+            const pDateStr = p.paymentDate instanceof Date
+              ? p.paymentDate.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' })
+              : String(p.paymentDate);
+            return pDateStr === paymentDateStr;
+          })
+          .sort((a, b) => {
+            // 従業員番号でソート（数値順）
+            const aNum = parseInt(a.employeeId || '0', 10);
+            const bNum = parseInt(b.employeeId || '0', 10);
+            return aNum - bNum;
+          });
+
+        setSameDatePayslips(sameDate);
+
+        // 現在の明細のインデックスを計算
+        const index = sameDate.findIndex(p => p.id === currentPayslipId);
+        setCurrentIndex(index);
+
+        console.log(`📋 同じ支払日の明細: ${sameDate.length}件, 現在位置: ${index + 1}/${sameDate.length}`);
+      }
+    } catch (err) {
+      console.error("同じ支払日の明細取得エラー:", err);
+    }
+  };
+
   // 閲覧ログを記録する関数
   const logPayslipView = async (id) => {
     try {
@@ -447,17 +505,45 @@ function PayslipDetail() {
     window.print();
   };
 
-  // 戻るボタンのハンドラ
+  // 支払日を取得するヘルパー
+  const getPaymentDateStr = () => {
+    if (!payslip?.paymentDate) return null;
+    const dateObj = payslip.paymentDate instanceof Date
+      ? payslip.paymentDate
+      : payslip.paymentDate?.toDate?.() || new Date(payslip.paymentDate);
+    return dateObj.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  };
+
+  // 戻るボタンのハンドラ（支払日別一覧に戻る）
   const handleBack = () => {
-    // ユーザーの権限に応じて適切なルートに戻る
-    if (userDetails?.role === 'admin') {
-      navigate('/admin/payslips');
+    const paymentDateStr = getPaymentDateStr();
+    const basePath = userDetails?.role === 'admin' ? '/admin/payslips' : '/employee/payslips';
+
+    // 管理者の場合は支払日パラメータを付けて戻る
+    if (userDetails?.role === 'admin' && paymentDateStr) {
+      navigate(`${basePath}?paymentDate=${encodeURIComponent(paymentDateStr)}`);
     } else {
-      navigate('/employee/payslips');
+      navigate(basePath);
     }
   };
 
+  // 前の明細に移動
+  const handlePrev = () => {
+    if (currentIndex > 0 && sameDatePayslips[currentIndex - 1]) {
+      const prevId = sameDatePayslips[currentIndex - 1].id;
+      const paymentDateStr = getPaymentDateStr();
+      navigate(`/admin/payslips/${prevId}?paymentDate=${encodeURIComponent(paymentDateStr)}`);
+    }
+  };
 
+  // 次の明細に移動
+  const handleNext = () => {
+    if (currentIndex < sameDatePayslips.length - 1 && sameDatePayslips[currentIndex + 1]) {
+      const nextId = sameDatePayslips[currentIndex + 1].id;
+      const paymentDateStr = getPaymentDateStr();
+      navigate(`/admin/payslips/${nextId}?paymentDate=${encodeURIComponent(paymentDateStr)}`);
+    }
+  };
 
   if (loading) {
     return (
@@ -499,19 +585,63 @@ function PayslipDetail() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-4 flex justify-end items-center">
-        <div className="flex space-x-2">
-          <button
-            onClick={handleBack}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 print:hidden"
-          >
-            一覧に戻る
-          </button>
+      <div className="mb-4 flex justify-between items-center print:hidden">
+        {/* 左側: 戻るボタン */}
+        <button
+          onClick={handleBack}
+          className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 flex items-center"
+        >
+          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+          </svg>
+          一覧に戻る
+        </button>
+
+        {/* 右側: 前後移動ボタンと印刷ボタン */}
+        <div className="flex items-center space-x-2">
+          {/* 管理者のみ前後移動ボタンを表示 */}
+          {userDetails?.role === 'admin' && sameDatePayslips.length > 1 && (
+            <div className="flex items-center space-x-1 mr-2">
+              <button
+                onClick={handlePrev}
+                disabled={currentIndex <= 0}
+                className={`px-3 py-2 rounded flex items-center ${
+                  currentIndex <= 0
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+                title="前の明細"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                </svg>
+                前へ
+              </button>
+              <span className="text-sm text-gray-500 px-2">
+                {currentIndex + 1} / {sameDatePayslips.length}
+              </span>
+              <button
+                onClick={handleNext}
+                disabled={currentIndex >= sameDatePayslips.length - 1}
+                className={`px-3 py-2 rounded flex items-center ${
+                  currentIndex >= sameDatePayslips.length - 1
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+                title="次の明細"
+              >
+                次へ
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          )}
           <button
             onClick={handlePrint}
-            className="hidden md:block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 print:hidden"
+            className="hidden md:flex px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 items-center"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clipRule="evenodd" />
             </svg>
             印刷
