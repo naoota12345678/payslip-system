@@ -351,6 +351,7 @@ function PdfDeliveryManagement() {
           }
         } catch (emailError) {
           console.error('📧 通知メール送信エラー:', emailError);
+          alert(`⚠️ メール送信エラー: ${emailError.message}\n\nPDF配信は完了しましたが、メール通知が送信できませんでした。`);
           // メール送信失敗は配信成功を妨げない
         }
       }

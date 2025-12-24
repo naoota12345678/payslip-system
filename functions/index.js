@@ -2415,11 +2415,23 @@ exports.scheduledEmailNotifications = onSchedule({
           });
           
           // 実際の通知を送信（内部関数を直接呼び出し）
-          const result = await sendPayslipNotificationsInternal(
-            notificationData.uploadId,
-            notificationData.paymentDate,
-            notificationData.type
-          );
+          // uploadIds配列を取得（後方互換性のため旧uploadIdもサポート）
+          const uploadIds = notificationData.uploadIds || [notificationData.uploadId].filter(Boolean);
+          let totalResult = { successCount: 0, failCount: 0 };
+
+          console.log(`📧 処理対象uploadIds: ${uploadIds.length}件`, uploadIds);
+
+          for (const uploadId of uploadIds) {
+            const partialResult = await sendPayslipNotificationsInternal(
+              uploadId,
+              notificationData.paymentDate,
+              notificationData.type
+            );
+            totalResult.successCount += partialResult.successCount || 0;
+            totalResult.failCount += partialResult.failCount || 0;
+          }
+
+          const result = totalResult;
           
           // 実行完了に更新
           await notificationDoc.ref.update({

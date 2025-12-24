@@ -50,7 +50,8 @@
       "Bash(cat:*)",
       "Bash(python -m json.tool:*)",
       "Bash(npm ls:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(curl:*)"
     ],
     "deny": []
   }
