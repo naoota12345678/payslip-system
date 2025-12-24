@@ -17,6 +17,7 @@ function BonusPayslipList() {
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [selectedEmailData, setSelectedEmailData] = useState(null);
   const [emailHistory, setEmailHistory] = useState({});
+  const [scheduleHistory, setScheduleHistory] = useState({});
 
   // メール送信履歴を取得
   useEffect(() => {
@@ -47,6 +48,44 @@ function BonusPayslipList() {
     };
     
     fetchEmailHistory();
+  }, [userDetails]);
+
+  // スケジュール送信情報を取得
+  useEffect(() => {
+    const fetchScheduleHistory = async () => {
+      if (!userDetails?.companyId) return;
+
+      try {
+        const scheduleQuery = query(
+          collection(db, "emailNotifications"),
+          where("status", "in", ["scheduled", "executing"]),
+          where("type", "==", "bonus")
+        );
+
+        const scheduleSnapshot = await getDocs(scheduleQuery);
+        const scheduleMap = {};
+
+        scheduleSnapshot.forEach(doc => {
+          const data = doc.data();
+          // uploadIds配列の各要素に対してマッピング
+          const uploadIds = data.uploadIds || (data.uploadId ? [data.uploadId] : []);
+          uploadIds.forEach(uid => {
+            const key = `${uid}_${data.paymentDate}`;
+            scheduleMap[key] = {
+              ...data,
+              scheduleDate: data.scheduleDate?.toDate?.() || data.scheduleDate
+            };
+          });
+        });
+
+        setScheduleHistory(scheduleMap);
+        console.log('📅 賞与スケジュール送信情報取得:', Object.keys(scheduleMap).length, '件');
+      } catch (err) {
+        console.error("賞与スケジュール送信情報取得エラー:", err);
+      }
+    };
+
+    fetchScheduleHistory();
   }, [userDetails]);
 
   // 従業員情報を取得する関数（employeeIdベース）
@@ -395,26 +434,46 @@ function BonusPayslipList() {
                        const uploadId = datePayslips[0]?.uploadId;
                        const historyKey = `${uploadId}_${formatDate(date)}`;
                        const isSent = emailHistory[historyKey];
-                       
+                       const isScheduled = scheduleHistory[historyKey];
+
+                       // 状態判定: 送信済み > 予約済み > 未送信
+                       let status = 'unsent';
+                       let statusColor = 'text-blue-600 hover:text-blue-800 hover:bg-blue-50';
+                       let statusTitle = 'メール送信';
+                       let isDisabled = false;
+
+                       if (isSent) {
+                         status = 'sent';
+                         statusColor = 'text-green-600 cursor-default';
+                         statusTitle = '送信済み';
+                         isDisabled = true;
+                       } else if (isScheduled) {
+                         status = 'scheduled';
+                         const scheduleDate = isScheduled.scheduleDate;
+                         const dateStr = scheduleDate instanceof Date
+                           ? `${scheduleDate.getMonth() + 1}/${scheduleDate.getDate()} ${scheduleDate.getHours()}:00`
+                           : '送信予定';
+                         statusColor = 'text-orange-500 cursor-default';
+                         statusTitle = `${dateStr} 送信予定`;
+                         isDisabled = true;
+                       }
+
                        return (
                          <button
                            onClick={(e) => {
                              e.stopPropagation();
-                             if (!isSent) {
+                             if (!isDisabled) {
                                openEmailModal(formatDate(date), datePayslips);
                              }
                            }}
-                           disabled={isSent}
-                           className={`p-2 rounded-lg transition-colors ${
-                             isSent 
-                               ? 'text-gray-400 cursor-not-allowed' 
-                               : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'
-                           }`}
-                           title={isSent ? '送信済み' : 'メール送信'}
+                           disabled={isDisabled}
+                           className={`p-2 rounded-lg transition-colors ${statusColor}`}
+                           title={statusTitle}
                          >
                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 4.26c.07.04.14.06.21.06s.14-.02.21-.06L19 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                             {isSent && <circle cx="18" cy="6" r="3" fill="currentColor" />}
+                             {status === 'sent' && <circle cx="18" cy="6" r="3" fill="currentColor" />}
+                             {status === 'scheduled' && <circle cx="18" cy="6" r="3" fill="currentColor" stroke="none" />}
                            </svg>
                          </button>
                        );
