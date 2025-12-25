@@ -1089,11 +1089,22 @@ function WageLedgerView() {
         : generateClassifiedItemMatrix();
       const exportTotals = getClassifiedTotals();
 
-      // ヘッダー行を作成
-      const headers = ['項目名', ...exportMonths.map(m => `${m.year}年${m.month}月`), '合計'];
+      const ledgerTypeName = ledgerType === 'integrated' ? '統合' : ledgerType === 'bonus' ? '賞与' : '給与';
+
+      // タイトル・ヘッダー情報
+      const titleRows = [
+        [`${ledgerTypeName}賃金台帳`],
+        [`従業員: ${employeeName}`],
+        [`期間: ${formatPeriod()}`],
+        [`出力日: ${new Date().toLocaleDateString('ja-JP')}`],
+        [], // 空行
+      ];
+
+      // テーブルヘッダー行を作成
+      const tableHeaders = ['項目名', ...exportMonths.map(m => `${m.year}年${m.month}月`), '合計'];
 
       // データ行を作成（0値表示制御を適用）
-      const rows = exportMatrix
+      const dataRows = exportMatrix
         .filter(row => {
           const hasNonZeroValue = exportMonths.some(month => {
             const monthData = row.months[month.monthKey];
@@ -1113,8 +1124,11 @@ function WageLedgerView() {
           return [row.itemName, ...values, total];
         });
 
+      // すべての行を結合
+      const allRows = [...titleRows, tableHeaders, ...dataRows];
+
       // ワークブック作成
-      const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+      const ws = XLSX.utils.aoa_to_sheet(allRows);
 
       // 列幅を設定
       const colWidths = [{ wch: 20 }]; // 項目名列
@@ -1126,7 +1140,6 @@ function WageLedgerView() {
       XLSX.utils.book_append_sheet(wb, ws, '賃金台帳');
 
       // ファイル名生成
-      const ledgerTypeName = ledgerType === 'integrated' ? '統合' : ledgerType === 'bonus' ? '賞与' : '給与';
       const fileName = `${ledgerTypeName}賃金台帳_${employeeName}_${startYear}${String(startMonth).padStart(2, '0')}-${endYear}${String(endMonth).padStart(2, '0')}.xlsx`;
 
       // ダウンロード
