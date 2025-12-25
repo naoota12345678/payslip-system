@@ -677,16 +677,6 @@ function PayslipList() {
                       ? scheduleHistory[`${uploadIds[0]}_${paymentDate}`] // 表示用に最初のものを使用
                       : null;
 
-                    // デバッグ: 送信済み判定の詳細
-                    console.log('🔍 送信済み判定:', {
-                      paymentDate,
-                      uploadIds,
-                      historyKeys: uploadIds.map(uid => `${uid}_${paymentDate}`),
-                      emailHistoryKeys: Object.keys(emailHistory),
-                      isSent,
-                      isScheduled: !!isScheduled
-                    });
-
                     // 状態判定: 送信済み > 予約済み > 未送信
                     let status = 'unsent';
                     let statusColor = 'text-blue-600 hover:text-blue-800 hover:bg-blue-50';
