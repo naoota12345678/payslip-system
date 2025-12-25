@@ -18,7 +18,7 @@ export const useSimpleMappingConfig = (userDetails) => {
     incomeItems: [],
     deductionItems: [],
     attendanceItems: [],
-    summaryItems: [],
+    totalItems: [],
     itemCodeItems: [],
     mainFields: {}
   });
@@ -92,6 +92,7 @@ export const useSimpleMappingConfig = (userDetails) => {
         incomeItems: mappingData.incomeItems,
         deductionItems: mappingData.deductionItems,
         attendanceItems: mappingData.attendanceItems,
+        totalItems: mappingData.totalItems || [],
         itemCodeItems: mappingData.itemCodeItems,
         mainFields: mappingData.mainFields
       });
@@ -156,6 +157,7 @@ export const useSimpleMappingConfig = (userDetails) => {
       incomeItems: [],
       deductionItems: [],
       attendanceItems: [],
+      totalItems: [],
       itemCodeItems: [],
       mainFields: {}
     });
