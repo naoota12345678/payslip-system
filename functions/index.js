@@ -2057,10 +2057,14 @@ exports.sendPayslipNotifications = onCall(async (request) => {
 
     // スケジュール送信の場合は通知設定を保存して終了
     if (scheduleDate) {
+      // companyIdを取得（最初の明細から）
+      const companyId = allPayslipDocs[0]?.data()?.companyId || 'unknown';
+
       const notificationDoc = {
         uploadIds: targetUploadIds,
         paymentDate,
         type,
+        companyId, // 履歴保存用にcompanyIdを追加
         scheduleDate: admin.firestore.Timestamp.fromDate(new Date(scheduleDate)),
         status: 'scheduled',
         targetCount: totalCount,
@@ -2180,6 +2184,26 @@ exports.sendPayslipNotifications = onCall(async (request) => {
     }
     
     console.log(`📧 ${type}明細通知メール送信完了: 成功 ${successCount}件、失敗 ${failCount}件`);
+
+    // companyIdを取得（最初の明細から）
+    const companyId = allPayslipDocs[0]?.data()?.companyId || 'unknown';
+
+    // メール送信履歴を保存（各uploadIdごと）
+    for (const uid of targetUploadIds) {
+      await db.collection('payslipEmailHistory').add({
+        companyId: companyId,
+        uploadId: uid,
+        paymentDate: paymentDate,
+        type: type,
+        sentAt: admin.firestore.FieldValue.serverTimestamp(),
+        sentBy: auth.uid,
+        targetCount: totalCount,
+        successCount: successCount,
+        failCount: failCount,
+        sendMethod: 'immediate' // 今すぐ送信
+      });
+    }
+    console.log(`📝 メール送信履歴保存完了: ${targetUploadIds.length}件`);
 
     return {
       success: true,
@@ -2432,14 +2456,31 @@ exports.scheduledEmailNotifications = onSchedule({
           }
 
           const result = totalResult;
-          
+
+          // メール送信履歴を保存（各uploadIdごと）
+          for (const uploadId of uploadIds) {
+            await db.collection('payslipEmailHistory').add({
+              companyId: notificationData.companyId || 'unknown',
+              uploadId: uploadId,
+              paymentDate: notificationData.paymentDate,
+              type: notificationData.type || 'payslip',
+              sentAt: admin.firestore.FieldValue.serverTimestamp(),
+              sentBy: notificationData.createdBy || 'scheduled',
+              targetCount: notificationData.targetCount || 0,
+              successCount: result.successCount || 0,
+              failCount: result.failCount || 0,
+              sendMethod: 'scheduled' // スケジュール送信
+            });
+          }
+          console.log(`📝 スケジュール送信履歴保存完了: ${uploadIds.length}件`);
+
           // 実行完了に更新
           await notificationDoc.ref.update({
             status: 'completed',
             executionCompletedAt: admin.firestore.FieldValue.serverTimestamp(),
             executionResult: result
           });
-          
+
           console.log(`✅ 通知完了: ${notificationDoc.id}`);
           
         } catch (notificationError) {
