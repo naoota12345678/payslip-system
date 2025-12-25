@@ -6,7 +6,7 @@ import { collection, query, where, getDocs, orderBy, doc, getDoc } from 'firebas
 import { useAuth } from '../../../contexts/AuthContext';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import html2canvas from 'html2canvas';
 
 function WageLedgerView() {
   const navigate = useNavigate();
@@ -1137,75 +1137,115 @@ function WageLedgerView() {
     }
   };
 
-  // PDF出力機能
-  const exportToPdf = () => {
+  // PDF出力機能（html2canvas使用で日本語対応）
+  const exportToPdf = async () => {
     try {
       const { matrix: exportMatrix, allMonths: exportMonths } = ledgerType === 'integrated'
         ? generateIntegratedItemMatrix()
         : generateClassifiedItemMatrix();
       const exportTotals = getClassifiedTotals();
 
-      // 横向きA4でPDF作成
-      const doc = new jsPDF('l', 'mm', 'a4');
-
-      // タイトル
-      const ledgerTypeName = ledgerType === 'integrated' ? '統合' : ledgerType === 'bonus' ? '賞与' : '給与';
-      doc.setFontSize(16);
-      doc.text(`${ledgerTypeName}賃金台帳`, 14, 15);
-
-      doc.setFontSize(10);
-      doc.text(`従業員: ${employeeName}`, 14, 23);
-      doc.text(`期間: ${formatPeriod()}`, 14, 29);
-      doc.text(`出力日: ${new Date().toLocaleDateString('ja-JP')}`, 14, 35);
-
-      // テーブルヘッダー
-      const headers = [['項目名', ...exportMonths.map(m => `${m.month}月`), '合計']];
-
-      // テーブルデータ（0値表示制御を適用）
-      const body = exportMatrix
-        .filter(row => {
-          const hasNonZeroValue = exportMonths.some(month => {
-            const monthData = row.months[month.monthKey];
-            return monthData.hasData && monthData.value !== 0;
-          });
-          return row.showZeroValue || hasNonZeroValue;
-        })
-        .map(row => {
-          const values = exportMonths.map(month => {
-            const monthData = row.months[month.monthKey];
-            if (!monthData.hasData) return '-';
-            // 勤怠項目は数値、金額項目は通貨フォーマット
-            return row.itemType === 'attendance'
-              ? monthData.value.toString()
-              : formatCurrency(monthData.value);
-          });
-          // 勤怠項目は合計を'-'に
-          const total = row.itemType === 'attendance'
-            ? '-'
-            : formatCurrency(exportTotals[row.itemName] || 0);
-          return [row.itemName, ...values, total];
+      // 0値表示制御を適用したデータ
+      const filteredMatrix = exportMatrix.filter(row => {
+        const hasNonZeroValue = exportMonths.some(month => {
+          const monthData = row.months[month.monthKey];
+          return monthData.hasData && monthData.value !== 0;
         });
-
-      // autoTableでテーブル描画
-      autoTable(doc, {
-        head: headers,
-        body: body,
-        startY: 42,
-        styles: {
-          fontSize: 7,
-          cellPadding: 1.5,
-          overflow: 'linebreak'
-        },
-        headStyles: {
-          fillColor: [66, 139, 202],
-          textColor: 255,
-          fontStyle: 'bold'
-        },
-        columnStyles: {
-          0: { cellWidth: 30 } // 項目名列を広めに
-        },
-        alternateRowStyles: { fillColor: [245, 245, 245] }
+        return row.showZeroValue || hasNonZeroValue;
       });
+
+      const ledgerTypeName = ledgerType === 'integrated' ? '統合' : ledgerType === 'bonus' ? '賞与' : '給与';
+
+      // PDF用のHTML要素を作成
+      const container = document.createElement('div');
+      container.style.cssText = 'position: absolute; left: -9999px; top: 0; background: white; padding: 20px; width: 1100px; font-family: sans-serif;';
+
+      // ヘッダー部分
+      const header = `
+        <div style="margin-bottom: 20px;">
+          <h1 style="font-size: 24px; margin: 0 0 10px 0; color: #333;">${ledgerTypeName}賃金台帳</h1>
+          <p style="margin: 5px 0; font-size: 14px; color: #666;">従業員: ${employeeName}</p>
+          <p style="margin: 5px 0; font-size: 14px; color: #666;">期間: ${formatPeriod()}</p>
+          <p style="margin: 5px 0; font-size: 14px; color: #666;">出力日: ${new Date().toLocaleDateString('ja-JP')}</p>
+        </div>
+      `;
+
+      // テーブル作成
+      const monthHeaders = exportMonths.map(m => `<th style="padding: 8px 4px; background: #428bca; color: white; font-size: 11px; text-align: center; border: 1px solid #ddd;">${m.month}月</th>`).join('');
+
+      const tableRows = filteredMatrix.map((row, index) => {
+        const bgColor = index % 2 === 0 ? '#fff' : '#f5f5f5';
+        const cells = exportMonths.map(month => {
+          const monthData = row.months[month.monthKey];
+          if (!monthData.hasData) return `<td style="padding: 6px 4px; text-align: right; border: 1px solid #ddd; background: ${bgColor}; font-size: 11px;">-</td>`;
+          const value = row.itemType === 'attendance'
+            ? monthData.value.toString()
+            : `¥${formatCurrency(monthData.value)}`;
+          const color = row.itemType === 'deduction' ? '#dc3545' : row.itemType === 'attendance' ? '#007bff' : '#333';
+          return `<td style="padding: 6px 4px; text-align: right; border: 1px solid #ddd; background: ${bgColor}; font-size: 11px; color: ${color};">${value}</td>`;
+        }).join('');
+
+        const total = row.itemType === 'attendance'
+          ? '-'
+          : `¥${formatCurrency(exportTotals[row.itemName] || 0)}`;
+        const totalColor = row.itemType === 'deduction' ? '#dc3545' : '#333';
+
+        return `
+          <tr>
+            <td style="padding: 6px 8px; text-align: left; border: 1px solid #ddd; background: ${bgColor}; font-size: 11px; font-weight: 500; white-space: nowrap;">${row.itemName}</td>
+            ${cells}
+            <td style="padding: 6px 4px; text-align: right; border: 1px solid #ddd; background: #e9ecef; font-size: 11px; font-weight: bold; color: ${totalColor};">${total}</td>
+          </tr>
+        `;
+      }).join('');
+
+      const table = `
+        <table style="border-collapse: collapse; width: 100%;">
+          <thead>
+            <tr>
+              <th style="padding: 8px; background: #428bca; color: white; font-size: 11px; text-align: left; border: 1px solid #ddd;">項目名</th>
+              ${monthHeaders}
+              <th style="padding: 8px 4px; background: #5a6268; color: white; font-size: 11px; text-align: center; border: 1px solid #ddd;">合計</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRows}
+          </tbody>
+        </table>
+      `;
+
+      container.innerHTML = header + table;
+      document.body.appendChild(container);
+
+      // html2canvasでキャプチャ
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        logging: false
+      });
+
+      // 後片付け
+      document.body.removeChild(container);
+
+      // PDFに変換
+      const imgData = canvas.toDataURL('image/png');
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+
+      // A4横向きの寸法（mm）
+      const pdfWidth = 297;
+      const pdfHeight = 210;
+      const margin = 10;
+
+      // 画像をPDFに収まるようにスケール
+      const availableWidth = pdfWidth - (margin * 2);
+      const availableHeight = pdfHeight - (margin * 2);
+      const ratio = Math.min(availableWidth / (imgWidth / 2), availableHeight / (imgHeight / 2));
+      const scaledWidth = (imgWidth / 2) * ratio;
+      const scaledHeight = (imgHeight / 2) * ratio;
+
+      const doc = new jsPDF('l', 'mm', 'a4');
+      doc.addImage(imgData, 'PNG', margin, margin, scaledWidth, scaledHeight);
 
       // ファイル名生成
       const fileName = `${ledgerTypeName}賃金台帳_${employeeName}_${startYear}${String(startMonth).padStart(2, '0')}-${endYear}${String(endMonth).padStart(2, '0')}.pdf`;
