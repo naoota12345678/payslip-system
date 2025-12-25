@@ -14,7 +14,8 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
     ...(mappingConfig?.incomeItems || []),
     ...(mappingConfig?.deductionItems || []),
     ...(mappingConfig?.attendanceItems || []),
-    ...(mappingConfig?.kyItems || [])
+    ...(mappingConfig?.kyItems || []),
+    ...(mappingConfig?.totalItems || [])  // 合計項目（総支給額、総控除額、差引支給額等）
   ].filter(item => item && item.headerName); // headerNameがある項目のみ使用
   
   console.log('🔥 MainFieldsSection: allItems数:', allItems.length);

@@ -51,7 +51,9 @@
       "Bash(python -m json.tool:*)",
       "Bash(npm ls:*)",
       "Bash(echo:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(git fetch:*)",
+      "Bash(timeout 120 git push:*)"
     ],
     "deny": []
   }
