@@ -4,6 +4,9 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { db } from '../../../firebase';
 import { collection, query, where, getDocs, orderBy, doc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../../../contexts/AuthContext';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 function WageLedgerView() {
   const navigate = useNavigate();
@@ -1078,6 +1081,143 @@ function WageLedgerView() {
     return new Intl.NumberFormat('ja-JP').format(amount);
   };
 
+  // Excel出力機能
+  const exportToExcel = () => {
+    try {
+      const { matrix: exportMatrix, allMonths: exportMonths } = ledgerType === 'integrated'
+        ? generateIntegratedItemMatrix()
+        : generateClassifiedItemMatrix();
+      const exportTotals = getClassifiedTotals();
+
+      // ヘッダー行を作成
+      const headers = ['項目名', ...exportMonths.map(m => `${m.year}年${m.month}月`), '合計'];
+
+      // データ行を作成（0値表示制御を適用）
+      const rows = exportMatrix
+        .filter(row => {
+          const hasNonZeroValue = exportMonths.some(month => {
+            const monthData = row.months[month.monthKey];
+            return monthData.hasData && monthData.value !== 0;
+          });
+          return row.showZeroValue || hasNonZeroValue;
+        })
+        .map(row => {
+          const values = exportMonths.map(month => {
+            const monthData = row.months[month.monthKey];
+            if (!monthData.hasData) return '';
+            // 勤怠項目は数値のまま、金額項目は数値として保持
+            return monthData.value;
+          });
+          // 勤怠項目は合計を空欄に
+          const total = row.itemType === 'attendance' ? '' : (exportTotals[row.itemName] || 0);
+          return [row.itemName, ...values, total];
+        });
+
+      // ワークブック作成
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+
+      // 列幅を設定
+      const colWidths = [{ wch: 20 }]; // 項目名列
+      exportMonths.forEach(() => colWidths.push({ wch: 15 }));
+      colWidths.push({ wch: 15 }); // 合計列
+      ws['!cols'] = colWidths;
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '賃金台帳');
+
+      // ファイル名生成
+      const ledgerTypeName = ledgerType === 'integrated' ? '統合' : ledgerType === 'bonus' ? '賞与' : '給与';
+      const fileName = `${ledgerTypeName}賃金台帳_${employeeName}_${startYear}${String(startMonth).padStart(2, '0')}-${endYear}${String(endMonth).padStart(2, '0')}.xlsx`;
+
+      // ダウンロード
+      XLSX.writeFile(wb, fileName);
+    } catch (err) {
+      console.error('Excel出力エラー:', err);
+      alert('Excel出力中にエラーが発生しました。');
+    }
+  };
+
+  // PDF出力機能
+  const exportToPdf = () => {
+    try {
+      const { matrix: exportMatrix, allMonths: exportMonths } = ledgerType === 'integrated'
+        ? generateIntegratedItemMatrix()
+        : generateClassifiedItemMatrix();
+      const exportTotals = getClassifiedTotals();
+
+      // 横向きA4でPDF作成
+      const doc = new jsPDF('l', 'mm', 'a4');
+
+      // タイトル
+      const ledgerTypeName = ledgerType === 'integrated' ? '統合' : ledgerType === 'bonus' ? '賞与' : '給与';
+      doc.setFontSize(16);
+      doc.text(`${ledgerTypeName}賃金台帳`, 14, 15);
+
+      doc.setFontSize(10);
+      doc.text(`従業員: ${employeeName}`, 14, 23);
+      doc.text(`期間: ${formatPeriod()}`, 14, 29);
+      doc.text(`出力日: ${new Date().toLocaleDateString('ja-JP')}`, 14, 35);
+
+      // テーブルヘッダー
+      const headers = [['項目名', ...exportMonths.map(m => `${m.month}月`), '合計']];
+
+      // テーブルデータ（0値表示制御を適用）
+      const body = exportMatrix
+        .filter(row => {
+          const hasNonZeroValue = exportMonths.some(month => {
+            const monthData = row.months[month.monthKey];
+            return monthData.hasData && monthData.value !== 0;
+          });
+          return row.showZeroValue || hasNonZeroValue;
+        })
+        .map(row => {
+          const values = exportMonths.map(month => {
+            const monthData = row.months[month.monthKey];
+            if (!monthData.hasData) return '-';
+            // 勤怠項目は数値、金額項目は通貨フォーマット
+            return row.itemType === 'attendance'
+              ? monthData.value.toString()
+              : formatCurrency(monthData.value);
+          });
+          // 勤怠項目は合計を'-'に
+          const total = row.itemType === 'attendance'
+            ? '-'
+            : formatCurrency(exportTotals[row.itemName] || 0);
+          return [row.itemName, ...values, total];
+        });
+
+      // autoTableでテーブル描画
+      doc.autoTable({
+        head: headers,
+        body: body,
+        startY: 42,
+        styles: {
+          fontSize: 7,
+          cellPadding: 1.5,
+          overflow: 'linebreak'
+        },
+        headStyles: {
+          fillColor: [66, 139, 202],
+          textColor: 255,
+          fontStyle: 'bold'
+        },
+        columnStyles: {
+          0: { cellWidth: 30 } // 項目名列を広めに
+        },
+        alternateRowStyles: { fillColor: [245, 245, 245] }
+      });
+
+      // ファイル名生成
+      const fileName = `${ledgerTypeName}賃金台帳_${employeeName}_${startYear}${String(startMonth).padStart(2, '0')}-${endYear}${String(endMonth).padStart(2, '0')}.pdf`;
+
+      // ダウンロード
+      doc.save(fileName);
+    } catch (err) {
+      console.error('PDF出力エラー:', err);
+      alert('PDF出力中にエラーが発生しました。');
+    }
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -1303,13 +1443,13 @@ function WageLedgerView() {
         </button>
         <div className="space-x-4">
           <button
-            onClick={() => alert('PDF出力機能は今後実装予定です')}
+            onClick={exportToPdf}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
             PDF出力
           </button>
           <button
-            onClick={() => alert('Excel出力機能は今後実装予定です')}
+            onClick={exportToExcel}
             className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
           >
             Excel出力
