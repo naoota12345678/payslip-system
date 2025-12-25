@@ -1214,7 +1214,7 @@ function WageLedgerView() {
       doc.save(fileName);
     } catch (err) {
       console.error('PDF出力エラー:', err);
-      alert('PDF出力中にエラーが発生しました。');
+      alert('PDF出力中にエラーが発生しました。\n\nエラー詳細: ' + (err.message || err));
     }
   };
 
