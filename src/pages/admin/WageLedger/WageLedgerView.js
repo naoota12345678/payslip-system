@@ -6,7 +6,7 @@ import { collection, query, where, getDocs, orderBy, doc, getDoc } from 'firebas
 import { useAuth } from '../../../contexts/AuthContext';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 function WageLedgerView() {
   const navigate = useNavigate();
@@ -1187,7 +1187,7 @@ function WageLedgerView() {
         });
 
       // autoTableでテーブル描画
-      doc.autoTable({
+      autoTable(doc, {
         head: headers,
         body: body,
         startY: 42,
