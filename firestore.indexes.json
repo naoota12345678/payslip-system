@@ -41,6 +41,20 @@
           "order": "ASCENDING"
         },
         {
+          "fieldPath": "paymentDate",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "bonusPayslips",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "companyId",
+          "order": "ASCENDING"
+        },
+        {
           "fieldPath": "employeeId",
           "order": "ASCENDING"
         },
