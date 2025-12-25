@@ -5,58 +5,77 @@ import React from 'react';
 
 const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeaders }) => {
   console.log('🔥 MainFieldsSection: 受け取ったmappingConfig:', mappingConfig);
-  
+  console.log('🔥 MainFieldsSection: 各カテゴリの項目数:', {
+    itemCodeItems: mappingConfig?.itemCodeItems?.length || 0,
+    incomeItems: mappingConfig?.incomeItems?.length || 0,
+    deductionItems: mappingConfig?.deductionItems?.length || 0,
+    attendanceItems: mappingConfig?.attendanceItems?.length || 0,
+    kyItems: mappingConfig?.kyItems?.length || 0,
+    totalItems: mappingConfig?.totalItems?.length || 0
+  });
+
   const safeMainFields = mappingConfig?.mainFields || {};
-  
+
   // すべての項目を収集（itemCodeItemsが主要な保存場所）
-  const allItems = [
+  const allItemsRaw = [
     ...(mappingConfig?.itemCodeItems || []),
     ...(mappingConfig?.incomeItems || []),
     ...(mappingConfig?.deductionItems || []),
     ...(mappingConfig?.attendanceItems || []),
     ...(mappingConfig?.kyItems || []),
     ...(mappingConfig?.totalItems || [])  // 合計項目（総支給額、総控除額、差引支給額等）
-  ].filter(item => item && item.headerName); // headerNameがある項目のみ使用
-  
+  ];
+  console.log('🔥 MainFieldsSection: allItemsRaw（フィルタ前）:', allItemsRaw.length, '件');
+  console.log('🔥 MainFieldsSection: allItemsRaw最初の3個:', allItemsRaw.slice(0, 3));
+
+  // headerNameがある項目のみ使用（空文字も許可するよう変更）
+  const allItems = allItemsRaw.filter(item => item && (item.headerName || item.itemName));
+
   console.log('🔥 MainFieldsSection: allItems数:', allItems.length);
   console.log('🔥 MainFieldsSection: allItemsの最初の5個:', allItems.slice(0, 5));
-  
-  // 重複を除去（同じheaderNameの項目は最初のものを使用）
+
+  // 重複を除去（headerNameまたはitemNameをキーとして使用）
   const uniqueItemsMap = new Map();
   allItems.forEach(item => {
-    if (!uniqueItemsMap.has(item.headerName)) {
-      uniqueItemsMap.set(item.headerName, item);
+    const key = item.headerName || item.itemName || `col_${item.columnIndex}`;
+    if (!uniqueItemsMap.has(key)) {
+      uniqueItemsMap.set(key, item);
     }
   });
   const fixedItems = Array.from(uniqueItemsMap.values());
-  
+
   console.log('🔧 アイテムをそのまま使用（最初の3個）:', fixedItems.slice(0, 3));
-  
-  // 記号（headerName）を表示するように変更
-  const availableSymbols = fixedItems.map(item => item.headerName).filter(s => s && s.trim());
-  
+
+  // 記号（headerNameまたはitemName）を表示するように変更
+  const availableSymbols = fixedItems.map(item => item.headerName || item.itemName).filter(s => s && s.trim());
+
   // mainFieldsから正しい記号を取得するヘルパー関数
   const getSymbolFromMainField = (mainField) => {
     if (!mainField) return '';
-    
-    // mainField.headerNameが記号の場合はそのまま返す
-    if (mainField.headerName && mainField.headerName.startsWith('KY')) {
+
+    // mainField.headerNameまたはitemNameがある場合はそのまま返す
+    if (mainField.headerName) {
       return mainField.headerName;
     }
-    
-    // mainField.headerNameが日本語の場合、同じcolumnIndexのfixedItemsから記号を探す
+    if (mainField.itemName) {
+      return mainField.itemName;
+    }
+
+    // columnIndexから探す
     if (mainField.columnIndex >= 0) {
       const matchedItem = fixedItems.find(item => item.columnIndex === mainField.columnIndex);
-      return matchedItem?.headerName || '';
+      return matchedItem?.headerName || matchedItem?.itemName || '';
     }
-    
+
     return '';
   };
-  
+
   // 表示用の項目名を取得するヘルパー関数
   const getDisplayNameFromSymbol = (symbol) => {
     if (!symbol) return symbol;
-    const matchedItem = fixedItems.find(item => item.headerName === symbol);
+    const matchedItem = fixedItems.find(item =>
+      item.headerName === symbol || item.itemName === symbol
+    );
     return matchedItem?.itemName || symbol;
   };
   
