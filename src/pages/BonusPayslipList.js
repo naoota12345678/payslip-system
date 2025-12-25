@@ -450,10 +450,13 @@ function BonusPayslipList() {
                    <div className="flex items-center space-x-2">
                      {/* 管理者の場合のみメール送信ボタンを表示 */}
                      {(userDetails.userType === 'company' || userDetails.role === 'admin') && (() => {
-                       const uploadId = datePayslips[0]?.uploadId;
-                       const historyKey = `${uploadId}_${formatDate(date)}`;
-                       const isSent = emailHistory[historyKey];
-                       const isScheduled = scheduleHistory[historyKey];
+                       // 複数のuploadIdがある場合、いずれかが送信済みかチェック
+                       const formattedDate = formatDate(date);
+                       const uploadIds = [...new Set(datePayslips.map(p => p.uploadId).filter(Boolean))];
+                       const isSent = uploadIds.some(uid => emailHistory[`${uid}_${formattedDate}`]);
+                       const isScheduled = uploadIds.some(uid => scheduleHistory[`${uid}_${formattedDate}`])
+                         ? scheduleHistory[`${uploadIds[0]}_${formattedDate}`]
+                         : null;
 
                        // 状態判定: 送信済み > 予約済み > 未送信
                        let status = 'unsent';

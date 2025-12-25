@@ -670,10 +670,12 @@ function PayslipList() {
                 </div>
                 <div className="flex items-center space-x-2">
                   {userDetails?.role === 'admin' && (() => {
-                    const uploadId = payslipsForDate[0]?.uploadId;
-                    const historyKey = `${uploadId}_${paymentDate}`;
-                    const isSent = emailHistory[historyKey];
-                    const isScheduled = scheduleHistory[historyKey];
+                    // 複数のuploadIdがある場合、いずれかが送信済みかチェック
+                    const uploadIds = [...new Set(payslipsForDate.map(p => p.uploadId).filter(Boolean))];
+                    const isSent = uploadIds.some(uid => emailHistory[`${uid}_${paymentDate}`]);
+                    const isScheduled = uploadIds.some(uid => scheduleHistory[`${uid}_${paymentDate}`])
+                      ? scheduleHistory[`${uploadIds[0]}_${paymentDate}`] // 表示用に最初のものを使用
+                      : null;
 
                     // 状態判定: 送信済み > 予約済み > 未送信
                     let status = 'unsent';
