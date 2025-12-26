@@ -20,6 +20,20 @@ const SimpleCSVUpload = () => {
   const [employeeIdColumn, setEmployeeIdColumn] = useState('');
   const [departmentCodeColumn, setDepartmentCodeColumn] = useState('');
   // 給与専用（賞与機能は分離済み）
+
+  // サンプルCSVダウンロード関数
+  const downloadSampleCSV = () => {
+    const sampleData = `従業員コード,氏名,基本給,残業手当,通勤手当,健康保険,厚生年金,所得税,総支給額,総控除額,差引支給額
+001,山田太郎,300000,50000,10000,15000,27450,8500,360000,50950,309050
+002,佐藤花子,280000,30000,15000,14000,25620,6200,325000,45820,279180`;
+
+    const blob = new Blob([sampleData], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = '給与サンプル.csv';
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
   
   
   // アップロード完了後の状態
@@ -735,6 +749,26 @@ const SimpleCSVUpload = () => {
           className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
           disabled={uploading}
         />
+
+        {/* サンプルCSVダウンロード */}
+        <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
+          <button
+            type="button"
+            onClick={downloadSampleCSV}
+            className="text-green-600 hover:text-green-800 text-sm font-medium flex items-center"
+          >
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            サンプルCSVをダウンロード
+          </button>
+          <p className="mt-2 text-xs text-green-700">
+            <strong>💡 マッピング設定の2行目（コード）は、CSVの1行目（ヘッダー）と一致させてください</strong>
+          </p>
+          <p className="mt-1 text-xs text-green-600">
+            例: 従業員コード,氏名,基本給,残業手当,通勤手当,健康保険,厚生年金,所得税...
+          </p>
+        </div>
       </div>
 
 

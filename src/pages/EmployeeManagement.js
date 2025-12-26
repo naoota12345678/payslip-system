@@ -491,7 +491,22 @@ function CSVUploadForm({ companyId, setError, setSuccess }) {
     const [departments, setDepartments] = useState([]);
     const [previewData, setPreviewData] = useState(null);
     const [importResult, setImportResult] = useState(null);
-    
+
+    // サンプルCSVダウンロード関数
+    const downloadSampleCSV = () => {
+      const sampleData = `従業員コード,氏名,メールアドレス,部門コード,役職,雇用形態
+001,山田太郎,yamada@example.com,SALES,課長,正社員
+002,佐藤花子,sato@example.com,HR,主任,正社員
+003,鈴木一郎,suzuki@example.com,DEV,一般,契約社員`;
+
+      const blob = new Blob([sampleData], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = '従業員サンプル.csv';
+      link.click();
+      URL.revokeObjectURL(link.href);
+    };
+
     // ランダムパスワード生成関数
     const generateSecurePassword = () => {
       const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -920,6 +935,23 @@ function CSVUploadForm({ companyId, setError, setSuccess }) {
                      hover:file:bg-blue-100"
           />
           <p className="mt-1 text-xs text-gray-500">CSVファイル（UTF-8）を選択してください</p>
+
+          {/* サンプルCSVダウンロード */}
+          <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <button
+              type="button"
+              onClick={downloadSampleCSV}
+              className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
+            >
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              サンプルCSVをダウンロード
+            </button>
+            <p className="mt-1 text-xs text-blue-600">
+              ヘッダー: 従業員コード,氏名,メールアドレス,部門コード,役職,雇用形態
+            </p>
+          </div>
         </div>
         
         {previewData && (
