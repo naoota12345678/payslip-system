@@ -198,9 +198,10 @@ function Navigation({ isMobile = false, onItemClick = () => {} }) {
             </li>
             
             
+            {/* 給与項目設定 - CSVマッピングで代替されるため非表示
             <li>
-              <Link 
-                to="/admin/settings/payroll-items" 
+              <Link
+                to="/admin/settings/payroll-items"
                 onClick={() => onItemClick()}
                 className={`flex items-center px-4 py-2 text-sm rounded-md ${isActive('/admin/settings/payroll-items')}`}
               >
@@ -210,9 +211,10 @@ function Navigation({ isMobile = false, onItemClick = () => {} }) {
                 給与項目設定
               </Link>
             </li>
-            
+            */}
+
             <li>
-              <Link 
+              <Link
                 to="/admin/settings/csv-mapping" 
                 onClick={() => onItemClick()}
                 className={`flex items-center px-4 py-2 text-sm rounded-md ${isActive('/admin/settings/csv-mapping')}`}
