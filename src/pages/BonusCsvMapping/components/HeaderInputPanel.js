@@ -50,10 +50,12 @@ const HeaderInputPanel = ({
       <div className="bg-white shadow rounded-lg p-6 mb-6">
         <h2 className="text-xl font-semibold mb-4">CSVヘッダーの一括入力</h2>
         
+        {/* モード切替ボタンを非表示 - 常に行ベースマッピングモードを使用 */}
+        {/*
         <div className="flex space-x-2 mb-4">
           <button
-            onClick={() => { 
-              setKyMappingMode(false); 
+            onClick={() => {
+              setKyMappingMode(false);
               setRowMappingMode(false);
             }}
             className={`px-4 py-2 text-sm font-medium rounded-md ${!kyMappingMode && !rowMappingMode ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
@@ -61,18 +63,17 @@ const HeaderInputPanel = ({
             通常モード
           </button>
           <button
-            onClick={() => { 
-              setKyMappingMode(true); 
+            onClick={() => {
+              setKyMappingMode(true);
               setRowMappingMode(false);
             }}
             className={`px-4 py-2 text-sm font-medium rounded-md ${kyMappingMode && !rowMappingMode ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
           >
             項目コードマッピングモード
           </button>
-          {/* 新しいモード追加 */}
           <button
-            onClick={() => { 
-              setKyMappingMode(false); 
+            onClick={() => {
+              setKyMappingMode(false);
               setRowMappingMode(true);
             }}
             className={`px-4 py-2 text-sm font-medium rounded-md ${!kyMappingMode && rowMappingMode ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
@@ -80,6 +81,7 @@ const HeaderInputPanel = ({
             行ベースマッピングモード
           </button>
         </div>
+        */}
         
         {/* 通常モード */}
         {!kyMappingMode && !rowMappingMode && (
