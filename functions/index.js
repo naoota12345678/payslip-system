@@ -2567,7 +2567,8 @@ exports.sendDocumentDeliveryNotification = onCall({
         const employeeData = employeeSnapshot.docs[0].data();
         console.log(`✅ 従業員発見: ${employeeData.name} (${employeeData.employeeId}), isActive=${employeeData.isActive}, email=${employeeData.email}`);
 
-        if (employeeData.email && employeeData.isActive) {
+        // isActive !== false でチェック（undefined も送信対象、退職者のみ除外）
+        if (employeeData.email && employeeData.isActive !== false) {
           employees.push({
             employeeId: employeeData.employeeId,
             name: employeeData.name,
