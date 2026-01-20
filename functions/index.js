@@ -3352,7 +3352,7 @@ exports.startDocumentNotificationJob = onCall({
       });
       
       // バックグラウンドでジョブを処理
-      processDocumentNotificationJob(jobRef.id, documentId, documentTitle, recipientEmployeeIds)
+      processDocumentNotificationJob(jobRef.id, documentId, documentTitle, recipientEmployeeIds, companyId)
         .catch(error => {
           console.error('バックグラウンドジョブエラー:', error);
         });
@@ -3403,8 +3403,8 @@ exports.startDocumentNotificationJob = onCall({
 });
 
 // PDF配信通知メール送信ジョブ処理（バックグラウンド）
-const processDocumentNotificationJob = async (jobId, documentId, documentTitle, recipientEmployeeIds) => {
-  console.log(`🔄 PDF配信ジョブ処理開始: ${jobId}`);
+const processDocumentNotificationJob = async (jobId, documentId, documentTitle, recipientEmployeeIds, companyId) => {
+  console.log(`🔄 PDF配信ジョブ処理開始: ${jobId}, companyId: ${companyId}`);
   
   try {
     // ジョブステータスを'running'に更新
@@ -3421,14 +3421,16 @@ const processDocumentNotificationJob = async (jobId, documentId, documentTitle, 
     
     for (const employeeId of recipientEmployeeIds) {
       try {
-        // 従業員情報取得
+        // 従業員情報取得（companyIdフィルタ必須 - セキュリティ対策）
         const employeeSnapshot = await db.collection('employees')
           .where('employeeId', '==', employeeId)
+          .where('companyId', '==', companyId)
           .limit(1)
           .get();
-        
+
         if (employeeSnapshot.empty) {
           failCount++;
+          console.log(`❌ 従業員が見つかりません: employeeId=${employeeId}, companyId=${companyId}`);
           results.push({
             employeeId: employeeId,
             success: false,
@@ -3566,7 +3568,8 @@ exports.executeScheduledDocumentNotifications = onSchedule({
           jobRef.id,
           schedule.documentId,
           schedule.documentTitle,
-          schedule.recipientEmployeeIds
+          schedule.recipientEmployeeIds,
+          schedule.companyId
         );
         
         // 予約を完了に更新
