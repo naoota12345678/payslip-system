@@ -438,10 +438,13 @@ function PdfDeliveryManagement() {
       const docRef = await addDoc(collection(db, 'documents'), documentData);
       
       // メール通知送信（全対象者）
+      console.log(`🔍 デバッグ: bulkEmailSendOption = "${bulkEmailSendOption}"`);
+      console.log(`🔍 デバッグ: bulkScheduledDate = "${bulkScheduledDate}", bulkScheduledTime = "${bulkScheduledTime}"`);
+
       if (bulkEmailSendOption !== 'none') {
         try {
           const recipientEmployeeIds = Object.keys(assignments);
-          
+
           if (recipientEmployeeIds.length > 0) {
             if (bulkEmailSendOption === 'immediate') {
               // 即時送信（従来の処理）
