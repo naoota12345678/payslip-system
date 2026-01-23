@@ -43,6 +43,9 @@ function PdfDeliveryManagement() {
   const [bulkScheduledDate, setBulkScheduledDate] = useState('');
   const [bulkScheduledTime, setBulkScheduledTime] = useState('09:00');
 
+  // メール配信ステータス
+  const [emailSchedules, setEmailSchedules] = useState({});
+
   // テスト会社かどうかのチェック
   const isTestCompany = userDetails?.companyId?.includes('test-') || false;
 
@@ -112,6 +115,41 @@ function PdfDeliveryManagement() {
 
     fetchDocuments();
   }, [userDetails]);
+
+  // メール配信ステータスを取得
+  useEffect(() => {
+    const fetchEmailSchedules = async () => {
+      if (!userDetails?.companyId || documents.length === 0) return;
+
+      try {
+        const q = query(
+          collection(db, 'documentEmailSchedules'),
+          where('companyId', '==', userDetails.companyId)
+        );
+
+        const querySnapshot = await getDocs(q);
+        const schedules = {};
+
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          // documentIdをキーにしてスケジュール情報を保存
+          schedules[data.documentId] = {
+            status: data.status,
+            scheduledDate: data.scheduledDate,
+            successCount: data.successCount || 0,
+            failCount: data.failCount || 0
+          };
+        });
+
+        console.log('📧 メールスケジュール取得:', schedules);
+        setEmailSchedules(schedules);
+      } catch (err) {
+        console.error('メールスケジュール取得エラー:', err);
+      }
+    };
+
+    fetchEmailSchedules();
+  }, [userDetails, documents]);
 
   // 配信タイプの日本語表示
   const getDeliveryTypeLabel = (type) => {
@@ -675,6 +713,9 @@ function PdfDeliveryManagement() {
                   対象者数
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  メール状況
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   アクション
                 </th>
               </tr>
@@ -682,7 +723,7 @@ function PdfDeliveryManagement() {
             <tbody className="bg-white divide-y divide-gray-200">
               {documents.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
                     配信された書類はありません
                   </td>
                 </tr>
@@ -710,12 +751,32 @@ function PdfDeliveryManagement() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {doc.type === 'broadcast' ? '全員' : 
+                      {doc.type === 'broadcast' ? '全員' :
                        doc.type === 'individual' ? `${doc.totalRecipients || Object.keys(doc.assignments || {}).length}名` :
                        doc.type === 'bulk_individual' ? `${Object.keys(doc.assignments || {}).length}名` : 'N/A'}
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {emailSchedules[doc.id] ? (
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          emailSchedules[doc.id].status === 'completed'
+                            ? 'bg-green-100 text-green-800'
+                            : emailSchedules[doc.id].status === 'processing'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {emailSchedules[doc.id].status === 'completed'
+                            ? `✅ 完了（${emailSchedules[doc.id].successCount}件成功）`
+                            : emailSchedules[doc.id].status === 'processing'
+                            ? '📤 送信中'
+                            : `⏳ 予約中（${emailSchedules[doc.id].scheduledDate?.toDate?.()?.toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) || ''}）`
+                          }
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 text-xs">― 送信なし</span>
+                      )}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button 
+                      <button
                         onClick={() => {
                           console.log('📄 詳細ボタンクリック開始');
                           handleShowDetail(doc);
