@@ -645,22 +645,29 @@ function CsvMapping() {
     const result = createFromInput(line1, line2);
 
     if (result) {
-      // orientationをcolumnに設定して保存
+      // orientationをcolumnに設定（UI反映用）
       setMappingConfig(prev => ({
         ...prev,
         orientation: 'column'
       }));
 
-      // 自動保存
-      // Note: setMappingConfigはbatchで反映されるので、少し待ってから保存
-      setTimeout(async () => {
-        const success = await saveMapping();
-        if (success) {
+      // まずマッピング設定を保存
+      const success = await saveMapping();
+      if (success) {
+        // saveMappingの後にorientation: 'column'を確実に上書き保存
+        // （setMappingConfigの反映タイミングに依存しないようにmergeで直接書き込む）
+        try {
+          const docRef = doc(db, 'csvMappings', userDetails.companyId);
+          await setDoc(docRef, { orientation: 'column' }, { merge: true });
+          console.log('✅ orientation: column をFirestoreに保存しました');
           setSuccess('列ベースマッピングを作成して保存しました。CSVアップロード時に自動的に転置されます。');
+        } catch (err) {
+          console.error('❌ orientation保存エラー:', err);
+          setError('orientation保存に失敗しました: ' + err.message);
         }
-      }, 100);
+      }
     }
-  }, [columnBasedInput, mappingConfig, createFromInput, saveMapping, setError, setSuccess, setMappingConfig]);
+  }, [columnBasedInput, mappingConfig, createFromInput, saveMapping, setError, setSuccess, setMappingConfig, userDetails]);
 
   // ダイレクト保存（シンプル版では無効化）
   const handleDirectSave = useCallback(async () => {

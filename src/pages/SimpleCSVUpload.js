@@ -22,7 +22,7 @@ const SimpleCSVUpload = () => {
   const [departmentCodeColumn, setDepartmentCodeColumn] = useState('');
   // 給与専用（賞与機能は分離済み）
 
-  // サンプルCSVダウンロード関数
+  // サンプルCSVダウンロード関数（行ベース）
   const downloadSampleCSV = () => {
     const sampleData = `従業員コード,氏名,基本給,残業手当,通勤手当,健康保険,厚生年金,所得税,総支給額,総控除額,差引支給額
 001,山田太郎,300000,50000,10000,15000,27450,8500,360000,50950,309050
@@ -33,6 +33,29 @@ const SimpleCSVUpload = () => {
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = '給与サンプル.csv';
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+
+  // サンプルCSVダウンロード関数（列ベース）
+  const downloadColumnSampleCSV = () => {
+    const sampleData = `社員番号,1,2,3
+氏名,山田太郎,佐藤花子,鈴木一郎
+基本給,300000,280000,250000
+残業手当,50000,30000,40000
+通勤手当,10000,15000,12000
+健康保険,15000,14000,13000
+厚生年金,27450,25620,23100
+所得税,8500,6200,5500
+総支給額,360000,325000,302000
+総控除額,50950,45820,41600
+差引支給額,309050,279180,260400`;
+
+    const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+    const blob = new Blob([bom, sampleData], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = '給与サンプル_列ベース.csv';
     link.click();
     URL.revokeObjectURL(link.href);
   };
@@ -842,6 +865,21 @@ const SimpleCSVUpload = () => {
           <p className="mt-1 text-xs text-green-600">
             例: 従業員コード,氏名,基本給,残業手当,通勤手当,健康保険,厚生年金,所得税...
           </p>
+          <div className="mt-2 pt-2 border-t border-green-200">
+            <button
+              type="button"
+              onClick={downloadColumnSampleCSV}
+              className="text-purple-600 hover:text-purple-800 text-sm font-medium flex items-center"
+            >
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              列ベース サンプルCSVをダウンロード
+            </button>
+            <p className="mt-1 text-xs text-purple-600">
+              列ベースマッピング用: 1列=1従業員、1行目に社員番号を記載
+            </p>
+          </div>
         </div>
       </div>
 
