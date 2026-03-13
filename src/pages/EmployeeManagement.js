@@ -494,7 +494,7 @@ function CSVUploadForm({ companyId, setError, setSuccess }) {
 
     // サンプルCSVダウンロード関数
     const downloadSampleCSV = () => {
-      const sampleData = `従業員コード,氏名,メールアドレス,部門コード,役職,雇用形態
+      const sampleData = `社員番号,氏名,メールアドレス,部署コード,役職,契約形態
 001,山田太郎,yamada@example.com,SALES,課長,正社員
 002,佐藤花子,sato@example.com,HR,主任,正社員
 003,鈴木一郎,suzuki@example.com,DEV,一般,契約社員`;
@@ -950,7 +950,7 @@ function CSVUploadForm({ companyId, setError, setSuccess }) {
               サンプルCSVをダウンロード
             </button>
             <p className="mt-1 text-xs text-blue-600">
-              ヘッダー: 従業員コード,氏名,メールアドレス,部門コード,役職,雇用形態
+              ヘッダー: 社員番号,氏名,メールアドレス,部署コード,役職,契約形態
             </p>
           </div>
         </div>
