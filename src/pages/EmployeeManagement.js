@@ -683,8 +683,8 @@ function CSVUploadForm({ companyId, setError, setSuccess }) {
         throw new Error("CSVデータが不正です");
       }
       
-      // ヘッダー行を取得（カンマまたはタブ区切り）
-      const headers = lines[0].split(/[,\t]/).map(h => h.trim());
+      // ヘッダー行を取得（カンマまたはタブ区切り）- BOM除去
+      const headers = lines[0].replace(/^\uFEFF/, '').split(/[,\t]/).map(h => h.trim().replace(/"/g, ''));
       
       // 必要なカラムのインデックスを取得
       const employeeIdIndex = headers.indexOf('社員番号');
