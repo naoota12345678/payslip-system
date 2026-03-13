@@ -42,33 +42,20 @@ function PayslipPreview({ payslipData, showDetailedInfo = false, isBonus = false
     return new Date(date).toLocaleDateString('ja-JP');
   };
 
-  // セクションタイトルのスタイル
-  const getSectionStyle = (sectionType) => {
-    const baseStyle = "text-white text-center py-2 font-medium";
-    switch (sectionType) {
-      case 'attendance':
-        return `${baseStyle} bg-green-500`;
-      case 'income':
-        return `${baseStyle} bg-blue-500`;
-      case 'deduction':
-        return `${baseStyle} bg-yellow-500`;
-      case 'total':
-        return `${baseStyle} bg-red-500`;
-      default:
-        return `${baseStyle} bg-gray-500`;
+  // セクションタイトルのスタイル（ネイビー×ゴールドテーマ）
+  const getSectionHeaderStyle = (sectionType) => {
+    if (sectionType === 'total') {
+      return {
+        className: "text-center py-2 font-medium",
+        style: { backgroundColor: '#B8976C', color: '#0D2137' }
+      };
     }
+    return {
+      className: "text-center py-2 font-medium",
+      style: { backgroundColor: '#0D2137', color: '#B8976C' }
+    };
   };
 
-  // セクション名の取得
-  const getSectionTitle = (sectionType) => {
-    switch (sectionType) {
-      case 'attendance': return '勤怠';
-      case 'income': return '支給';
-      case 'deduction': return '控除';
-      case 'total': return '合計';
-      default: return '';
-    }
-  };
 
 
 
@@ -124,7 +111,7 @@ function PayslipPreview({ payslipData, showDetailedInfo = false, isBonus = false
       <div className="grid grid-cols-2 md:grid-cols-4 print:!grid-cols-4 gap-0 border-b">
         {/* 勤怠セクション */}
         <div className="border-r border-b md:border-b-0">
-          <div className={getSectionStyle('attendance')}>
+          <div className={getSectionHeaderStyle('attendance').className} style={getSectionHeaderStyle('attendance').style}>
             勤怠
           </div>
           <div className="p-2 print:p-1">
@@ -159,7 +146,7 @@ function PayslipPreview({ payslipData, showDetailedInfo = false, isBonus = false
 
         {/* 支給セクション */}
         <div className="md:border-r border-b md:border-b-0">
-          <div className={getSectionStyle('income')}>
+          <div className={getSectionHeaderStyle('income').className} style={getSectionHeaderStyle('income').style}>
             支給
           </div>
           <div className="p-2 print:p-1">
@@ -196,7 +183,7 @@ function PayslipPreview({ payslipData, showDetailedInfo = false, isBonus = false
 
         {/* 控除セクション */}
         <div className="border-r">
-          <div className={getSectionStyle('deduction')}>
+          <div className={getSectionHeaderStyle('deduction').className} style={getSectionHeaderStyle('deduction').style}>
             控除
           </div>
           <div className="p-2 print:p-1">
@@ -233,10 +220,10 @@ function PayslipPreview({ payslipData, showDetailedInfo = false, isBonus = false
 
         {/* 合計セクション */}
         <div>
-          <div className={getSectionStyle('total')}>
+          <div className={getSectionHeaderStyle('total').className} style={getSectionHeaderStyle('total').style}>
             合計
           </div>
-          <div className="p-2 print:p-1">
+          <div className="p-2 print:p-1" style={{ backgroundColor: '#FBF6EE' }}>
             {/* CSVの合計データをそのまま表示 */}
             {(() => {
               const filteredItems = (payslipData.otherItems || [])
@@ -248,20 +235,24 @@ function PayslipPreview({ payslipData, showDetailedInfo = false, isBonus = false
                   if (item.value === '' || item.value === null || item.value === undefined) return false;
                   return true;
                 });
-              
+
               return filteredItems.length > 0 ? (
                 filteredItems
                   .sort((a, b) => (a.order || 0) - (b.order || 0))
-                  .map((item, index) => (
-                <div key={index} className="flex justify-between text-xs print:text-[0.6rem] py-1 print:py-0.5 border-b border-gray-100 last:border-b-0">
+                  .map((item, index) => {
+                    // 差引支給額・支払総額は強調表示
+                    const isNetPay = item.name && (item.name.includes('差引') || item.name.includes('支払総額') || item.name.includes('手取'));
+                    return (
+                <div key={index} className="flex justify-between text-xs print:text-[0.6rem] py-1 print:py-0.5 border-b last:border-b-0" style={{ borderColor: '#E8DFD0', color: isNetPay ? '#0D2137' : '#8B6B42', fontWeight: isNetPay ? 'bold' : 'normal' }}>
                   <span>{item.name}</span>
                   <span className="text-right">
                     {typeof item.value === 'number' ? formatCurrency(item.value) : item.value}
                   </span>
                 </div>
-                  ))
+                    );
+                  })
               ) : (
-                <div className="text-xs print:text-[0.6rem] text-gray-500 text-center py-2 print:py-1">
+                <div className="text-xs print:text-[0.6rem] text-center py-2 print:py-1" style={{ color: '#8B6B42' }}>
                   データなし
                 </div>
               );

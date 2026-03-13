@@ -137,14 +137,27 @@ const generateBonusPrintHTML = (payslipData, companyInfo, departmentInfo, employ
             padding: 8px; 
             min-height: 150px; 
         }
-        .section-title { 
-            font-weight: bold; 
-            font-size: 12px; 
-            text-align: center; 
-            margin-bottom: 8px; 
-            padding: 4px; 
-            background: #f0f0f0; 
-            border-bottom: 1px solid black; 
+        .section-title {
+            font-weight: bold;
+            font-size: 12px;
+            text-align: center;
+            margin-bottom: 8px;
+            padding: 4px;
+            background: #0D2137;
+            color: #B8976C;
+            border-bottom: 1px solid #0D2137;
+        }
+        .section-total .section-title {
+            background: #B8976C;
+            color: #0D2137;
+            border-bottom: 1px solid #B8976C;
+        }
+        .section-total {
+            background: #FBF6EE;
+        }
+        .section-total .item-name,
+        .section-total .item-value {
+            color: #8B6B42;
         }
         .item { 
             display: flex; 
@@ -220,7 +233,7 @@ const generateBonusPrintHTML = (payslipData, companyInfo, departmentInfo, employ
                 </div>
             </div>
             
-            <div class="section">
+            <div class="section section-total">
                 <div class="section-title">合計</div>
                 <div>
                     ${summaryItems.length > 0 ? summaryItems.map(item => 
