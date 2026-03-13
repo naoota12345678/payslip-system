@@ -123,7 +123,8 @@ export const loadMappingFromFirestore = (firestoreData) => {
       attendanceItems: firestoreData.attendanceItems || [],
       totalItems: firestoreData.totalItems || firestoreData.summaryItems || [], // 新旧両方に対応
       itemCodeItems: firestoreData.itemCodeItems || [],
-      mainFields: firestoreData.mainFields || {}
+      mainFields: firestoreData.mainFields || {},
+      orientation: firestoreData.orientation || 'row' // 行ベース or 列ベース
     },
     parsedHeaders: firestoreData.parsedHeaders || [],
     headerInput: firestoreData.headerInput || '',
@@ -150,6 +151,7 @@ export const prepareMappingForSave = (uiData) => {
     totalItems: uiData.mappingConfig?.totalItems || [], // summaryItems → totalItems に修正
     itemCodeItems: uiData.mappingConfig?.itemCodeItems || [],
     mainFields: uiData.mappingConfig?.mainFields || {},
+    orientation: uiData.mappingConfig?.orientation || 'row', // 行ベース or 列ベース
     parsedHeaders: uiData.parsedHeaders || [],
     headerInput: uiData.headerInput || '',
     rowBasedInput: uiData.rowBasedInput || '',

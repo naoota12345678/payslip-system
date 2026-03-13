@@ -20,7 +20,8 @@ export const useSimpleMappingConfig = (userDetails) => {
     attendanceItems: [],
     totalItems: [],
     itemCodeItems: [],
-    mainFields: {}
+    mainFields: {},
+    orientation: 'row' // 'row' = 行ベース, 'column' = 列ベース
   });
   const [parsedHeaders, setParsedHeaders] = useState([]);
   const [headerInput, setHeaderInput] = useState('');
@@ -87,15 +88,16 @@ export const useSimpleMappingConfig = (userDetails) => {
       console.log('=== 2行入力処理開始 ===');
       const mappingData = createMappingFromInput(line1, line2);
       
-      // UI状態を更新
-      setMappingConfig({
+      // UI状態を更新（現在のorientationを維持）
+      setMappingConfig(prev => ({
         incomeItems: mappingData.incomeItems,
         deductionItems: mappingData.deductionItems,
         attendanceItems: mappingData.attendanceItems,
         totalItems: mappingData.totalItems || [],
         itemCodeItems: mappingData.itemCodeItems,
-        mainFields: mappingData.mainFields
-      });
+        mainFields: mappingData.mainFields,
+        orientation: prev.orientation || 'row'
+      }));
       setParsedHeaders(mappingData.parsedHeaders);
       setHeaderInput(mappingData.headerInput);
       setRowBasedInput(mappingData.rowBasedInput);
@@ -159,7 +161,8 @@ export const useSimpleMappingConfig = (userDetails) => {
       attendanceItems: [],
       totalItems: [],
       itemCodeItems: [],
-      mainFields: {}
+      mainFields: {},
+      orientation: 'row'
     });
     setParsedHeaders([]);
     setHeaderInput('');

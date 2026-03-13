@@ -5,6 +5,7 @@ import { collection, addDoc, serverTimestamp, getDocs, query, where, doc, getDoc
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
 import { fetchUnifiedMappingSettings } from '../utils/mappingUtils';
+import { transposeColumnCSV } from '../utils/csvTranspose';
 
 const SimpleCSVUpload = () => {
   const { userDetails } = useAuth();
@@ -272,7 +273,8 @@ const SimpleCSVUpload = () => {
         simpleMapping,
         itemCategories,
         visibilitySettings,
-        mainFields: data.mainFields || {} // mainFieldsも返す
+        mainFields: data.mainFields || {}, // mainFieldsも返す
+        orientation: data.orientation || 'row' // 行ベース or 列ベース
       };
 
       console.log('✅ 給与マッピング設定取得完了:', {
@@ -316,44 +318,65 @@ const SimpleCSVUpload = () => {
     const reader = new FileReader();
     reader.onload = async (e) => {
       const text = e.target.result;
-      const lines = text.split('\n').filter(line => line.trim());
-      
-      if (lines.length < 2) {
-        setMessage('CSVファイルにデータが不足しています。');
-        return;
-      }
-
-      // ヘッダー行を取得
-      const headerLine = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-      setHeaders(headerLine);
 
       // 【追加】選択された給与/賞与のCSVマッピング設定を取得
       const mappingSettings = await fetchMappingSettings();
 
-      // データ行を取得
-      const dataLines = lines.slice(1).map(line => {
-        const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
-        const rowData = {};
-        headerLine.forEach((header, index) => {
-          rowData[header] = values[index] || '';
-        });
-        return rowData;
-      });
+      let headerLine, dataLines;
 
+      // 列ベースCSVの場合は転置してからパース
+      if (mappingSettings.orientation === 'column') {
+        console.log('📐 列ベースCSVを検出 - 転置処理を実行');
+        try {
+          const { headers: transposedHeaders, dataRows } = transposeColumnCSV(text);
+          headerLine = transposedHeaders;
+          dataLines = dataRows;
+          console.log('📐 転置完了:', {
+            'ヘッダー数': headerLine.length,
+            'データ行数': dataLines.length
+          });
+        } catch (err) {
+          console.error('📐 転置エラー:', err);
+          setMessage('列ベースCSVの転置に失敗しました: ' + err.message);
+          return;
+        }
+      } else {
+        // 行ベースCSV（従来の処理）
+        const lines = text.split('\n').filter(line => line.trim());
+
+        if (lines.length < 2) {
+          setMessage('CSVファイルにデータが不足しています。');
+          return;
+        }
+
+        headerLine = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+
+        dataLines = lines.slice(1).map(line => {
+          const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+          const rowData = {};
+          headerLine.forEach((header, index) => {
+            rowData[header] = values[index] || '';
+          });
+          return rowData;
+        });
+      }
+
+      setHeaders(headerLine);
       setCsvData(dataLines);
       setShowPreview(true);
-      setMessage(`${dataLines.length}件のデータが読み込まれました。`);
-      
+      setMessage(`${dataLines.length}件のデータが読み込まれました。${mappingSettings.orientation === 'column' ? '（列ベースCSV - 転置済み）' : ''}`);
+
       // CSVヘッダーの詳細デバッグ
       console.log('🔍 CSVヘッダー詳細分析:');
       console.log('ヘッダー一覧:', headerLine);
       console.log('最初の行のデータ:', dataLines[0]);
       console.log('取得したマッピング設定:', mappingSettings);
-      
+
       console.log('🔍 CSVマッピング確認:', {
         '従業員IDカラム': mappingSettings.employeeIdColumn,
         '部門コードカラム': mappingSettings.departmentCodeColumn,
-        '実際のCSVヘッダー': headerLine
+        '実際のCSVヘッダー': headerLine,
+        'CSV方向': mappingSettings.orientation
       });
     };
     reader.readAsText(file);
@@ -400,25 +423,65 @@ const SimpleCSVUpload = () => {
       // uploadIdを生成（Firestoreの自動生成IDの代わり）
       const uploadData = { id: `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}` };
 
+      // 列ベースCSVの場合、従業員名→ID変換マップを事前作成
+      let employeeNameMap = null;
+      if (mappingSettings.orientation === 'column') {
+        console.log('📐 列ベースCSV: 従業員名→IDマップを作成中...');
+        const allEmployeesSnapshot = await getDocs(
+          query(collection(db, 'employees'), where('companyId', '==', userDetails.companyId))
+        );
+        employeeNameMap = {};
+        allEmployeesSnapshot.docs.forEach(docSnap => {
+          const data = docSnap.data();
+          const name = (data.name || data.displayName || '').replace(/\s+/g, '');
+          if (name) {
+            employeeNameMap[name] = {
+              docId: docSnap.id,
+              employeeId: data.employeeId || '',
+              name: data.name || data.displayName || '',
+              email: data.email || '',
+              departmentCode: data.departmentCode || ''
+            };
+          }
+        });
+        console.log(`📐 従業員名マップ作成完了: ${Object.keys(employeeNameMap).length}名`);
+        console.log('📐 登録済み従業員名:', Object.keys(employeeNameMap));
+      }
+
       // 各行のデータを給与明細として保存
       for (let i = 0; i < csvData.length; i++) {
         const rowData = csvData[i];
-        
+
         // 【修正】従業員番号を動的に検索 - マッピング設定を使用
         let employeeId = null;
         let departmentCode = null;
-        
+
         console.log(`🔍 [行${i + 1}] CSV行データ:`, rowData);
         console.log(`🔍 [行${i + 1}] 使用するマッピング設定:`, {
           employeeIdColumn: mappingSettings.employeeIdColumn,
-          departmentCodeColumn: mappingSettings.departmentCodeColumn
+          departmentCodeColumn: mappingSettings.departmentCodeColumn,
+          orientation: mappingSettings.orientation
         });
-        
-        // 【シンプル化】マッピング設定の従業員番号カラムのみ使用
-        if (mappingSettings.employeeIdColumn && rowData[mappingSettings.employeeIdColumn]) {
+
+        // 列ベースCSVの場合: 従業員名でマッチング
+        if (mappingSettings.orientation === 'column' && rowData['__employeeName__']) {
+          const csvName = rowData['__employeeName__'].replace(/\s+/g, '');
+          console.log(`📐 [行${i + 1}] 列ベース: 従業員名 "${csvName}" で検索`);
+          const matched = employeeNameMap[csvName];
+          if (matched) {
+            employeeId = matched.employeeId;
+            departmentCode = matched.departmentCode;
+            console.log(`✅ [行${i + 1}] 従業員名マッチ: "${csvName}" → employeeId="${employeeId}"`);
+          } else {
+            console.warn(`❌ [行${i + 1}] 従業員名 "${csvName}" に一致する従業員が見つかりません`);
+            console.log(`📐 [行${i + 1}] 登録済み従業員名:`, Object.keys(employeeNameMap));
+          }
+        }
+        // 行ベースCSVの場合（既存処理）: マッピング設定の従業員番号カラムのみ使用
+        else if (mappingSettings.employeeIdColumn && rowData[mappingSettings.employeeIdColumn]) {
           employeeId = String(rowData[mappingSettings.employeeIdColumn]).trim();
           console.log(`✅ [行${i + 1}] 従業員番号取得: カラム "${mappingSettings.employeeIdColumn}" → "${employeeId}"`);
-        } else {
+        } else if (mappingSettings.orientation !== 'column') {
           console.error(`❌ [行${i + 1}] 従業員番号カラム "${mappingSettings.employeeIdColumn}" が見つからないか空です`);
           console.log(`🔍 [行${i + 1}] 利用可能なCSVカラム:`, Object.keys(rowData));
           console.log(`🔍 [行${i + 1}] CSVデータの詳細:`, rowData);
@@ -442,7 +505,17 @@ const SimpleCSVUpload = () => {
         // 【シンプル化】従業員IDに基づいてユーザー情報を取得
         let userId = null;
         try {
-          if (employeeId) {
+          // 列ベースCSVの場合: 名前マップから直接取得（個別クエリ不要）
+          if (mappingSettings.orientation === 'column' && rowData['__employeeName__']) {
+            const csvName = rowData['__employeeName__'].replace(/\s+/g, '');
+            const matched = employeeNameMap[csvName];
+            if (matched) {
+              userId = matched.docId;
+              console.log(`📐 従業員名マッチでuserId取得: "${csvName}" → ${userId}`);
+            }
+          }
+          // 行ベースCSVの場合（既存処理）
+          else if (employeeId) {
             console.log(`🔍 従業員検索開始: companyId="${userDetails.companyId}", employeeId="${employeeId}"`);
             
             // 【修正】employeesコレクションで従業員を検索

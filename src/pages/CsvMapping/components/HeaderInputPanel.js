@@ -18,7 +18,12 @@ const HeaderInputPanel = ({
   handleKyMapping,
   handleRowBasedMapping,
   handleDirectSave,  // 新しく追加
-  saving            // 新しく追加
+  saving,            // 新しく追加
+  orientation,       // 列ベース対応: 'row' or 'column'
+  setOrientation,    // 列ベース対応: orientation更新関数
+  columnBasedInput,  // 列ベース対応: 2列入力テキスト
+  setColumnBasedInput, // 列ベース対応: 2列入力更新関数
+  handleColumnBasedMapping // 列ベース対応: 列ベースマッピング実行関数
 }) => {
   
   try {
@@ -48,12 +53,41 @@ const HeaderInputPanel = ({
 
     return (
       <div className="bg-white shadow rounded-lg p-6 mb-6">
-        <h2 className="text-xl font-semibold mb-4">CSVヘッダーの一括入力</h2>
-        
+        <h2 className="text-xl font-semibold mb-4">CSVマッピング入力</h2>
+
+        {/* CSV方向切替（行ベース / 列ベース） */}
+        {orientation !== undefined && setOrientation && (
+          <div className="mb-4 flex items-center space-x-4">
+            <span className="text-sm font-medium text-gray-700">CSV形式：</span>
+            <button
+              type="button"
+              onClick={() => setOrientation('row')}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                orientation === 'row'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              行ベース（1行=1従業員）
+            </button>
+            <button
+              type="button"
+              onClick={() => setOrientation('column')}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                orientation === 'column'
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              列ベース（1列=1従業員）
+            </button>
+          </div>
+        )}
+
         {/* モード切替ボタンを非表示 - 常に行ベースマッピングモードを使用 */}
         
         {/* 通常モード */}
-        {!kyMappingMode && !rowMappingMode && (
+        {orientation !== 'column' && !kyMappingMode && !rowMappingMode && (
           <>
             <div className="mb-4">
               <label htmlFor="headerInput" className="block text-sm font-medium text-gray-700 mb-1">
@@ -85,7 +119,7 @@ const HeaderInputPanel = ({
         )}
         
         {/* KY項目マッピングモード */}
-        {kyMappingMode && !rowMappingMode && (
+        {orientation !== 'column' && kyMappingMode && !rowMappingMode && (
           <>
             <div className="mb-4">
               <label htmlFor="kyItemInput" className="block text-sm font-medium text-gray-700 mb-1">
@@ -142,8 +176,69 @@ const HeaderInputPanel = ({
           </>
         )}
 
+        {/* 列ベースマッピングモード */}
+        {orientation === 'column' && columnBasedInput !== undefined && (
+          <>
+            <div className="mb-4">
+              <label htmlFor="columnBasedInput" className="block text-sm font-medium text-gray-700 mb-1">
+                2列のデータをコピー＆ペーストしてください
+              </label>
+              <textarea
+                id="columnBasedInput"
+                rows="10"
+                value={columnBasedInput}
+                onChange={(e) => setColumnBasedInput(e.target.value)}
+                className="mt-1 focus:ring-purple-500 focus:border-purple-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                placeholder={"勤務日数\tATT01\n勤務時間\tATT02\n時給\tATT03\n基本給\tINC01\n交通費\tINC02\n雇用保険料\tDED01\n所得税\tDED02\n支払総額\tTOTAL01"}
+              ></textarea>
+              <p className="mt-1 text-xs text-gray-500">
+                <strong>1列目：</strong>項目名（画面で表示される名前）<br/>
+                <strong>2列目：</strong>項目コード（システム内で使用される識別子）<br/>
+                エクセルから2列を選択してコピー＆ペーストしてください
+              </p>
+
+              <div className="mt-4 p-4 bg-purple-50 border border-purple-200 rounded-md">
+                <h3 className="text-sm font-medium text-purple-700 mb-2">列ベースマッピングの使い方</h3>
+
+                <div className="text-xs text-purple-600 mb-3">
+                  <strong>列ベースCSV：</strong>1列が1人の従業員、各行が項目<br/>
+                  1. エクセルで1列目=項目名、2列目=項目コードを準備<br/>
+                  2. 2列を選択してコピー<br/>
+                  3. 上のテキストエリアに貼り付け<br/>
+                  4. 「列ベースマッピングを実行」ボタンをクリック
+                </div>
+
+                <div className="mt-2 text-xs text-purple-700 bg-purple-100 p-2 rounded">
+                  <strong>列ベースCSV例：</strong><br/>
+                  <code className="text-xs">
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;, 田中, 佐藤, ...<br/>
+                    基本給, 300000, 280000, ...<br/>
+                    交通費, 10000, 15000, ...<br/>
+                  </code>
+                </div>
+
+                <div className="mt-2 text-xs text-purple-600">
+                  <strong>注意：</strong>アップロード時にCSVは自動的に転置（縦横変換）されます。<br/>
+                  従業員は名前で照合されます。
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={handleColumnBasedMapping}
+                disabled={!columnBasedInput || !columnBasedInput.trim()}
+                className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:bg-gray-400"
+              >
+                列ベースマッピングを実行
+              </button>
+            </div>
+          </>
+        )}
+
         {/* 新しい行ベースマッピングモード */}
-        {!kyMappingMode && rowMappingMode && (
+        {orientation !== 'column' && !kyMappingMode && rowMappingMode && (
           <>
             <div className="mb-4">
               <label htmlFor="rowBasedInput" className="block text-sm font-medium text-gray-700 mb-1">

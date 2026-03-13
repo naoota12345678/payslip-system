@@ -62,7 +62,10 @@ function CsvMapping() {
   
   // アクティブなタブを管理
   const [activeTab, setActiveTab] = useState(TABS.INCOME);
-  
+
+  // 列ベースマッピング用state
+  const [columnBasedInput, setColumnBasedInput] = useState('');
+
   // JSONインポート
   const [jsonInput, setJsonInput] = useState('');
   const [showJsonImport, setShowJsonImport] = useState(false);
@@ -578,6 +581,87 @@ function CsvMapping() {
     setSuccess('✅ 新しいシンプルマッピングシステムに切り替えました！\n\n2行入力（項目名、項目コード）で直接マッピングを作成してください。');
   }, [setParsedHeaders, setHeaderInput, setKyItemInput, setRowBasedInput, setMappingConfig, setSuccess]);
 
+  // orientation切替ハンドラー
+  const handleSetOrientation = useCallback((newOrientation) => {
+    setMappingConfig(prev => ({
+      ...prev,
+      orientation: newOrientation
+    }));
+  }, [setMappingConfig]);
+
+  // 列ベースマッピング実行ハンドラー
+  const handleColumnBasedMapping = useCallback(async () => {
+    if (!columnBasedInput.trim()) {
+      setError('2列のデータを入力してください');
+      return;
+    }
+
+    const lines = columnBasedInput.split('\n').filter(line => line.trim().length > 0);
+
+    if (lines.length < 1) {
+      setError('少なくとも1行（項目名と項目コード）が必要です');
+      return;
+    }
+
+    // 既存の設定がある場合は確認
+    if (mappingConfig && (
+      mappingConfig.incomeItems?.length > 0 ||
+      mappingConfig.deductionItems?.length > 0 ||
+      mappingConfig.attendanceItems?.length > 0 ||
+      mappingConfig.totalItems?.length > 0
+    )) {
+      if (!window.confirm('既存のマッピング設定があります。新規作成すると現在の設定が失われます。続行しますか？')) {
+        return;
+      }
+    }
+
+    // 2列入力を2行入力に変換（各行をタブで分割して転置）
+    const itemNames = [];
+    const itemCodes = [];
+    lines.forEach(line => {
+      const parts = line.split('\t');
+      if (parts.length >= 2) {
+        itemNames.push(parts[0].trim());
+        itemCodes.push(parts[1].trim());
+      } else {
+        // タブがない場合はスペースで分割
+        const spaceParts = line.trim().split(/\s+/);
+        if (spaceParts.length >= 2) {
+          itemNames.push(spaceParts[0]);
+          itemCodes.push(spaceParts[1]);
+        }
+      }
+    });
+
+    if (itemNames.length === 0 || itemCodes.length === 0) {
+      setError('項目名と項目コードが正しく読み取れませんでした。タブ区切りまたはスペース区切りで2列入力してください。');
+      return;
+    }
+
+    // 2行形式に変換してcreateFromInputを使用
+    const line1 = itemNames.join('\t');
+    const line2 = itemCodes.join('\t');
+
+    const result = createFromInput(line1, line2);
+
+    if (result) {
+      // orientationをcolumnに設定して保存
+      setMappingConfig(prev => ({
+        ...prev,
+        orientation: 'column'
+      }));
+
+      // 自動保存
+      // Note: setMappingConfigはbatchで反映されるので、少し待ってから保存
+      setTimeout(async () => {
+        const success = await saveMapping();
+        if (success) {
+          setSuccess('列ベースマッピングを作成して保存しました。CSVアップロード時に自動的に転置されます。');
+        }
+      }, 100);
+    }
+  }, [columnBasedInput, mappingConfig, createFromInput, saveMapping, setError, setSuccess, setMappingConfig]);
+
   // ダイレクト保存（シンプル版では無効化）
   const handleDirectSave = useCallback(async () => {
     setError('この機能はシンプル版では利用できません。「🎯 シンプル保存」ボタンを使用してください。');
@@ -694,6 +778,11 @@ function CsvMapping() {
         handleRowBasedMapping={processRowBasedMapping}
         handleDirectSave={handleDirectSave}
         saving={saving}
+        orientation={mappingConfig.orientation || 'row'}
+        setOrientation={handleSetOrientation}
+        columnBasedInput={columnBasedInput}
+        setColumnBasedInput={setColumnBasedInput}
+        handleColumnBasedMapping={handleColumnBasedMapping}
       />
       
       {/* マッピング設定セクション */}
