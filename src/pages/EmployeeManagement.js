@@ -109,6 +109,27 @@ function EmployeeManagement() {
   };
   
 
+  // 初期パスワード一覧CSVダウンロード
+  const downloadPasswordList = () => {
+    const employeesWithPassword = employees.filter(emp => emp.tempPassword && emp.isActive !== false);
+    if (employeesWithPassword.length === 0) {
+      setError('初期パスワードが設定されている従業員がいません');
+      setTimeout(() => setError(''), 3000);
+      return;
+    }
+    const csvLines = ['社員番号,氏名,メールアドレス,初期パスワード'];
+    employeesWithPassword.forEach(emp => {
+      csvLines.push(`${emp.employeeId || ''},${emp.name || ''},${emp.email || ''},${emp.tempPassword}`);
+    });
+    const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+    const blob = new Blob([bom, csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = '初期パスワード一覧.csv';
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+
   // 部門名を取得（departmentCodeベース）
   const getDepartmentName = (departmentCode, departmentId = null) => {
     if (departmentCode) {
@@ -374,6 +395,22 @@ function EmployeeManagement() {
         <CSVUploadForm companyId={userDetails?.companyId} setError={setError} setSuccess={setSuccess} />
       </div>
       
+      {/* 初期パスワード一覧ダウンロード */}
+      {employees.some(emp => emp.tempPassword) && (
+        <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-8 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-yellow-800">初期パスワード一覧</p>
+            <p className="text-xs text-yellow-600 mt-1">従業員の社員番号・氏名・メールアドレス・初期パスワードをCSVでダウンロードできます</p>
+          </div>
+          <button
+            onClick={downloadPasswordList}
+            className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap"
+          >
+            パスワード一覧ダウンロード
+          </button>
+        </div>
+      )}
+
       {/* 従業員リスト */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
