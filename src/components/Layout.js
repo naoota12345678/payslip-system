@@ -50,6 +50,8 @@ function Layout() {
       setPageTitle('通知設定');
     } else if (path === '/profile') {
       setPageTitle('アカウント');
+    } else if (path === '/admin/format-builder') {
+      setPageTitle('取り込みフォーマット作成');
     } else if (path === '/admin/pdf-delivery') {
       setPageTitle('PDF配信管理');
     } else if (path === '/employee/documents') {

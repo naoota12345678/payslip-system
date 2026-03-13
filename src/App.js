@@ -56,6 +56,9 @@ import DepartmentSettings from './pages/DepartmentSettings';
 import NotificationSettings from './pages/NotificationSettings';
 import DataBackup from './pages/DataBackup';
 
+// フォーマットビルダー
+import FormatBuilder from './pages/admin/FormatBuilder';
+
 // PDF配信関連
 import PdfDeliveryManagement from './pages/admin/PdfDelivery';
 import EmployeeDocuments from './pages/employee/Documents';
@@ -117,6 +120,7 @@ function App() {
               
               {/* 給与データ管理 */}
               <Route path="upload" element={<SimpleCSVUpload />} />
+              <Route path="format-builder" element={<FormatBuilder />} />
               <Route path="settings/csv-mapping" element={<CsvMapping />} />
               <Route path="settings/payroll-items" element={<PayrollItemSettings />} />
               
