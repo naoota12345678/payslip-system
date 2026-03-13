@@ -499,7 +499,8 @@ function CSVUploadForm({ companyId, setError, setSuccess }) {
 002,佐藤花子,sato@example.com,HR,主任,正社員
 003,鈴木一郎,suzuki@example.com,DEV,一般,契約社員`;
 
-      const blob = new Blob([sampleData], { type: 'text/csv;charset=utf-8;' });
+      const bom = new Uint8Array([0xEF, 0xBB, 0xBF]); // UTF-8 BOM（Excel文字化け対策）
+      const blob = new Blob([bom, sampleData], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       link.download = '従業員サンプル.csv';

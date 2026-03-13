@@ -28,7 +28,8 @@ const SimpleCSVUpload = () => {
 001,山田太郎,300000,50000,10000,15000,27450,8500,360000,50950,309050
 002,佐藤花子,280000,30000,15000,14000,25620,6200,325000,45820,279180`;
 
-    const blob = new Blob([sampleData], { type: 'text/csv;charset=utf-8;' });
+    const bom = new Uint8Array([0xEF, 0xBB, 0xBF]); // UTF-8 BOM（Excel文字化け対策）
+    const blob = new Blob([bom, sampleData], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = '給与サンプル.csv';

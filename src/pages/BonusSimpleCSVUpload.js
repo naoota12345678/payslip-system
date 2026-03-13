@@ -27,7 +27,8 @@ const BonusSimpleCSVUpload = () => {
 001,山田太郎,500000,50000,25000,45750,1500,500000,122250,377750
 002,佐藤花子,450000,40000,23000,41895,1350,450000,106245,343755`;
 
-    const blob = new Blob([sampleData], { type: 'text/csv;charset=utf-8;' });
+    const bom = new Uint8Array([0xEF, 0xBB, 0xBF]); // UTF-8 BOM（Excel文字化け対策）
+    const blob = new Blob([bom, sampleData], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = '賞与サンプル.csv';
