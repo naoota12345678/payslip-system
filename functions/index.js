@@ -329,8 +329,14 @@ exports.fixEmployeeUIDs = onCall({
   }
   
   try {
-    // 全ての従業員を取得
-    const employeesSnapshot = await db.collection('employees').get();
+    // companyIdが指定された場合はその会社のみ、なければ全従業員
+    const companyId = request.data?.companyId;
+    let employeesQuery = db.collection('employees');
+    if (companyId) {
+      employeesQuery = employeesQuery.where('companyId', '==', companyId);
+      console.log(`🔒 対象会社: ${companyId}`);
+    }
+    const employeesSnapshot = await employeesQuery.get();
     console.log(`📊 ${employeesSnapshot.size}件の従業員データを確認中...`);
     
     let fixedCount = 0;
