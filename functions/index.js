@@ -693,7 +693,11 @@ exports.createEmployeeAuthOnly = onCall({
     }
     
     console.log('✅ パラメータ検証完了:', { email, name });
-    
+
+    // フロントから渡されたパスワードを使用
+    const randomPassword = employeeData?.tempPassword || generateSecurePassword();
+    console.log('🔐 使用パスワード:', randomPassword);
+
     // 既存ユーザーの確認
     let userRecord;
     try {
