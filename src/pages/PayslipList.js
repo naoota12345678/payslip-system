@@ -171,10 +171,11 @@ function PayslipList() {
           );
         } else {
           console.log('👤 従業員として自分の明細のみ取得中...');
-          // 従業員IDで絞り込み
+          // 従業員ID + companyIDで絞り込み
           q = query(
             collection(db, "payslips"),
-            where("employeeId", "==", userDetails.employeeId)
+            where("employeeId", "==", userDetails.employeeId),
+            where("companyId", "==", userDetails.companyId)
           );
         }
         

@@ -59,8 +59,9 @@ function EmployeeDashboard() {
         const payslipList = [];
         querySnapshot.forEach((doc) => {
           const docData = doc.data();
-          // 給与のみを表示（賞与は除外）
-          if (!docData.payslipType || docData.payslipType === 'salary') {
+          // 給与のみを表示（賞与は除外）+ companyIdの一致確認
+          if ((!docData.payslipType || docData.payslipType === 'salary') &&
+              docData.companyId === userDetails.companyId) {
             payslipList.push({
               id: doc.id,
               ...docData,
