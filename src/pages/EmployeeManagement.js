@@ -334,23 +334,6 @@ function EmployeeManagement() {
       
       <div className="flex justify-end mb-6 space-x-3">
         <button
-          onClick={async () => {
-            if (!window.confirm('全従業員のUID修正とパスワードを000000にリセットしますか？')) return;
-            try {
-              const fixUIDs = httpsCallable(functions, 'fixEmployeeUIDs');
-              const result = await fixUIDs({ companyId: userDetails.companyId });
-              alert(`修正完了: ${result.data.fixed}件修正, ${result.data.skipped}件スキップ`);
-              console.log('UID修正結果:', result.data);
-            } catch (err) {
-              alert('エラー: ' + err.message);
-              console.error('UID修正エラー:', err);
-            }
-          }}
-          className="bg-yellow-600 text-white px-4 py-2 rounded-md hover:bg-yellow-700"
-        >
-          UID一括修正
-        </button>
-        <button
           onClick={sendBulkInvitationEmails}
           disabled={bulkEmailSending}
           className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:bg-blue-300"
