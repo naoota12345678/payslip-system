@@ -51,7 +51,22 @@ export const transposeColumnCSV = (csvText) => {
 
   // 転置後: 1行目 = ヘッダー（元の1列目の項目名）、2行目以降 = 従業員データ
   // 元の1行目（従業員名）は転置後の1列目になる
-  const headers = transposed[0]; // [空, 項目名1, 項目名2, ...]
+  const rawHeaders = transposed[0]; // [空, 項目名1, 項目名2, ...]
+
+  // 重複行名を自動リネーム（例: "年末調整" が2回 → "年末調整", "年末調整_2"）
+  const headerCount = {};
+  const headers = rawHeaders.map(h => {
+    if (!h || h.trim() === '') return h;
+    const trimmed = h.trim();
+    if (headerCount[trimmed]) {
+      headerCount[trimmed]++;
+      const renamed = `${trimmed}_${headerCount[trimmed]}`;
+      console.warn(`⚠️ 重複行名を検出: "${trimmed}" → "${renamed}" にリネーム`);
+      return renamed;
+    }
+    headerCount[trimmed] = 1;
+    return trimmed;
+  });
 
   // ヘッダーの最初のセルが空の場合、従業員名列として扱う
   const firstHeaderEmpty = !headers[0] || headers[0].trim() === '';
