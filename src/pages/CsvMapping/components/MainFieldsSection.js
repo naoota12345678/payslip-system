@@ -111,6 +111,7 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               支給額
+              <span className="text-xs text-gray-400 ml-1">- ダッシュボードの合計額に反映。総額チェックに使えます</span>
             </label>
             <select
               value={getSymbolFromMainField(safeMainFields.totalSalary)}

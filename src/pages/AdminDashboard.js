@@ -15,6 +15,7 @@ function AdminDashboard() {
     totalPayslips: 0,
     monthlyPayslips: 0,
     totalAmount: 0,
+    totalNetAmount: 0,
     // 賞与用フィールド
     totalBonusPayslips: 0,
     bonusMonthlyPayslips: 0,
@@ -117,6 +118,7 @@ function AdminDashboard() {
         
         let monthlyPayslips = 0;
         let totalAmount = 0;
+        let totalNetAmount = 0;
         
         if (!latestPaymentSnapshot.empty) {
           const latestPaymentDate = latestPaymentSnapshot.docs[0].data().paymentDate;
@@ -208,8 +210,9 @@ function AdminDashboard() {
             latestPayslips.forEach(data => {
               const income = data.totalIncome || 0;
               totalAmount += income;
+              totalNetAmount += data.netAmount || 0;
             });
-            console.log(`✅ 最新支払日の総支給額（重複除外）: ${totalAmount}`);
+            console.log(`✅ 最新支払日の総支給額（重複除外）: ${totalAmount}, 手取り総額: ${totalNetAmount}`);
           } else {
             // uploadIdがない古いデータの場合は従来通り処理
             monthlyPayslips = samePaymentDateSnapshot.size;
@@ -219,9 +222,10 @@ function AdminDashboard() {
               const data = doc.data();
               const income = data.totalIncome || 0;
               totalAmount += income;
+              totalNetAmount += data.netAmount || 0;
               console.log(`従業員: ${data.employeeId}, 支給額: ${income}`);
             });
-            console.log(`📊 最新支払日の総支給額: ${totalAmount}`);
+            console.log(`📊 最新支払日の総支給額: ${totalAmount}, 手取り総額: ${totalNetAmount}`);
           }
         } else {
           console.log('⚠️ AdminDashboard: 給与明細データがありません');
@@ -331,6 +335,7 @@ function AdminDashboard() {
           totalPayslips,
           monthlyPayslips,
           totalAmount,
+          totalNetAmount,
           // 賞与統計
           totalBonusPayslips,
           bonusMonthlyPayslips,
@@ -391,7 +396,7 @@ function AdminDashboard() {
       <SystemMonitor />
       
       {/* 統計カード */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
         {/* 従業員数 */}
         <div className="bg-white p-6 rounded-lg shadow-md">
           <h3 className="text-sm font-medium text-gray-500 uppercase mb-1">従業員数</h3>
@@ -425,6 +430,15 @@ function AdminDashboard() {
           <p className="text-2xl font-bold text-red-600">{formatCurrency(stats.totalAmount)}</p>
           <p className="text-sm text-gray-500 mt-2">
             最新支払日の総支給額
+          </p>
+        </div>
+
+        {/* 最新支払日の手取り総額 */}
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h3 className="text-sm font-medium text-gray-500 uppercase mb-1">最新支払日の手取り総額</h3>
+          <p className="text-2xl font-bold text-green-600">{formatCurrency(stats.totalNetAmount)}</p>
+          <p className="text-sm text-gray-500 mt-2">
+            最新支払日の差引支給額合計
           </p>
         </div>
       </div>
