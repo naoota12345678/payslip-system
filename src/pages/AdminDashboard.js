@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, query, where, orderBy, getDocs, Timestamp, limit } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
-import SystemMonitor from '../components/SystemMonitor';
 
 function AdminDashboard() {
   const { currentUser, userDetails } = useAuth();
@@ -391,9 +390,6 @@ function AdminDashboard() {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">管理ダッシュボード</h1>
-      
-      {/* システム監視 */}
-      <SystemMonitor />
       
       {/* 統計カード */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">

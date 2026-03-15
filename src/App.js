@@ -64,6 +64,9 @@ import PdfDeliveryManagement from './pages/admin/PdfDelivery';
 import EmployeeDocuments from './pages/employee/Documents';
 
 
+// システム状態
+import SystemStatus from './pages/admin/SystemStatus';
+
 // 賃金台帳関連
 import WageLedgerIndex from './pages/admin/WageLedger/WageLedgerIndex';
 import WageLedgerPeriodSelect from './pages/admin/WageLedger/WageLedgerPeriodSelect';
@@ -146,6 +149,9 @@ function App() {
               <Route path="bonus-payslips/:payslipId" element={<BonusPayslipDetail />} />
               <Route path="bonus-payslips/:payslipId/print" element={<BonusPayslipPrint />} />
               
+              {/* システム状態 */}
+              <Route path="system" element={<SystemStatus />} />
+
               {/* システム設定 */}
               <Route path="settings" element={<CompanySettings />} />
               <Route path="settings/departments" element={<DepartmentSettings />} />
