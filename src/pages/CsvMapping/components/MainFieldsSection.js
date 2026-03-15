@@ -91,26 +91,10 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
       <h3 className="text-lg font-semibold mb-4 text-gray-800">基本項目マッピング</h3>
       
       <div className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              識別コード
-            </label>
-            <select
-              value={getSymbolFromMainField(safeMainFields.identificationCode)}
-              onChange={(e) => updateMainFieldMapping('identificationCode', e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">選択してください</option>
-              {availableSymbols.map((symbol) => (
-                <option key={symbol} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              従業員コード
+              従業員コード <span className="text-red-500">*</span>
             </label>
             <select
               value={getSymbolFromMainField(safeMainFields.employeeCode)}
@@ -118,64 +102,28 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
               className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">選択してください</option>
-              {availableSymbols.map((symbol) => (
-                <option key={symbol} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
+              {availableSymbols.map((symbol, idx) => (
+                <option key={`emp_${idx}_${symbol}`} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
               ))}
             </select>
           </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              従業員氏名
-            </label>
-            <select
-              value={getSymbolFromMainField(safeMainFields.employeeName)}
-              onChange={(e) => updateMainFieldMapping('employeeName', e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">選択してください</option>
-              {availableSymbols.map((symbol) => (
-                <option key={symbol} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
-              ))}
-            </select>
-          </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               支給額
             </label>
             <select
               value={getSymbolFromMainField(safeMainFields.totalSalary)}
-              onChange={(e) => {
-                console.log('📌 支給額ドロップダウン選択:', e.target.value, '→', getDisplayNameFromSymbol(e.target.value));
-                console.log('📌 選択されたindex:', e.target.selectedIndex);
-                updateMainFieldMapping('totalSalary', e.target.value);
-              }}
+              onChange={(e) => updateMainFieldMapping('totalSalary', e.target.value)}
               className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">選択してください</option>
               {availableSymbols.map((symbol, idx) => (
-                <option key={`totalSalary_${idx}_${symbol}`} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
+                <option key={`sal_${idx}_${symbol}`} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
               ))}
             </select>
           </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              控除額
-            </label>
-            <select
-              value={getSymbolFromMainField(safeMainFields.totalDeductions)}
-              onChange={(e) => updateMainFieldMapping('totalDeductions', e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">選択してください</option>
-              {availableSymbols.map((symbol) => (
-                <option key={symbol} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
-              ))}
-            </select>
-          </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               差引支給額
@@ -186,40 +134,8 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
               className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">選択してください</option>
-              {availableSymbols.map((symbol) => (
-                <option key={symbol} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              部門コード
-            </label>
-            <select
-              value={getSymbolFromMainField(safeMainFields.departmentCode)}
-              onChange={(e) => updateMainFieldMapping('departmentCode', e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">選択してください</option>
-              {availableSymbols.map((symbol) => (
-                <option key={symbol} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              支給年月
-            </label>
-            <select
-              value={getSymbolFromMainField(safeMainFields.paymentDate)}
-              onChange={(e) => updateMainFieldMapping('paymentDate', e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">選択してください</option>
-              {availableSymbols.map((symbol) => (
-                <option key={symbol} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
+              {availableSymbols.map((symbol, idx) => (
+                <option key={`net_${idx}_${symbol}`} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
               ))}
             </select>
           </div>
