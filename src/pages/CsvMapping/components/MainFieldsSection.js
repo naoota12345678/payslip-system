@@ -102,8 +102,8 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
               className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">選択してください</option>
-              {availableSymbols.map((symbol, index) => (
-                <option key={index} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
+              {availableSymbols.map((symbol) => (
+                <option key={symbol} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
               ))}
             </select>
           </div>
@@ -118,8 +118,8 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
               className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">選択してください</option>
-              {availableSymbols.map((symbol, index) => (
-                <option key={index} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
+              {availableSymbols.map((symbol) => (
+                <option key={symbol} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
               ))}
             </select>
           </div>
@@ -134,8 +134,8 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
               className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">選択してください</option>
-              {availableSymbols.map((symbol, index) => (
-                <option key={index} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
+              {availableSymbols.map((symbol) => (
+                <option key={symbol} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
               ))}
             </select>
           </div>
@@ -150,8 +150,8 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
               className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">選択してください</option>
-              {availableSymbols.map((symbol, index) => (
-                <option key={index} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
+              {availableSymbols.map((symbol) => (
+                <option key={symbol} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
               ))}
             </select>
           </div>
@@ -166,8 +166,8 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
               className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">選択してください</option>
-              {availableSymbols.map((symbol, index) => (
-                <option key={index} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
+              {availableSymbols.map((symbol) => (
+                <option key={symbol} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
               ))}
             </select>
           </div>
@@ -182,8 +182,8 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
               className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">選択してください</option>
-              {availableSymbols.map((symbol, index) => (
-                <option key={index} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
+              {availableSymbols.map((symbol) => (
+                <option key={symbol} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
               ))}
             </select>
           </div>
@@ -198,8 +198,8 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
               className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">選択してください</option>
-              {availableSymbols.map((symbol, index) => (
-                <option key={index} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
+              {availableSymbols.map((symbol) => (
+                <option key={symbol} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
               ))}
             </select>
           </div>
@@ -214,8 +214,8 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
               className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">選択してください</option>
-              {availableSymbols.map((symbol, index) => (
-                <option key={index} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
+              {availableSymbols.map((symbol) => (
+                <option key={symbol} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
               ))}
             </select>
           </div>

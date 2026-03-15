@@ -61,8 +61,8 @@ const ItemMappingTable = ({
                   /^[A-Z]{1,5}[0-9]{1,3}(_[0-9]+)?$/.test(header) && !safeItems.some(item => item.headerName === header) :
                   !safeItems.some(item => item.headerName === header)
               )
-              .map((header, index) => (
-                <option key={index} value={header}>
+              .map((header) => (
+                <option key={header} value={header}>
                   {header}
                 </option>
               ))}
