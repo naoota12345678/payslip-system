@@ -831,14 +831,24 @@ function WageLedgerView() {
         } else {
           // 従来の分類ロジックを使用
           processedPayslips = allPayslips.map(payslip => {
+            const paymentDate = payslip.paymentDate?.toDate ? payslip.paymentDate.toDate() : new Date(payslip.paymentDate);
+            const monthLabel = `${paymentDate.getFullYear()}年${paymentDate.getMonth() + 1}月`;
+
+            // デバッグ: 各月のCSV項目キーを表示
+            console.log(`📊 [${monthLabel}] 保存済みitems キー:`, Object.keys(payslip.items || {}));
+            console.log(`📊 [${monthLabel}] 保存済みitems 値:`, payslip.items);
+
             const classifiedItems = classifyItemsForWageLedger(payslip, mappingConfig);
             const { incomeItems, deductionItems, attendanceItems, otherItems } = classifiedItems;
-            
+
+            console.log(`📊 [${monthLabel}] 分類結果: 勤怠=${attendanceItems.length}, 支給=${incomeItems.length}, 控除=${deductionItems.length}, 合計=${otherItems.length}`);
+            console.log(`📊 [${monthLabel}] 分類済み項目:`, [...attendanceItems, ...incomeItems, ...deductionItems, ...otherItems].map(i => `${i.name}=${i.value}`));
+
             return {
               ...payslip,
               classifiedItems: {
                 incomeItems,
-                deductionItems, 
+                deductionItems,
                 attendanceItems,
                 otherItems
               }
