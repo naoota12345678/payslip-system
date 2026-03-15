@@ -146,12 +146,16 @@ const MainFieldsSection = ({ mappingConfig, updateMainFieldMapping, parsedHeader
             </label>
             <select
               value={getSymbolFromMainField(safeMainFields.totalSalary)}
-              onChange={(e) => updateMainFieldMapping('totalSalary', e.target.value)}
+              onChange={(e) => {
+                console.log('📌 支給額ドロップダウン選択:', e.target.value, '→', getDisplayNameFromSymbol(e.target.value));
+                console.log('📌 選択されたindex:', e.target.selectedIndex);
+                updateMainFieldMapping('totalSalary', e.target.value);
+              }}
               className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">選択してください</option>
-              {availableSymbols.map((symbol) => (
-                <option key={symbol} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
+              {availableSymbols.map((symbol, idx) => (
+                <option key={`totalSalary_${idx}_${symbol}`} value={symbol}>{symbol} - {getDisplayNameFromSymbol(symbol)}</option>
               ))}
             </select>
           </div>

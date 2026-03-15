@@ -146,6 +146,7 @@ function CsvMapping() {
           ...(updated.incomeItems || []),
           ...(updated.deductionItems || []),
           ...(updated.attendanceItems || []),
+          ...(updated.totalItems || []),
           ...(updated.itemCodeItems || []),
           ...(updated.kyItems || [])
         ];
