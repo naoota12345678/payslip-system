@@ -46,21 +46,25 @@ const ItemMappingTable = ({
           <select
             value=""
             onChange={(e) => {
-              if (e.target.value) {
-                onAddItem(category, e.target.value);
-                e.target.value = '';
+              const selectedValue = e.target.value;
+              console.log('📌 ドロップダウン選択:', { category, selectedValue });
+              if (selectedValue) {
+                onAddItem(category, selectedValue);
               }
             }}
             className="block w-full pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
           >
             <option value="">項目を追加...</option>
             {safeAvailableHeaders
-              .filter(header => 
-                category === 'itemCodeItems' ? 
+              .filter(header => {
+                // 空文字列を除外
+                if (!header || !header.trim()) return false;
+                if (category === 'itemCodeItems') {
                   // 項目コードパターンをチェック（KY01、A01、ITEM01など）
-                  /^[A-Z]{1,5}[0-9]{1,3}(_[0-9]+)?$/.test(header) && !safeItems.some(item => item.headerName === header) :
-                  !safeItems.some(item => item.headerName === header)
-              )
+                  return /^[A-Z]{1,5}[0-9]{1,3}(_[0-9]+)?$/.test(header) && !safeItems.some(item => item.headerName === header);
+                }
+                return !safeItems.some(item => item.headerName === header);
+              })
               .map((header) => (
                 <option key={header} value={header}>
                   {header}

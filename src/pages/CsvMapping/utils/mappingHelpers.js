@@ -131,26 +131,38 @@ export const generateDeterministicId = (category, headerName, columnIndex) => {
  */
 export const addItemToCategory = (category, headerName, parsedHeaders, currentMapping) => {
   const columnIndex = parsedHeaders.indexOf(headerName);
-  if (columnIndex === -1) return currentMapping;
-  
+  console.log('📌 addItemToCategory:', { category, headerName, columnIndex, parsedHeadersLength: parsedHeaders.length });
+  if (columnIndex === -1) {
+    console.warn('⚠️ headerNameがparsedHeadersに見つからない:', headerName);
+    return currentMapping;
+  }
+
+  // カテゴリが存在しない場合は空配列で初期化
+  const existingItems = currentMapping[category] || [];
+
   // 決定論的なIDを生成
   const itemId = generateDeterministicId(category, headerName, columnIndex);
-  
+
   // 項目コードの場合は空文字列、そうでなければheaderNameを設定
   const isItemCode = /^[A-Z]{1,5}[0-9]{1,3}(_[0-9]+)?$/.test(headerName);
-  
+
+  // itemCodeItemsから既存の項目名を取得（項目名の自動引き継ぎ）
+  const existingItem = (currentMapping.itemCodeItems || []).find(item => item.headerName === headerName);
+
   const newItem = {
     columnIndex,
     headerName,
-    itemName: '', // ユーザーが手動で項目名を入力する
+    itemName: existingItem?.itemName || '', // 既存の項目名があれば引き継ぐ
     isVisible: category !== 'kyItems', // KY項目以外はデフォルトで表示
     showZeroValue: false, // デフォルトで0値を非表示（ユーザー要望）
     id: itemId // ID属性を追加
   };
-  
+
+  console.log('✅ 追加する項目:', newItem);
+
   return {
     ...currentMapping,
-    [category]: [...currentMapping[category], newItem]
+    [category]: [...existingItems, newItem]
   };
 };
 
