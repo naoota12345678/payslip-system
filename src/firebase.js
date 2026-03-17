@@ -22,6 +22,7 @@ import {
 } from "firebase/firestore";
 import { getStorage, connectStorageEmulator } from "firebase/storage";
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
+import { getMessaging, isSupported } from "firebase/messaging";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -52,6 +53,22 @@ const db = getFirestore(app);
 const storage = getStorage(app);
 const functions = getFunctions(app, 'asia-northeast1'); // リージョン指定
 
+// FCM Messaging初期化（対応ブラウザのみ）
+let messaging = null;
+const getMessagingInstance = async () => {
+  if (messaging) return messaging;
+  try {
+    const supported = await isSupported();
+    if (supported) {
+      messaging = getMessaging(app);
+      console.log("📱 FCM Messaging 初期化完了");
+    }
+  } catch (e) {}
+  return messaging;
+};
+// 初回読み込み時にも試行
+getMessagingInstance();
+
 // 本番環境を使用
 console.log("==== Firebase 本番環境を使用します ====");
 
@@ -65,5 +82,5 @@ onAuthStateChanged(auth, (user) => {
 });
 
 // 必要なサービスをエクスポート
-export { auth, db, storage, functions };
+export { auth, db, storage, functions, messaging, getMessagingInstance };
 export default app;

@@ -19,6 +19,50 @@ setGlobalOptions({
 admin.initializeApp();
 const db = admin.firestore();
 
+// プッシュ通知送信ヘルパー
+const sendPushNotifications = async (employeeIds, companyId, title, body, url) => {
+  try {
+    if (!employeeIds || employeeIds.length === 0) return { sent: 0, failed: 0 };
+
+    // 30件ずつバッチ処理（Firestoreのinクエリ制限）
+    let allTokens = [];
+    for (let i = 0; i < employeeIds.length; i += 30) {
+      const batch = employeeIds.slice(i, i + 30);
+      const tokensSnapshot = await db.collection('fcmTokens')
+        .where('companyId', '==', companyId)
+        .where('employeeId', 'in', batch)
+        .get();
+      tokensSnapshot.docs.forEach(doc => allTokens.push(doc.data().token));
+    }
+
+    if (allTokens.length === 0) {
+      console.log('📱 プッシュ通知対象トークンなし');
+      return { sent: 0, failed: 0 };
+    }
+
+    const message = {
+      notification: { title, body },
+      data: { url: url || 'https://kyuyoprint.web.app/employee/login' },
+      tokens: allTokens
+    };
+
+    const response = await admin.messaging().sendEachForMulticast(message);
+
+    // 無効トークンを削除
+    response.responses.forEach((resp, idx) => {
+      if (!resp.success && resp.error?.code === 'messaging/registration-token-not-registered') {
+        db.collection('fcmTokens').doc(allTokens[idx]).delete().catch(() => {});
+      }
+    });
+
+    console.log(`📱 プッシュ通知送信: 成功${response.successCount}件, 失敗${response.failureCount}件`);
+    return { sent: response.successCount, failed: response.failureCount };
+  } catch (error) {
+    console.error('📱 プッシュ通知エラー:', error);
+    return { sent: 0, failed: 0 };
+  }
+};
+
 // Gmail SMTP設定
 const functions = require('firebase-functions');
 let transporter = null;
@@ -3229,7 +3273,24 @@ const sendPayslipNotificationsInternal = async (uploadId, paymentDate, type = 'p
     }
     
     console.log(`📧 ${type}明細通知メール送信完了: 成功 ${successCount}件、失敗 ${failCount}件`);
-    
+
+    // プッシュ通知を送信（メール送信には影響しない）
+    try {
+      const sentEmployeeIds = results.filter(r => r.success).map(r => r.employeeId).filter(Boolean);
+      if (sentEmployeeIds.length > 0 && payslipsSnapshot.docs[0]) {
+        const cid = payslipsSnapshot.docs[0].data().companyId;
+        const typeLabel = type === 'bonus' ? '賞与明細' : '給与明細';
+        await sendPushNotifications(
+          sentEmployeeIds, cid,
+          `${typeLabel}が発行されました`,
+          `${paymentDate}分の${typeLabel}を確認できます`,
+          'https://kyuyoprint.web.app/employee/login'
+        );
+      }
+    } catch (pushError) {
+      console.error('📱 プッシュ通知エラー（メールには影響なし）:', pushError);
+    }
+
     return {
       success: true,
       totalCount: payslipsSnapshot.size,
@@ -3238,7 +3299,7 @@ const sendPayslipNotificationsInternal = async (uploadId, paymentDate, type = 'p
       results,
       type
     };
-    
+
   } catch (error) {
     console.error(`❌ ${type}明細通知メール送信エラー:`, error);
     throw error;
@@ -3494,6 +3555,21 @@ const processDocumentNotificationJob = async (jobId, documentId, documentTitle, 
       }
     }
     
+    // プッシュ通知を送信（メール送信には影響しない）
+    try {
+      const sentIds = results.filter(r => r.success).map(r => r.employeeId);
+      if (sentIds.length > 0) {
+        await sendPushNotifications(
+          sentIds, companyId,
+          '新しい書類が配信されました',
+          `「${documentTitle}」を確認できます`,
+          'https://kyuyoprint.web.app/employee/documents'
+        );
+      }
+    } catch (pushError) {
+      console.error('📱 プッシュ通知エラー（メールには影響なし）:', pushError);
+    }
+
     // ジョブ完了
     await jobRef.update({
       status: 'completed',

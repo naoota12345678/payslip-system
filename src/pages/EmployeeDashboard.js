@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, query, where, orderBy, limit, getDocs, Timestamp, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
+import { requestNotificationPermission, setupForegroundNotification, isNotificationSupported, getNotificationStatus } from '../utils/pushNotification';
 
 function EmployeeDashboard() {
   const { currentUser, userDetails } = useAuth();
@@ -24,6 +25,8 @@ function EmployeeDashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [notificationStatus, setNotificationStatus] = useState('default');
+  const [showNotificationBanner, setShowNotificationBanner] = useState(false);
 
   useEffect(() => {
     console.log('=== EmployeeDashboard useEffect 開始 ===');
@@ -262,6 +265,23 @@ function EmployeeDashboard() {
     };
   }, [currentUser, userDetails]);
 
+  // プッシュ通知の初期化
+  useEffect(() => {
+    if (!currentUser || !userDetails) return;
+
+    if (isNotificationSupported()) {
+      const status = getNotificationStatus();
+      setNotificationStatus(status);
+      setShowNotificationBanner(status === 'default');
+
+      // 既に許可済みならトークンを更新＆フォアグラウンド通知設定
+      if (status === 'granted') {
+        requestNotificationPermission(currentUser.uid, userDetails.companyId, userDetails.employeeId);
+        setupForegroundNotification();
+      }
+    }
+  }, [currentUser, userDetails]);
+
   // 日付を整形する関数
   const formatDate = (date) => {
     if (!date) return 'N/A';
@@ -285,7 +305,46 @@ function EmployeeDashboard() {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">給与明細一覧</h1>
-      
+
+      {/* プッシュ通知許可バナー */}
+      {showNotificationBanner && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-blue-800">
+              給与明細の通知を受け取りますか？
+            </p>
+            <p className="text-xs text-blue-600 mt-1">
+              新しい明細が発行されたときにお知らせします
+            </p>
+          </div>
+          <div className="flex gap-2 ml-4">
+            <button
+              onClick={async () => {
+                const result = await requestNotificationPermission(
+                  currentUser.uid,
+                  userDetails.companyId,
+                  userDetails.employeeId
+                );
+                if (result.success) {
+                  setNotificationStatus('granted');
+                  setupForegroundNotification();
+                }
+                setShowNotificationBanner(false);
+              }}
+              className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+            >
+              通知を有効にする
+            </button>
+            <button
+              onClick={() => setShowNotificationBanner(false)}
+              className="px-3 py-1.5 text-blue-600 text-sm rounded hover:bg-blue-100"
+            >
+              後で
+            </button>
+          </div>
+        </div>
+      )}
+
       {error && (
         <div className="bg-red-100 text-red-700 p-3 rounded mb-4">
           {error}
