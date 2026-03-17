@@ -307,43 +307,66 @@ function EmployeeDashboard() {
       <h1 className="text-2xl font-bold mb-6">給与明細一覧</h1>
 
       {/* プッシュ通知許可バナー */}
-      {showNotificationBanner && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-blue-800">
-              給与明細の通知を受け取りますか？
+      {showNotificationBanner && (() => {
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+        const needsInstall = isIOS && !isStandalone;
+
+        return needsInstall ? (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <p className="text-sm font-medium text-blue-800 mb-2">
+              通知を受け取るにはホーム画面に追加してください
             </p>
-            <p className="text-xs text-blue-600 mt-1">
-              新しい明細が発行されたときにお知らせします
-            </p>
-          </div>
-          <div className="flex gap-2 ml-4">
-            <button
-              onClick={async () => {
-                const result = await requestNotificationPermission(
-                  currentUser.uid,
-                  userDetails.companyId,
-                  userDetails.employeeId
-                );
-                if (result.success) {
-                  setNotificationStatus('granted');
-                  setupForegroundNotification();
-                }
-                setShowNotificationBanner(false);
-              }}
-              className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
-            >
-              通知を有効にする
-            </button>
+            <div className="text-xs text-blue-700 space-y-1">
+              <p>1. 画面下の共有ボタン（↑）をタップ</p>
+              <p>2.「ホーム画面に追加」を選択</p>
+              <p>3. 追加されたアプリから開き直すと通知を有効にできます</p>
+            </div>
             <button
               onClick={() => setShowNotificationBanner(false)}
-              className="px-3 py-1.5 text-blue-600 text-sm rounded hover:bg-blue-100"
+              className="mt-2 px-3 py-1 text-blue-600 text-xs rounded hover:bg-blue-100"
             >
-              後で
+              閉じる
             </button>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-blue-800">
+                給与明細の通知を受け取りますか？
+              </p>
+              <p className="text-xs text-blue-600 mt-1">
+                新しい明細が発行されたときにお知らせします
+              </p>
+            </div>
+            <div className="flex gap-2 ml-4">
+              <button
+                onClick={async () => {
+                  const result = await requestNotificationPermission(
+                    currentUser.uid,
+                    userDetails.companyId,
+                    userDetails.employeeId
+                  );
+                  if (result.success) {
+                    setNotificationStatus('granted');
+                    setupForegroundNotification();
+                  }
+                  setShowNotificationBanner(false);
+                }}
+                className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+              >
+                通知を有効にする
+              </button>
+              <button
+                onClick={() => setShowNotificationBanner(false)}
+                className="px-3 py-1.5 text-blue-600 text-sm rounded hover:bg-blue-100"
+              >
+                後で
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {error && (
         <div className="bg-red-100 text-red-700 p-3 rounded mb-4">
