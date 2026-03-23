@@ -14,14 +14,32 @@ const ItemMappingTable = ({
   onMoveItem,
   availableHeaders,
   onAddItem,
+  onManualAddItem,
   category
 }) => {
   // 安全性を確保
   const safeItems = items || [];
   const safeAvailableHeaders = availableHeaders || [];
-  
+
   // 移動先カテゴリの選択状態を管理
   const [selectedMoveCategory, setSelectedMoveCategory] = useState({});
+
+  // 手動追加用の入力状態
+  const [manualHeaderName, setManualHeaderName] = useState('');
+  const [manualItemName, setManualItemName] = useState('');
+
+  const handleManualAdd = () => {
+    if (!manualHeaderName.trim()) return;
+    if (safeItems.some(item => item.headerName === manualHeaderName.trim())) {
+      alert('このヘッダー名は既に登録されています');
+      return;
+    }
+    if (onManualAddItem) {
+      onManualAddItem(category, manualHeaderName.trim(), manualItemName.trim());
+      setManualHeaderName('');
+      setManualItemName('');
+    }
+  };
   
   // 項目移動ハンドラ
   const handleMoveItem = (itemIndex, targetCategory) => {
@@ -40,9 +58,10 @@ const ItemMappingTable = ({
   
   return (
     <div className="mt-4">
-      <div className="flex justify-between items-center mb-2">
+      <div className="flex flex-wrap justify-between items-center mb-2 gap-2">
         <h4 className="text-sm font-medium text-gray-700">{title}</h4>
-        <div className="relative">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* 既存のドロップダウン */}
           <select
             value=""
             onChange={(e) => {
@@ -52,15 +71,13 @@ const ItemMappingTable = ({
                 onAddItem(category, selectedValue);
               }
             }}
-            className="block w-full pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+            className="block pr-10 py-1 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
           >
             <option value="">項目を追加...</option>
             {safeAvailableHeaders
               .filter(header => {
-                // 空文字列を除外
                 if (!header || !header.trim()) return false;
                 if (category === 'itemCodeItems') {
-                  // 項目コードパターンをチェック（KY01、A01、ITEM01など）
                   return /^[A-Z]{1,5}[0-9]{1,3}(_[0-9]+)?$/.test(header) && !safeItems.some(item => item.headerName === header);
                 }
                 return !safeItems.some(item => item.headerName === header);
@@ -71,6 +88,31 @@ const ItemMappingTable = ({
                 </option>
               ))}
           </select>
+          {/* 手動追加 */}
+          <div className="flex items-center gap-1">
+            <input
+              type="text"
+              value={manualHeaderName}
+              onChange={(e) => setManualHeaderName(e.target.value)}
+              placeholder="ヘッダー名（例：KY21_10）"
+              className="w-40 py-1 px-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+            <input
+              type="text"
+              value={manualItemName}
+              onChange={(e) => setManualItemName(e.target.value)}
+              placeholder="項目名（例：通勤手当）"
+              className="w-36 py-1 px-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+            <button
+              type="button"
+              onClick={handleManualAdd}
+              disabled={!manualHeaderName.trim()}
+              className="px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              追加
+            </button>
+          </div>
         </div>
       </div>
       

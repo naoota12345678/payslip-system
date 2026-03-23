@@ -15,7 +15,8 @@ const ItemTabs = ({
   onUpdateItemZeroDisplay,
   onRemoveItem,
   onMoveItem,
-  onAddItem
+  onAddItem,
+  onManualAddItem
 }) => {
   // 安全性を確保
   const safeMappingConfig = mappingConfig || {};
@@ -95,6 +96,7 @@ const ItemTabs = ({
           availableHeaders={parsedHeaders}
           onAddItem={onAddItem}
           category="incomeItems"
+          onManualAddItem={onManualAddItem}
         />
       )}
       
@@ -111,6 +113,7 @@ const ItemTabs = ({
           availableHeaders={parsedHeaders}
           onAddItem={onAddItem}
           category="deductionItems"
+          onManualAddItem={onManualAddItem}
         />
       )}
       
@@ -127,6 +130,7 @@ const ItemTabs = ({
           availableHeaders={parsedHeaders}
           onAddItem={onAddItem}
           category="attendanceItems"
+          onManualAddItem={onManualAddItem}
         />
       )}
       
@@ -143,6 +147,7 @@ const ItemTabs = ({
           availableHeaders={parsedHeaders}
           onAddItem={onAddItem}
           category="totalItems"
+          onManualAddItem={onManualAddItem}
         />
       )}
       
@@ -159,6 +164,7 @@ const ItemTabs = ({
           availableHeaders={parsedHeaders}
           onAddItem={onAddItem}
           category="itemCodeItems"
+          onManualAddItem={onManualAddItem}
         />
       )}
     </div>

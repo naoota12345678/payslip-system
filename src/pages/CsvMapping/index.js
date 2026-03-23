@@ -216,6 +216,37 @@ function CsvMapping() {
     );
   }, [parsedHeaders]);
   
+  // 手動で項目を追加するハンドラ
+  const handleManualAddItem = useCallback((category, headerName, itemName) => {
+    setMappingConfig(prev => {
+      const existingItems = prev[category] || [];
+      const newItem = {
+        columnIndex: -1,
+        headerName,
+        itemName: itemName || headerName,
+        isVisible: true,
+        showZeroValue: false,
+        id: generateDeterministicId(category, headerName, existingItems.length)
+      };
+
+      // itemCodeItemsにも同期追加（項目名引き継ぎ用）
+      let updatedItemCodeItems = prev.itemCodeItems || [];
+      if (category !== 'itemCodeItems' && !updatedItemCodeItems.some(item => item.headerName === headerName)) {
+        updatedItemCodeItems = [...updatedItemCodeItems, {
+          ...newItem,
+          id: generateDeterministicId('itemCode', headerName, updatedItemCodeItems.length)
+        }];
+      }
+
+      return {
+        ...prev,
+        [category]: [...existingItems, newItem],
+        itemCodeItems: updatedItemCodeItems
+      };
+    });
+    setSuccess(`項目「${itemName || headerName}」を追加しました。保存してください。`);
+  }, [setSuccess]);
+
   // 項目の削除ハンドラ
   const handleRemoveItem = useCallback((category, index) => {
     setMappingConfig(prev => 
@@ -865,6 +896,7 @@ function CsvMapping() {
               onRemoveItem={handleRemoveItem}
               onMoveItem={handleMoveItem}
               onAddItem={handleAddItem}
+              onManualAddItem={handleManualAddItem}
             />
             
 
