@@ -3751,52 +3751,55 @@ exports.applyMappingToPastPayslips = onCall({
     let noOriginalMapping = 0;
     let firstOriginalMappingLogged = false;
 
+    // 現在のマッピング設定からoriginalMapping形式を作成（originalMappingが無い明細用）
+    const currentOriginalMapping = {
+      incomeItems: mappingData.incomeItems || [],
+      deductionItems: mappingData.deductionItems || [],
+      attendanceItems: mappingData.attendanceItems || [],
+      totalItems: mappingData.totalItems || [],
+      timestamp: admin.firestore.FieldValue.serverTimestamp()
+    };
+
     for (const docSnap of payslipsSnapshot.docs) {
       const payslipData = docSnap.data();
+
       if (!payslipData.originalMapping) {
+        // originalMappingが無い場合：現在のマッピング設定を書き込む
         noOriginalMapping++;
-        continue;
-      }
-
-      // 最初の1件だけoriginalMappingの構造をログ出力
-      if (!firstOriginalMappingLogged) {
-        const om = payslipData.originalMapping;
-        console.log(`📋 originalMapping構造サンプル(${docSnap.id}):`, JSON.stringify({
-          categories: Object.keys(om),
-          incomeItems: (om.incomeItems || []).slice(0, 3).map(i => ({ headerName: i.headerName, itemName: i.itemName })),
-          deductionItems: (om.deductionItems || []).slice(0, 3).map(i => ({ headerName: i.headerName, itemName: i.itemName }))
-        }));
-        firstOriginalMappingLogged = true;
-      }
-
-      let modified = false;
-      const updatedMapping = { ...payslipData.originalMapping };
-
-      categories.forEach(category => {
-        if (updatedMapping[category] && Array.isArray(updatedMapping[category])) {
-          updatedMapping[category] = updatedMapping[category].map(item => {
-            const newItemName = itemNameMap[item.headerName];
-            if (newItemName && newItemName !== item.itemName) {
-              modified = true;
-              return { ...item, itemName: newItemName };
-            }
-            return item;
-          });
-        }
-      });
-
-      if (modified) {
-        updatedMapping.timestamp = admin.firestore.FieldValue.serverTimestamp();
-        batch.update(docSnap.ref, { originalMapping: updatedMapping });
+        batch.update(docSnap.ref, { originalMapping: currentOriginalMapping });
         updatedCount++;
         batchCount++;
+      } else {
+        // originalMappingがある場合：項目名の差分を更新
+        let modified = false;
+        const updatedMapping = { ...payslipData.originalMapping };
 
-        if (batchCount >= batchSize) {
-          await batch.commit();
-          batch = db.batch();
-          batchCount = 0;
-          console.log(`📋 バッチコミット: ${updatedCount}件完了`);
+        categories.forEach(category => {
+          if (updatedMapping[category] && Array.isArray(updatedMapping[category])) {
+            updatedMapping[category] = updatedMapping[category].map(item => {
+              const newItemName = itemNameMap[item.headerName];
+              if (newItemName && newItemName !== item.itemName) {
+                modified = true;
+                return { ...item, itemName: newItemName };
+              }
+              return item;
+            });
+          }
+        });
+
+        if (modified) {
+          updatedMapping.timestamp = admin.firestore.FieldValue.serverTimestamp();
+          batch.update(docSnap.ref, { originalMapping: updatedMapping });
+          updatedCount++;
+          batchCount++;
         }
+      }
+
+      if (batchCount >= batchSize) {
+        await batch.commit();
+        batch = db.batch();
+        batchCount = 0;
+        console.log(`📋 バッチコミット: ${updatedCount}件完了`);
       }
     }
 
