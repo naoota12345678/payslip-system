@@ -3725,6 +3725,7 @@ exports.applyMappingToPastPayslips = onCall({
     });
 
     console.log(`📋 項目名マップ作成完了: ${Object.keys(itemNameMap).length}件`);
+    console.log(`📋 項目名マップ内容（最初の10件）:`, JSON.stringify(Object.entries(itemNameMap).slice(0, 10)));
 
     // 2. 過去1年分の給与明細を取得
     const oneYearAgo = new Date();
@@ -3747,9 +3748,26 @@ exports.applyMappingToPastPayslips = onCall({
     let batch = db.batch();
     let batchCount = 0;
 
+    let noOriginalMapping = 0;
+    let firstOriginalMappingLogged = false;
+
     for (const docSnap of payslipsSnapshot.docs) {
       const payslipData = docSnap.data();
-      if (!payslipData.originalMapping) continue;
+      if (!payslipData.originalMapping) {
+        noOriginalMapping++;
+        continue;
+      }
+
+      // 最初の1件だけoriginalMappingの構造をログ出力
+      if (!firstOriginalMappingLogged) {
+        const om = payslipData.originalMapping;
+        console.log(`📋 originalMapping構造サンプル(${docSnap.id}):`, JSON.stringify({
+          categories: Object.keys(om),
+          incomeItems: (om.incomeItems || []).slice(0, 3).map(i => ({ headerName: i.headerName, itemName: i.itemName })),
+          deductionItems: (om.deductionItems || []).slice(0, 3).map(i => ({ headerName: i.headerName, itemName: i.itemName }))
+        }));
+        firstOriginalMappingLogged = true;
+      }
 
       let modified = false;
       const updatedMapping = { ...payslipData.originalMapping };
@@ -3787,6 +3805,7 @@ exports.applyMappingToPastPayslips = onCall({
       await batch.commit();
     }
 
+    console.log(`📋 originalMappingなし: ${noOriginalMapping}件`);
     console.log(`📋 項目名一括反映完了: ${updatedCount}件更新`);
 
     return {
