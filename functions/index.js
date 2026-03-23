@@ -3679,8 +3679,125 @@ exports.executeScheduledDocumentNotifications = onSchedule({
     }
     
     console.log('📅 PDF配信予約実行チェック完了');
-    
+
   } catch (error) {
     console.error('❌ PDF配信予約実行エラー:', error);
+  }
+});
+
+// ============================================================
+// 過去の給与明細にマッピング設定の項目名を一括反映
+// ============================================================
+exports.applyMappingToPastPayslips = onCall({
+  region: "asia-northeast1",
+  timeoutSeconds: 300,
+  memory: "512MiB"
+}, async (request) => {
+  const { companyId } = request.data;
+
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', '認証が必要です');
+  }
+
+  if (!companyId) {
+    throw new HttpsError('invalid-argument', 'companyIdが必要です');
+  }
+
+  console.log(`📋 項目名一括反映開始: companyId=${companyId}`);
+
+  try {
+    // 1. 現在のマッピング設定を取得
+    const mappingDoc = await db.collection('csvMappings').doc(companyId).get();
+    if (!mappingDoc.exists) {
+      throw new HttpsError('not-found', 'マッピング設定が見つかりません');
+    }
+    const mappingData = mappingDoc.data();
+
+    // headerName → itemName のマップを作成
+    const itemNameMap = {};
+    const categories = ['incomeItems', 'deductionItems', 'attendanceItems', 'totalItems'];
+    categories.forEach(category => {
+      (mappingData[category] || []).forEach(item => {
+        if (item.headerName && item.itemName) {
+          itemNameMap[item.headerName] = item.itemName;
+        }
+      });
+    });
+
+    console.log(`📋 項目名マップ作成完了: ${Object.keys(itemNameMap).length}件`);
+
+    // 2. 過去1年分の給与明細を取得
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+    const payslipsSnapshot = await db.collection('payslips')
+      .where('companyId', '==', companyId)
+      .where('createdAt', '>=', oneYearAgo)
+      .get();
+
+    console.log(`📋 対象給与明細: ${payslipsSnapshot.size}件`);
+
+    if (payslipsSnapshot.empty) {
+      return { success: true, updatedCount: 0, message: '対象の給与明細がありません' };
+    }
+
+    // 3. バッチ処理で originalMapping の itemName を更新
+    let updatedCount = 0;
+    const batchSize = 500;
+    let batch = db.batch();
+    let batchCount = 0;
+
+    for (const docSnap of payslipsSnapshot.docs) {
+      const payslipData = docSnap.data();
+      if (!payslipData.originalMapping) continue;
+
+      let modified = false;
+      const updatedMapping = { ...payslipData.originalMapping };
+
+      categories.forEach(category => {
+        if (updatedMapping[category] && Array.isArray(updatedMapping[category])) {
+          updatedMapping[category] = updatedMapping[category].map(item => {
+            const newItemName = itemNameMap[item.headerName];
+            if (newItemName && newItemName !== item.itemName) {
+              modified = true;
+              return { ...item, itemName: newItemName };
+            }
+            return item;
+          });
+        }
+      });
+
+      if (modified) {
+        updatedMapping.timestamp = admin.firestore.FieldValue.serverTimestamp();
+        batch.update(docSnap.ref, { originalMapping: updatedMapping });
+        updatedCount++;
+        batchCount++;
+
+        if (batchCount >= batchSize) {
+          await batch.commit();
+          batch = db.batch();
+          batchCount = 0;
+          console.log(`📋 バッチコミット: ${updatedCount}件完了`);
+        }
+      }
+    }
+
+    // 残りのバッチをコミット
+    if (batchCount > 0) {
+      await batch.commit();
+    }
+
+    console.log(`📋 項目名一括反映完了: ${updatedCount}件更新`);
+
+    return {
+      success: true,
+      updatedCount,
+      totalChecked: payslipsSnapshot.size,
+      message: `${updatedCount}件の給与明細の項目名を更新しました`
+    };
+
+  } catch (error) {
+    console.error('❌ 項目名一括反映エラー:', error);
+    throw new HttpsError('internal', `項目名の一括反映に失敗しました: ${error.message}`);
   }
 });

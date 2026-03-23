@@ -114,9 +114,9 @@ function WageLedgerView() {
       monthlyData[monthKey].bonus = payslip;
     });
     
-    // 全期間の項目を収集
-    const allItemsMap = new Map(); // itemName -> {category, config}
-    
+    // 全期間の項目を収集（headerNameをキーに使用 - itemName変更時の安全性確保）
+    const allItemsMap = new Map(); // headerName -> {category, config}
+
     // 1. 給与項目から基本項目を収集
     if (salaryConfig) {
       const salaryCategories = [
@@ -125,14 +125,15 @@ function WageLedgerView() {
         { items: salaryConfig.attendanceItems || [], type: 'attendance', targetArray: attendanceItems },
         { items: salaryConfig.totalItems || [], type: 'total', targetArray: otherItems }
       ];
-      
+
       salaryCategories.forEach(category => {
         category.items.forEach(item => {
-          const displayName = (item.itemName && item.itemName.trim() !== '') 
-            ? item.itemName 
+          const displayName = (item.itemName && item.itemName.trim() !== '')
+            ? item.itemName
             : item.headerName;
-          
-          allItemsMap.set(displayName, {
+          const stableKey = item.headerName; // headerNameは不変のキー
+
+          allItemsMap.set(stableKey, {
             id: item.headerName,
             name: displayName,
             type: category.type,
@@ -145,9 +146,9 @@ function WageLedgerView() {
         });
       });
     }
-    
+
     console.log('💜 給与項目収集完了:', allItemsMap.size, '項目');
-    
+
     // 2. 賞与項目を統合設定に基づいて処理
     if (bonusConfig && integratedConfig) {
       const bonusCategories = [
@@ -156,18 +157,19 @@ function WageLedgerView() {
         { items: bonusConfig.attendanceItems || [], type: 'attendance' },
         { items: bonusConfig.totalItems || [], type: 'total' }
       ];
-      
+
       bonusCategories.forEach(category => {
         category.items.forEach(item => {
           const itemId = item.headerName;
-          const displayName = (item.itemName && item.itemName.trim() !== '') 
-            ? item.itemName 
+          const displayName = (item.itemName && item.itemName.trim() !== '')
+            ? item.itemName
             : item.headerName;
-          
+
           if (integratedConfig.showSeparately.includes(itemId)) {
             // 別項目として追加
             const bonusDisplayName = `賞与${displayName}`;
-            allItemsMap.set(bonusDisplayName, {
+            const bonusKey = `bonus_${itemId}`; // headerNameベースの安定キー
+            allItemsMap.set(bonusKey, {
               id: `bonus_${itemId}`,
               name: bonusDisplayName,
               type: category.type,
@@ -178,18 +180,19 @@ function WageLedgerView() {
               config: item
             });
             console.log('💜 賞与別項目追加:', bonusDisplayName);
-            
+
           } else if (integratedConfig.mergeWithSalary.includes(itemId)) {
             // 給与項目に統合
-            if (allItemsMap.has(displayName)) {
-              // 既存項目あり - 統合対象としてマーク
-              const existingItem = allItemsMap.get(displayName);
+            if (allItemsMap.has(itemId)) {
+              // 既存項目あり - 統合対象としてマーク（headerNameで検索）
+              const existingItem = allItemsMap.get(itemId);
               existingItem.source = 'integrated';
               existingItem.bonusConfig = item;
               console.log('💜 統合対象:', displayName);
             } else {
               // 既存項目なし - 新規追加
-              allItemsMap.set(displayName, {
+              const mergedKey = `merged_${itemId}`;
+              allItemsMap.set(mergedKey, {
                 id: `merged_${itemId}`,
                 name: displayName,
                 type: category.type,
@@ -473,10 +476,10 @@ function WageLedgerView() {
       console.log('💜 給与明細処理:', payslip.id);
       const classifiedItems = classifyItemsForWageLedger(payslip, salaryConfig);
       
-      // 給与項目を統合マップに追加
+      // 給与項目を統合マップに追加（headerNameベースのキーで安定性確保）
       ['incomeItems', 'deductionItems', 'attendanceItems', 'otherItems'].forEach(category => {
         classifiedItems[category].forEach(item => {
-          const key = `${item.name}_${item.type}`;
+          const key = `${item.id}_${item.type}`;
           if (!integratedItemsMap.has(key)) {
             integratedItemsMap.set(key, {
               ...item,
@@ -521,8 +524,8 @@ function WageLedgerView() {
           
           // 統合設定をチェック
           if (integratedConfig.mergeWithSalary.includes(itemId)) {
-            // 給与項目に統合する設定
-            const key = `${item.name}_${item.type}`;
+            // 給与項目に統合する設定（headerNameベースのキーで検索）
+            const key = `${item.id}_${item.type}`;
             console.log(`💜 統合設定確認: ${item.name} -> ${key}`);
             
             console.log(`💜 統合マップ検索: キー "${key}" -> 存在:${integratedItemsMap.has(key)}`);
@@ -566,7 +569,7 @@ function WageLedgerView() {
             }
           } else if (integratedConfig.showSeparately.includes(itemId)) {
             // 別項目として追加
-            const bonusKey = `賞与${item.name}_${item.type}`;
+            const bonusKey = `bonus_${item.id}_${item.type}`;
             integratedItemsMap.set(bonusKey, {
               ...item,
               name: `賞与${item.name}`,
@@ -1047,15 +1050,15 @@ function WageLedgerView() {
     
     const { matrix, allMonths } = generateClassifiedItemMatrix();
     const totals = {};
-    
+
     matrix.forEach(row => {
       const itemTotal = allMonths.reduce((sum, month) => {
         const monthData = row.months[month.monthKey];
         return sum + (monthData.hasData ? monthData.value : 0);
       }, 0);
-      totals[row.itemName] = itemTotal;
+      totals[row.itemId] = itemTotal;
     });
-    
+
     return totals;
   };
 
@@ -1072,10 +1075,10 @@ function WageLedgerView() {
         const value = monthData.hasData ? monthData.value : 0;
         return sum + value;
       }, 0);
-      totals[row.itemName] = itemTotal;
-      
+      totals[row.itemId] = itemTotal;
+
       if (itemTotal !== 0) {
-        console.log(`💜 合計計算: ${row.itemName} = ${itemTotal}`);
+        console.log(`💜 合計計算: ${row.itemName} (${row.itemId}) = ${itemTotal}`);
       }
     });
     
@@ -1476,13 +1479,13 @@ function WageLedgerView() {
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-bold bg-gray-50">
                       {row.itemType === 'attendance' ? (
                         <span className="text-gray-400">-</span> // 勤怠項目は合計を表示しない
-                      ) : totals[row.itemName] !== 0 ? (
+                      ) : totals[row.itemId] !== 0 ? (
                         <span className={`${
                           row.itemType === 'income' ? 'text-gray-900' : 
                           row.itemType === 'deduction' ? 'text-red-600' : 
                           row.itemType === 'total' ? 'text-purple-600' : 'text-gray-600'
                         }`}>
-                          ¥{formatCurrency(totals[row.itemName])}
+                          ¥{formatCurrency(totals[row.itemId])}
                         </span>
                       ) : (
                         <span className="text-gray-400">-</span>

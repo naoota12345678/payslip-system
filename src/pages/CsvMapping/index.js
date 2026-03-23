@@ -5,7 +5,8 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { doc, setDoc } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { db, functions } from '../../firebase';
+import { httpsCallable } from 'firebase/functions';
 
 // カスタムフック
 import { useSimpleMappingConfig } from './hooks/useSimpleMappingConfig';
@@ -436,6 +437,39 @@ function CsvMapping() {
     setSuccess('空の項目名を一括修復しました。必要に応じて調整してください。');
   }, [setSuccess, setMappingConfig]);
 
+  // 過去の給与明細に項目名変更を反映するハンドラ
+  const [applyingToPast, setApplyingToPast] = useState(false);
+  const handleApplyToPastPayslips = useCallback(async () => {
+    if (!userDetails?.companyId) {
+      setError('会社情報が取得できません');
+      return;
+    }
+
+    if (!window.confirm('過去1年分の給与明細の項目名を、現在のマッピング設定に合わせて更新します。\n\n※ この操作は元に戻せません。よろしいですか？')) {
+      return;
+    }
+
+    try {
+      setApplyingToPast(true);
+      setError('');
+      setSuccess('');
+
+      const applyMapping = httpsCallable(functions, 'applyMappingToPastPayslips');
+      const result = await applyMapping({ companyId: userDetails.companyId });
+
+      if (result.data.success) {
+        setSuccess(`${result.data.message}（全${result.data.totalChecked}件中）`);
+      } else {
+        setError('項目名の反映に失敗しました');
+      }
+    } catch (err) {
+      console.error('過去明細への反映エラー:', err);
+      setError(`過去の明細への反映に失敗しました: ${err.message}`);
+    } finally {
+      setApplyingToPast(false);
+    }
+  }, [userDetails, setError, setSuccess]);
+
   // ヘッダーをクリアするハンドラ
   const handleClearHeaders = useCallback(() => {
     setParsedHeaders([]);
@@ -709,11 +743,11 @@ function CsvMapping() {
         <div className="mb-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold text-gray-900">CSVマッピング設定</h2>
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-wrap items-center gap-2">
               {/* 設定状態の表示 */}
               {mappingConfig && (
-                mappingConfig.incomeItems?.length > 0 || 
-                mappingConfig.deductionItems?.length > 0 || 
+                mappingConfig.incomeItems?.length > 0 ||
+                mappingConfig.deductionItems?.length > 0 ||
                 mappingConfig.attendanceItems?.length > 0 ||
                 mappingConfig.totalItems?.length > 0
               ) && (
@@ -731,6 +765,15 @@ function CsvMapping() {
                 className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 text-base font-medium shadow-sm transition-colors"
               >
                 {saving ? '保存中...' : '💾 設定を保存'}
+              </button>
+              {/* 過去の明細に反映ボタン */}
+              <button
+                onClick={handleApplyToPastPayslips}
+                disabled={applyingToPast || saving}
+                className="px-4 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:bg-gray-400 text-base font-medium shadow-sm transition-colors"
+                title="現在の項目名を過去1年分の給与明細にも反映します"
+              >
+                {applyingToPast ? '反映中...' : '過去の明細に反映'}
               </button>
               {/* 新規作成ボタン（小さく控えめに） */}
               <button
