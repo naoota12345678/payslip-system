@@ -1,5 +1,5 @@
 // src/pages/AdminLogin.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -10,6 +10,39 @@ function AdminLogin() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login, fetchUserDetails } = useAuth();
+
+  // URLハッシュからの自動ログイン（給与管理アプリからの連携用）
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (!hash) return;
+    // ハッシュを即座に消去（ブラウザ履歴に残さない）
+    window.history.replaceState(null, '', window.location.pathname);
+    const params = new URLSearchParams(hash.substring(1));
+    const autoEmail = params.get('email');
+    const autoPassword = params.get('password');
+    if (!autoEmail || !autoPassword) return;
+
+    (async () => {
+      try {
+        setLoading(true);
+        setError('');
+        const userCredential = await login(autoEmail, autoPassword);
+        const userDetails = await fetchUserDetails(userCredential.user);
+        const isAdmin = userDetails?.role === 'admin' ||
+                       userDetails?.userType === 'company_admin' ||
+                       userDetails?.userType === 'company';
+        if (!isAdmin) {
+          setError('管理者権限がありません。');
+          setLoading(false);
+          return;
+        }
+        navigate('/admin/dashboard');
+      } catch {
+        setError('自動ログインに失敗しました。手動でログインしてください。');
+        setLoading(false);
+      }
+    })();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSubmit(e) {
     e.preventDefault();
