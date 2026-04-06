@@ -120,6 +120,7 @@ function Layout() {
             
               {/* ロゴ */}
               <Link to="/" className="flex items-center">
+                <img src="/logo-tonos.png" alt="Tonos-Meisai" className="h-8 mr-2" />
                 <div className="text-xl font-bold text-blue-600">給与明細</div>
               </Link>
             </div>
