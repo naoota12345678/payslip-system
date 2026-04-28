@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import PayslipPreview from '../components/payslip/PayslipPreview';
+import NenshuKabeStatus from '../components/payslip/NenshuKabeStatus';
 import { db, functions } from '../firebase';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
@@ -655,7 +656,16 @@ function PayslipDetail() {
           <PayslipPreview payslipData={payslip} showDetailedInfo={true} />
         </div>
       </div>
-          
+
+      {/* 年収の壁ステータス（従業員のみ・遅延読み込み） */}
+      {userDetails?.role !== 'admin' && payslip?.userId && payslip?.employeeId && (
+        <NenshuKabeStatus
+          userId={payslip.userId}
+          employeeId={payslip.employeeId}
+          companyId={payslip.companyId || userDetails?.companyId}
+        />
+      )}
+
     </div>
   );
 }

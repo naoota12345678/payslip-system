@@ -26,6 +26,7 @@ import {
   updateItemName, 
   updateItemVisibility, 
   updateItemZeroDisplay,
+  updateItemCommuterAllowance,
   addItemToCategory, 
   removeItemFromCategory,
   moveItemBetweenCategories,
@@ -207,6 +208,11 @@ function CsvMapping() {
   // 項目の0値表示設定を更新するハンドラ
   const handleUpdateItemZeroDisplay = useCallback((category, index, showZeroValue) => {
     setMappingConfig(prev => updateItemZeroDisplay(category, index, showZeroValue, prev));
+  }, []);
+
+  // 項目の通勤手当フラグを更新するハンドラ
+  const handleUpdateItemCommuterAllowance = useCallback((category, index, isCommuterAllowance) => {
+    setMappingConfig(prev => updateItemCommuterAllowance(category, index, isCommuterAllowance, prev));
   }, []);
   
   // 項目の追加ハンドラ
@@ -893,6 +899,7 @@ function CsvMapping() {
               onUpdateItemName={handleUpdateItemName}
               onUpdateItemVisibility={handleUpdateItemVisibility}
               onUpdateItemZeroDisplay={handleUpdateItemZeroDisplay}
+              onUpdateItemCommuterAllowance={handleUpdateItemCommuterAllowance}
               onRemoveItem={handleRemoveItem}
               onMoveItem={handleMoveItem}
               onAddItem={handleAddItem}

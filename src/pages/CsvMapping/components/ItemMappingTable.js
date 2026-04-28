@@ -10,6 +10,7 @@ const ItemMappingTable = ({
   onUpdateItemName,
   onUpdateItemVisibility,
   onUpdateItemZeroDisplay,
+  onUpdateItemCommuterAllowance,
   onRemoveItem,
   onMoveItem,
   availableHeaders,
@@ -132,6 +133,11 @@ const ItemMappingTable = ({
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 0値表示
               </th>
+              {onUpdateItemCommuterAllowance && (
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  通勤手当
+                </th>
+              )}
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 移動
               </th>
@@ -178,6 +184,17 @@ const ItemMappingTable = ({
                     title="値が0の場合でも給与明細に表示する場合はチェックしてください"
                   />
                 </td>
+                {onUpdateItemCommuterAllowance && (
+                  <td className="px-6 py-2 whitespace-nowrap text-sm">
+                    <input
+                      type="checkbox"
+                      checked={item.isCommuterAllowance || false}
+                      onChange={(e) => onUpdateItemCommuterAllowance(category, index, e.target.checked)}
+                      className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                      title="通勤手当として扱う場合はチェック（年収の壁の税計算で除外されます）"
+                    />
+                  </td>
+                )}
                 <td className="px-6 py-2 whitespace-nowrap text-sm">
                   <div className="flex space-x-2">
                     <select

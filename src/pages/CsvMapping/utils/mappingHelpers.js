@@ -223,6 +223,27 @@ export const updateItemZeroDisplay = (category, index, showZeroValue, currentMap
 };
 
 /**
+ * 項目の通勤手当フラグを更新
+ * @param {string} category - 項目カテゴリ
+ * @param {number} index - 更新する項目のインデックス
+ * @param {boolean} isCommuterAllowance - 通勤手当かどうか
+ * @param {Object} currentMapping - 現在のマッピング設定
+ * @returns {Object} 更新されたマッピング設定
+ */
+export const updateItemCommuterAllowance = (category, index, isCommuterAllowance, currentMapping) => {
+  const newItems = [...currentMapping[category]];
+  newItems[index] = {
+    ...newItems[index],
+    isCommuterAllowance
+  };
+
+  return {
+    ...currentMapping,
+    [category]: newItems
+  };
+};
+
+/**
  * 項目の表示名を更新
  * @param {string} category - 項目カテゴリ（'incomeItems', 'deductionItems', 'attendanceItems', 'kyItems'）
  * @param {number} index - 更新する項目のインデックス
