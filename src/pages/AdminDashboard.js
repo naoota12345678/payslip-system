@@ -7,6 +7,9 @@ import { useAuth } from '../contexts/AuthContext';
 
 function AdminDashboard() {
   const { currentUser, userDetails } = useAuth();
+  const [showAnnouncement, setShowAnnouncement] = useState(() => {
+    return localStorage.getItem('hideNenshuKabeAnnouncement') !== 'true';
+  });
   const [recentPayslips, setRecentPayslips] = useState([]);
   // const [recentUploads, setRecentUploads] = useState([]); // csvUploads削除のためコメントアウト
   const [stats, setStats] = useState({
@@ -390,7 +393,57 @@ function AdminDashboard() {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">管理ダッシュボード</h1>
-      
+
+      {/* 新機能お知らせ */}
+      {showAnnouncement && (
+        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-5">
+          <div className="flex justify-between items-start">
+            <div>
+              <h3 className="text-base font-semibold text-blue-800 mb-2">新機能: 年収の壁ステータス</h3>
+              <p className="text-sm text-blue-700 mb-2">
+                従業員が給与明細画面で「年収の壁」との関係を確認できる機能を追加しました。
+                累計収入と各壁（110万・123万・130万・150万・178万・201万円）の残り金額が表示されます。
+              </p>
+              <p className="text-sm text-blue-700 mb-1 font-medium">ご対応をお願いします:</p>
+              <ul className="text-sm text-blue-700 list-disc list-inside space-y-1">
+                <li><strong>CSVマッピング設定 → 合計項目タブ</strong>で、総支給額にあたる項目に「総支給額」チェックを入れてください</li>
+                <li><strong>CSVマッピング設定 → 支給項目タブ</strong>で、通勤手当にあたる項目に「通勤手当」チェックを入れてください</li>
+              </ul>
+              <p className="text-xs text-blue-500 mt-2">※ チェックを入れないと年収の壁の累計が正しく計算されません</p>
+            </div>
+            <button
+              onClick={() => setShowAnnouncement(false)}
+              className="text-blue-400 hover:text-blue-600 ml-4 flex-shrink-0"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div className="mt-3 pt-3 border-t border-blue-200 flex items-center justify-between">
+            <label className="flex items-center text-sm text-blue-600 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mr-2 h-4 w-4 text-blue-600 border-gray-300 rounded"
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    localStorage.setItem('hideNenshuKabeAnnouncement', 'true');
+                    setShowAnnouncement(false);
+                  }
+                }}
+              />
+              今後表示しない
+            </label>
+            <Link
+              to="/admin/settings/csv-mapping"
+              className="text-sm bg-blue-600 text-white px-4 py-1.5 rounded hover:bg-blue-700"
+            >
+              CSVマッピング設定へ
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* 統計カード */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
         {/* 従業員数 */}
