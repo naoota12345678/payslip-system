@@ -58,9 +58,9 @@ const STATUS_COLORS = {
   safe: '#888780'
 };
 
-function getWallStatus(annualEstimate, wallAmount) {
-  if (annualEstimate >= wallAmount) return 'over';
-  if (annualEstimate >= wallAmount * 0.85) return 'near';
+function getWallStatus(cumulative, wallAmount) {
+  if (cumulative >= wallAmount) return 'over';
+  if (cumulative >= wallAmount * 0.85) return 'near';
   return 'safe';
 }
 
@@ -328,11 +328,10 @@ function NenshuKabeStatus({ userId, employeeId, companyId }) {
               {/* Wall Cards */}
               <div className="px-5 pb-4">
                 {WALLS_2026.map((wall, index) => {
-                  const estimate = getEstimateForWall(wall);
                   const cumulative = getCumulativeForWall(wall);
-                  const status = getWallStatus(estimate, wall.amount);
+                  const status = getWallStatus(cumulative, wall.amount);
                   const statusLabel = getStatusLabel(status, cumulative, wall.amount);
-                  const progressWidth = Math.min(estimate / wall.amount, 1.0) * 100;
+                  const progressWidth = Math.min(cumulative / wall.amount, 1.0) * 100;
                   const isOpen = openCards[index] || false;
 
                   return (
