@@ -64,9 +64,9 @@ function getWallStatus(annualEstimate, wallAmount) {
   return 'safe';
 }
 
-function getStatusLabel(status, annualEstimate, wallAmount) {
-  if (status === 'over') return '超過';
-  const remaining = wallAmount - annualEstimate;
+function getStatusLabel(status, cumulative, wallAmount) {
+  if (cumulative >= wallAmount) return '超過';
+  const remaining = wallAmount - cumulative;
   if (remaining >= 10000) {
     return `あと${Math.round(remaining / 10000)}万円`;
   }
@@ -258,6 +258,12 @@ function NenshuKabeStatus({ userId, employeeId, companyId }) {
     return isTaxOnly ? data.annualEstimateTax : data.annualEstimateGross;
   };
 
+  const getCumulativeForWall = (wall) => {
+    if (!data) return 0;
+    const isTaxOnly = wall.tags.length === 1 && wall.tags[0] === 'tax';
+    return isTaxOnly ? data.cumulativeTax : data.cumulativeGross;
+  };
+
   return (
     <div className="mt-6 print:hidden">
       <button
@@ -323,8 +329,9 @@ function NenshuKabeStatus({ userId, employeeId, companyId }) {
               <div className="px-5 pb-4">
                 {WALLS_2026.map((wall, index) => {
                   const estimate = getEstimateForWall(wall);
+                  const cumulative = getCumulativeForWall(wall);
                   const status = getWallStatus(estimate, wall.amount);
-                  const statusLabel = getStatusLabel(status, estimate, wall.amount);
+                  const statusLabel = getStatusLabel(status, cumulative, wall.amount);
                   const progressWidth = Math.min(estimate / wall.amount, 1.0) * 100;
                   const isOpen = openCards[index] || false;
 
