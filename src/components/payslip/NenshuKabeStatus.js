@@ -49,7 +49,7 @@ const WALLS_2026 = [
 
 const TAG_STYLES = {
   tax: { bg: '#E6F1FB', color: '#0C447C', label: '税' },
-  social: { bg: '#EEEDFE', color: '#3C3489', label: '社会保険' }
+  social: { bg: '#EEEDFE', color: '#3C3489', label: '社保' }
 };
 
 const STATUS_COLORS = {
@@ -225,12 +225,12 @@ function NenshuKabeStatus({ userId, employeeId, companyId }) {
         onClick={handleToggleExpand}
         className="w-full text-left px-5 py-4 rounded-lg border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow flex justify-between items-center"
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 whitespace-nowrap">
           <span className="text-lg font-medium" style={{ color: '#0D2137' }}>
             年収の壁
           </span>
           <span className="text-xs px-2 py-0.5 rounded" style={{ background: '#E6F1FB', color: '#0C447C' }}>税</span>
-          <span className="text-xs px-2 py-0.5 rounded" style={{ background: '#EEEDFE', color: '#3C3489' }}>社会保険</span>
+          <span className="text-xs px-2 py-0.5 rounded" style={{ background: '#EEEDFE', color: '#3C3489' }}>社保</span>
         </div>
         <span className="text-gray-400 text-xl">{expanded ? '−' : '+'}</span>
       </button>
@@ -310,9 +310,9 @@ function NenshuKabeStatus({ userId, employeeId, companyId }) {
                               </span>
                             ))}
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-shrink-0">
                             <span
-                              className="text-xs font-medium px-2 py-0.5 rounded"
+                              className="text-xs font-medium px-2 py-0.5 rounded whitespace-nowrap"
                               style={{
                                 color: STATUS_COLORS[status],
                                 background: status === 'over' ? '#FEE2E2' : status === 'near' ? '#FEF3C7' : '#F3F4F6'
