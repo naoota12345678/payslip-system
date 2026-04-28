@@ -127,42 +127,37 @@ function NenshuKabeStatus({ userId, employeeId, companyId }) {
       let totalCommuter = 0;
       let monthsWithPayslips = new Set();
 
+      // isGrossTotal and isCommuterAllowance flags from current mapping config (not originalMapping)
+      const grossTotalItem = (mappingConfig?.totalItems || []).find(item => item.isGrossTotal);
+      const currentCommuterHeaders = new Set();
+      if (mappingConfig?.incomeItems) {
+        mappingConfig.incomeItems.forEach(item => {
+          if (item.isCommuterAllowance) {
+            currentCommuterHeaders.add(item.headerName);
+          }
+        });
+      }
+
       // Process a single payslip document
       const processPayslip = (doc) => {
         const d = doc.data();
         const payDate = d.paymentDate?.toDate?.() || new Date(d.paymentDate);
         if (payDate.getFullYear() !== fiscalYear) return;
+        if (!d.items) return;
 
         const month = payDate.getMonth() + 1;
-        const mapping = d.originalMapping || mappingConfig;
-        if (!d.items || !mapping) return;
 
-        // Find gross total from totalItems (isGrossTotal flag)
-        let grossForThisPayslip = 0;
-        const grossTotalItem = (mapping.totalItems || []).find(item => item.isGrossTotal);
+        // Find gross total using current mapping's isGrossTotal flag
         if (grossTotalItem) {
           const val = parseFloat(d.items[grossTotalItem.headerName]);
-          if (!isNaN(val)) {
-            grossForThisPayslip = val;
+          if (!isNaN(val) && val > 0) {
+            totalGross += val;
+            monthsWithPayslips.add(month);
           }
         }
 
-        if (grossForThisPayslip > 0) {
-          totalGross += grossForThisPayslip;
-          monthsWithPayslips.add(month);
-        }
-
-        // Sum commuter allowance from income items
-        const localCommuterHeaders = new Set();
-        if (mapping?.incomeItems) {
-          mapping.incomeItems.forEach(item => {
-            if (item.isCommuterAllowance) {
-              localCommuterHeaders.add(item.headerName);
-            }
-          });
-        }
-
-        localCommuterHeaders.forEach(headerName => {
+        // Sum commuter allowance using current mapping's flags
+        currentCommuterHeaders.forEach(headerName => {
           const val = parseFloat(d.items[headerName]);
           if (!isNaN(val)) {
             totalCommuter += val;
