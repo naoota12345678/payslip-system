@@ -11,6 +11,7 @@ const ItemMappingTable = ({
   onUpdateItemVisibility,
   onUpdateItemZeroDisplay,
   onUpdateItemCommuterAllowance,
+  onUpdateItemGrossTotal,
   onRemoveItem,
   onMoveItem,
   availableHeaders,
@@ -138,6 +139,11 @@ const ItemMappingTable = ({
                   通勤手当
                 </th>
               )}
+              {onUpdateItemGrossTotal && (
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  総支給額
+                </th>
+              )}
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 移動
               </th>
@@ -192,6 +198,17 @@ const ItemMappingTable = ({
                       onChange={(e) => onUpdateItemCommuterAllowance(category, index, e.target.checked)}
                       className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
                       title="通勤手当として扱う場合はチェック（年収の壁の税計算で除外されます）"
+                    />
+                  </td>
+                )}
+                {onUpdateItemGrossTotal && (
+                  <td className="px-6 py-2 whitespace-nowrap text-sm">
+                    <input
+                      type="checkbox"
+                      checked={item.isGrossTotal || false}
+                      onChange={(e) => onUpdateItemGrossTotal(category, index, e.target.checked)}
+                      className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
+                      title="総支給額として扱う場合はチェック（年収の壁の累計計算に使用）"
                     />
                   </td>
                 )}

@@ -14,6 +14,7 @@ const ItemTabs = ({
   onUpdateItemVisibility,
   onUpdateItemZeroDisplay,
   onUpdateItemCommuterAllowance,
+  onUpdateItemGrossTotal,
   onRemoveItem,
   onMoveItem,
   onAddItem,
@@ -144,6 +145,7 @@ const ItemTabs = ({
           onUpdateItemName={onUpdateItemName}
           onUpdateItemVisibility={onUpdateItemVisibility}
           onUpdateItemZeroDisplay={onUpdateItemZeroDisplay}
+          onUpdateItemGrossTotal={onUpdateItemGrossTotal}
           onRemoveItem={onRemoveItem}
           onMoveItem={onMoveItem}
           availableHeaders={parsedHeaders}

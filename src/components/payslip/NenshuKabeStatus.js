@@ -127,16 +127,32 @@ function NenshuKabeStatus({ userId, employeeId, companyId }) {
       let totalCommuter = 0;
       let monthsWithPayslips = new Set();
 
-      // Process regular payslips
+      // Process a single payslip document
       const processPayslip = (doc) => {
         const d = doc.data();
         const payDate = d.paymentDate?.toDate?.() || new Date(d.paymentDate);
         if (payDate.getFullYear() !== fiscalYear) return;
 
         const month = payDate.getMonth() + 1;
-
-        // Get mapping for this payslip (use originalMapping if available)
         const mapping = d.originalMapping || mappingConfig;
+        if (!d.items || !mapping) return;
+
+        // Find gross total from totalItems (isGrossTotal flag)
+        let grossForThisPayslip = 0;
+        const grossTotalItem = (mapping.totalItems || []).find(item => item.isGrossTotal);
+        if (grossTotalItem) {
+          const val = parseFloat(d.items[grossTotalItem.headerName]);
+          if (!isNaN(val)) {
+            grossForThisPayslip = val;
+          }
+        }
+
+        if (grossForThisPayslip > 0) {
+          totalGross += grossForThisPayslip;
+          monthsWithPayslips.add(month);
+        }
+
+        // Sum commuter allowance from income items
         const localCommuterHeaders = new Set();
         if (mapping?.incomeItems) {
           mapping.incomeItems.forEach(item => {
@@ -146,72 +162,16 @@ function NenshuKabeStatus({ userId, employeeId, companyId }) {
           });
         }
 
-        // Sum income items from the items map
-        if (d.items && mapping) {
-          const incomeHeaders = new Set();
-          (mapping.incomeItems || []).forEach(item => incomeHeaders.add(item.headerName));
-
-          Object.entries(d.items).forEach(([headerName, value]) => {
-            const numVal = parseFloat(value);
-            if (isNaN(numVal)) return;
-
-            if (incomeHeaders.has(headerName)) {
-              totalGross += numVal;
-              if (localCommuterHeaders.has(headerName)) {
-                totalCommuter += numVal;
-              }
-              monthsWithPayslips.add(month);
-            }
-          });
-
-          // Also check totalItems for gross total
-          // If we don't have income items mapped, try totalItems
-          if (incomeHeaders.size === 0) {
-            (mapping.totalItems || []).forEach(item => {
-              const val = parseFloat(d.items[item.headerName]);
-              if (!isNaN(val) && item.itemName && (item.itemName.includes('支給') || item.itemName.includes('総額'))) {
-                totalGross += val;
-                monthsWithPayslips.add(month);
-              }
-            });
+        localCommuterHeaders.forEach(headerName => {
+          const val = parseFloat(d.items[headerName]);
+          if (!isNaN(val)) {
+            totalCommuter += val;
           }
-        }
+        });
       };
 
       payslipsSnapshot.docs.forEach(processPayslip);
-
-      // Process bonus payslips (same structure)
-      bonusSnapshot.docs.forEach(doc => {
-        const d = doc.data();
-        const payDate = d.paymentDate?.toDate?.() || new Date(d.paymentDate);
-        if (payDate.getFullYear() !== fiscalYear) return;
-
-        const mapping = d.originalMapping || mappingConfig;
-        const localCommuterHeaders = new Set();
-        if (mapping?.incomeItems) {
-          mapping.incomeItems.forEach(item => {
-            if (item.isCommuterAllowance) {
-              localCommuterHeaders.add(item.headerName);
-            }
-          });
-        }
-
-        if (d.items && mapping) {
-          const incomeHeaders = new Set();
-          (mapping.incomeItems || []).forEach(item => incomeHeaders.add(item.headerName));
-
-          Object.entries(d.items).forEach(([headerName, value]) => {
-            const numVal = parseFloat(value);
-            if (isNaN(numVal)) return;
-            if (incomeHeaders.has(headerName)) {
-              totalGross += numVal;
-              if (localCommuterHeaders.has(headerName)) {
-                totalCommuter += numVal;
-              }
-            }
-          });
-        }
-      });
+      bonusSnapshot.docs.forEach(processPayslip);
 
       const monthsElapsed = monthsWithPayslips.size || currentMonth;
       const annualEstimateGross = Math.round((totalGross / monthsElapsed) * 12);

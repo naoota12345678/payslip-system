@@ -27,6 +27,7 @@ import {
   updateItemVisibility, 
   updateItemZeroDisplay,
   updateItemCommuterAllowance,
+  updateItemGrossTotal,
   addItemToCategory, 
   removeItemFromCategory,
   moveItemBetweenCategories,
@@ -213,6 +214,11 @@ function CsvMapping() {
   // 項目の通勤手当フラグを更新するハンドラ
   const handleUpdateItemCommuterAllowance = useCallback((category, index, isCommuterAllowance) => {
     setMappingConfig(prev => updateItemCommuterAllowance(category, index, isCommuterAllowance, prev));
+  }, []);
+
+  // 項目の総支給額フラグを更新するハンドラ
+  const handleUpdateItemGrossTotal = useCallback((category, index, isGrossTotal) => {
+    setMappingConfig(prev => updateItemGrossTotal(category, index, isGrossTotal, prev));
   }, []);
   
   // 項目の追加ハンドラ
@@ -900,6 +906,7 @@ function CsvMapping() {
               onUpdateItemVisibility={handleUpdateItemVisibility}
               onUpdateItemZeroDisplay={handleUpdateItemZeroDisplay}
               onUpdateItemCommuterAllowance={handleUpdateItemCommuterAllowance}
+              onUpdateItemGrossTotal={handleUpdateItemGrossTotal}
               onRemoveItem={handleRemoveItem}
               onMoveItem={handleMoveItem}
               onAddItem={handleAddItem}

@@ -223,6 +223,31 @@ export const updateItemZeroDisplay = (category, index, showZeroValue, currentMap
 };
 
 /**
+ * 項目の総支給額フラグを更新
+ * @param {string} category - 項目カテゴリ
+ * @param {number} index - 更新する項目のインデックス
+ * @param {boolean} isGrossTotal - 総支給額かどうか
+ * @param {Object} currentMapping - 現在のマッピング設定
+ * @returns {Object} 更新されたマッピング設定
+ */
+export const updateItemGrossTotal = (category, index, isGrossTotal, currentMapping) => {
+  const newItems = [...currentMapping[category]];
+  // 総支給額は1つだけにする（他のチェックを外す）
+  if (isGrossTotal) {
+    newItems.forEach((item, i) => {
+      newItems[i] = { ...item, isGrossTotal: i === index };
+    });
+  } else {
+    newItems[index] = { ...newItems[index], isGrossTotal: false };
+  }
+
+  return {
+    ...currentMapping,
+    [category]: newItems
+  };
+};
+
+/**
  * 項目の通勤手当フラグを更新
  * @param {string} category - 項目カテゴリ
  * @param {number} index - 更新する項目のインデックス
