@@ -657,8 +657,8 @@ function PayslipDetail() {
         </div>
       </div>
 
-      {/* 年収の壁ステータス（従業員のみ・遅延読み込み） */}
-      {userDetails?.role !== 'admin' && payslip?.userId && payslip?.employeeId && (
+      {/* 年収の壁ステータス（遅延読み込み） */}
+      {payslip?.userId && payslip?.employeeId && (
         <NenshuKabeStatus
           userId={payslip.userId}
           employeeId={payslip.employeeId}
