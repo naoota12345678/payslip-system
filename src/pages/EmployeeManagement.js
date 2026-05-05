@@ -457,9 +457,9 @@ function EmployeeManagement() {
               </tr>
             ) : (
               sortedEmployees.map(employee => (
-                <tr 
-                  key={employee.id} 
-                  className="hover:bg-gray-50 cursor-pointer"
+                <tr
+                  key={employee.id}
+                  className={`cursor-pointer ${employee.isActive === false ? 'bg-gray-100 opacity-50' : 'hover:bg-gray-50'}`}
                   onClick={() => window.location.href = `/admin/employees/${employee.id}`}
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
