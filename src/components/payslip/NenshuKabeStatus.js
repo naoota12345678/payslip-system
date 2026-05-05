@@ -73,7 +73,7 @@ function getStatusLabel(status, cumulative, wallAmount) {
   return `あと${remaining.toLocaleString()}円`;
 }
 
-function NenshuKabeStatus({ userId, employeeId, companyId }) {
+function NenshuKabeStatus({ employeeId, companyId }) {
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(null);
@@ -90,7 +90,7 @@ function NenshuKabeStatus({ userId, employeeId, companyId }) {
       // Fetch current year's payslips
       const payslipsQuery = query(
         collection(db, 'payslips'),
-        where('userId', '==', userId),
+        where('companyId', '==', companyId),
         where('employeeId', '==', employeeId)
       );
       const payslipsSnapshot = await getDocs(payslipsQuery);
@@ -98,7 +98,7 @@ function NenshuKabeStatus({ userId, employeeId, companyId }) {
       // Fetch bonus payslips too
       const bonusQuery = query(
         collection(db, 'bonusPayslips'),
-        where('userId', '==', userId),
+        where('companyId', '==', companyId),
         where('employeeId', '==', employeeId)
       );
       const bonusSnapshot = await getDocs(bonusQuery);
