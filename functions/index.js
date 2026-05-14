@@ -513,10 +513,28 @@ exports.createEmployeeAccount = onCall({
     }
     
     console.log('✅ パラメータ検証完了:', { email, name });
-    
-    // ランダムパスワード生成
-    const randomPassword = generateSecurePassword();
-    console.log('🔐 ランダムパスワード生成完了:', randomPassword);
+
+    // Firestoreから既存のtempPasswordを取得、なければ新規生成
+    let randomPassword;
+    const companyId = employeeData?.companyId;
+    if (companyId) {
+      const existingEmpQuery = await db.collection('employees')
+        .where('email', '==', email)
+        .where('companyId', '==', companyId)
+        .limit(1)
+        .get();
+      if (!existingEmpQuery.empty) {
+        const existingTempPassword = existingEmpQuery.docs[0].data()?.tempPassword;
+        if (existingTempPassword) {
+          randomPassword = existingTempPassword;
+          console.log('🔐 既存のtempPasswordを使用:', randomPassword);
+        }
+      }
+    }
+    if (!randomPassword) {
+      randomPassword = generateSecurePassword();
+      console.log('🔐 新規パスワード生成:', randomPassword);
+    }
     
     // 既存ユーザーの確認
     let userRecord;
