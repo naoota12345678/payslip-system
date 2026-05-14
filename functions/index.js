@@ -541,14 +541,19 @@ exports.createEmployeeAccount = onCall({
     try {
       const existingUser = await admin.auth().getUserByEmail(email);
       console.log('⚠️ 既存ユーザーが見つかりました:', existingUser.uid);
+      // 既存ユーザーのパスワードをtempPasswordに合わせて更新
+      await admin.auth().updateUser(existingUser.uid, {
+        password: randomPassword
+      });
+      console.log('🔐 既存ユーザーのAuthパスワードを更新しました');
       userRecord = existingUser;
     } catch (getUserError) {
       // ユーザーが存在しない場合（期待される動作）
       if (getUserError.code === 'auth/user-not-found') {
         console.log('✅ 新規ユーザー作成を続行します');
-        
+
         console.log('👤 Firebase Authユーザー作成開始...');
-        
+
         // Firebase Authでユーザー作成
         userRecord = await admin.auth().createUser({
           email: email,
@@ -556,7 +561,7 @@ exports.createEmployeeAccount = onCall({
           displayName: name,
           emailVerified: false
         });
-        
+
         console.log('✅ 従業員アカウント作成完了:', {
           uid: userRecord.uid,
           email: email,
@@ -569,20 +574,20 @@ exports.createEmployeeAccount = onCall({
         throw getUserError;
       }
     }
-    
+
     // 従業員データの処理
     console.log('🔄 Firestoreの従業員データ処理中...');
-    
+
     try {
       // メールアドレスとcompanyIdで従業員ドキュメントを検索（セキュリティ重要）
-      const companyId = employeeData?.companyId;
-      if (!companyId) {
+      const companyId2 = employeeData?.companyId;
+      if (!companyId2) {
         throw new Error('companyIdが提供されていません');
       }
 
       const employeesQuery = db.collection('employees')
         .where('email', '==', email)
-        .where('companyId', '==', companyId);
+        .where('companyId', '==', companyId2);
       const employeesSnapshot = await employeesQuery.get();
 
       console.log(`🔍 従業員検索結果: ${employeesSnapshot.size}件 (email: ${email}, companyId: ${companyId})`);
