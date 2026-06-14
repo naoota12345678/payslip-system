@@ -45,28 +45,39 @@ const SimpleCSVUpload = () => {
         return;
       }
 
-      const mappingSettings = await fetchMappingSettings();
+      // Firestoreから直接マッピング設定を取得（全カテゴリ含む）
+      const mappingDoc = await getDoc(doc(db, 'csvMappings', userDetails.companyId));
+      if (!mappingDoc.exists()) {
+        setMessage('マッピング設定が見つかりません。先にCSVマッピング設定を行ってください。');
+        return;
+      }
+      const data = mappingDoc.data();
+      const orientation = data.orientation || 'row';
 
       // マッピング設定からヘッダーを構築
       const headers = [];
-      const employeeCodeHeader = mappingSettings.mainFields?.employeeCode?.headerName || '';
-      const employeeNameHeader = mappingSettings.mainFields?.employeeName?.headerName || '';
+      const employeeCodeHeader = data.mainFields?.employeeCode?.headerName || '';
+      const employeeNameHeader = data.mainFields?.employeeName?.headerName || '';
 
       // mainFieldsからヘッダーを追加（従業員コード、氏名など）
-      if (mappingSettings.mainFields) {
+      if (data.mainFields) {
         const fieldOrder = ['employeeCode', 'employeeName', 'departmentCode', 'departmentName', 'paymentDate'];
         fieldOrder.forEach(field => {
-          if (mappingSettings.mainFields[field]?.headerName) {
-            headers.push(mappingSettings.mainFields[field].headerName);
+          if (data.mainFields[field]?.headerName) {
+            headers.push(data.mainFields[field].headerName);
           }
         });
       }
 
-      // 各カテゴリの項目からヘッダーを追加
-      const allItems = Object.keys(mappingSettings.simpleMapping || {});
-      allItems.forEach(headerName => {
-        if (!headers.includes(headerName)) {
-          headers.push(headerName);
+      // 全カテゴリの項目からヘッダーを追加
+      const allCategories = ['incomeItems', 'deductionItems', 'attendanceItems', 'totalItems', 'summaryItems', 'itemCodeItems', 'kyItems'];
+      allCategories.forEach(category => {
+        if (data[category] && Array.isArray(data[category])) {
+          data[category].forEach(item => {
+            if (item.headerName && !headers.includes(item.headerName)) {
+              headers.push(item.headerName);
+            }
+          });
         }
       });
 
@@ -104,7 +115,7 @@ const SimpleCSVUpload = () => {
         return s;
       };
 
-      if (mappingSettings.orientation === 'column') {
+      if (orientation === 'column') {
         // 列ベース: 1列目=項目名、2列目以降=各従業員
         // 従業員コード行を先頭に
         const rows = headers.map(h => {
