@@ -511,10 +511,30 @@ const SimpleCSVUpload = () => {
           return;
         }
 
-        headerLine = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+        // 引用符内のカンマに対応したCSVパーサー
+        const parseCSVLine = (line) => {
+          const cells = [];
+          let current = '';
+          let inQuotes = false;
+          for (let i = 0; i < line.length; i++) {
+            const ch = line[i];
+            if (ch === '"') {
+              inQuotes = !inQuotes;
+            } else if (ch === ',' && !inQuotes) {
+              cells.push(current.trim());
+              current = '';
+            } else {
+              current += ch;
+            }
+          }
+          cells.push(current.trim());
+          return cells;
+        };
+
+        headerLine = parseCSVLine(lines[0]);
 
         dataLines = lines.slice(1).map(line => {
-          const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+          const values = parseCSVLine(line);
           const rowData = {};
           headerLine.forEach((header, index) => {
             rowData[header] = values[index] || '';

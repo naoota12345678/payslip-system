@@ -37,10 +37,26 @@ export const transposeColumnCSV = (csvText) => {
     throw new Error('CSVファイルにデータが不足しています。');
   }
 
-  // CSVをパースして2次元配列に変換
-  const matrix = lines.map(line =>
-    line.split(',').map(cell => cell.trim().replace(/"/g, ''))
-  );
+  // CSVをパースして2次元配列に変換（引用符内のカンマに対応）
+  const parseCSVLine = (line) => {
+    const cells = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        inQuotes = !inQuotes;
+      } else if (ch === ',' && !inQuotes) {
+        cells.push(current.trim());
+        current = '';
+      } else {
+        current += ch;
+      }
+    }
+    cells.push(current.trim());
+    return cells;
+  };
+  const matrix = lines.map(line => parseCSVLine(line));
 
   // 転置
   const transposed = transposeMatrix(matrix);
