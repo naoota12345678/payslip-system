@@ -37,6 +37,123 @@ const SimpleCSVUpload = () => {
     URL.revokeObjectURL(link.href);
   };
 
+  // 現在のマッピング設定に基づくCSVテンプレートダウンロード
+  const downloadMappingTemplateCSV = async () => {
+    try {
+      if (!userDetails?.companyId) {
+        setMessage('会社情報が取得できません。');
+        return;
+      }
+
+      const mappingSettings = await fetchMappingSettings();
+
+      // マッピング設定からヘッダーを構築
+      const headers = [];
+      const employeeCodeHeader = mappingSettings.mainFields?.employeeCode?.headerName || '';
+      const employeeNameHeader = mappingSettings.mainFields?.employeeName?.headerName || '';
+
+      // mainFieldsからヘッダーを追加（従業員コード、氏名など）
+      if (mappingSettings.mainFields) {
+        const fieldOrder = ['employeeCode', 'employeeName', 'departmentCode', 'departmentName', 'paymentDate'];
+        fieldOrder.forEach(field => {
+          if (mappingSettings.mainFields[field]?.headerName) {
+            headers.push(mappingSettings.mainFields[field].headerName);
+          }
+        });
+      }
+
+      // 各カテゴリの項目からヘッダーを追加
+      const allItems = Object.keys(mappingSettings.simpleMapping || {});
+      allItems.forEach(headerName => {
+        if (!headers.includes(headerName)) {
+          headers.push(headerName);
+        }
+      });
+
+      if (headers.length === 0) {
+        setMessage('マッピング設定が見つかりません。先にCSVマッピング設定を行ってください。');
+        return;
+      }
+
+      // Firestoreから在職従業員を取得し、従業員番号順にソート
+      const employeesSnapshot = await getDocs(
+        query(
+          collection(db, 'employees'),
+          where('companyId', '==', userDetails.companyId)
+        )
+      );
+      const employees = employeesSnapshot.docs
+        .map(d => d.data())
+        .filter(emp => emp.isActive !== false)
+        .sort((a, b) => {
+          const idA = String(a.employeeId || '');
+          const idB = String(b.employeeId || '');
+          // 数値として比較可能な場合は数値ソート
+          const numA = parseInt(idA, 10);
+          const numB = parseInt(idB, 10);
+          if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+          return idA.localeCompare(idB);
+        });
+
+      // CSV値のエスケープ（カンマや改行を含む場合）
+      const escapeCSV = (val) => {
+        const s = String(val ?? '');
+        if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+          return '"' + s.replace(/"/g, '""') + '"';
+        }
+        return s;
+      };
+
+      if (mappingSettings.orientation === 'column') {
+        // 列ベース: 1列目=項目名、2列目以降=各従業員
+        // 従業員コード行を先頭に
+        const rows = headers.map(h => {
+          const cells = [h];
+          employees.forEach(emp => {
+            if (h === employeeCodeHeader) {
+              cells.push(escapeCSV(emp.employeeId || ''));
+            } else if (h === employeeNameHeader) {
+              cells.push(escapeCSV(emp.name || emp.displayName || ''));
+            } else {
+              cells.push('');
+            }
+          });
+          return cells.join(',');
+        });
+        const csvContent = rows.join('\n');
+        const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+        const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = '給与テンプレート_列ベース.csv';
+        link.click();
+        URL.revokeObjectURL(link.href);
+      } else {
+        // 行ベース: 1行目=ヘッダー、2行目以降=従業員（番号・氏名入り）
+        const rows = [headers.join(',')];
+        employees.forEach(emp => {
+          const cells = headers.map(h => {
+            if (h === employeeCodeHeader) return escapeCSV(emp.employeeId || '');
+            if (h === employeeNameHeader) return escapeCSV(emp.name || emp.displayName || '');
+            return '';
+          });
+          rows.push(cells.join(','));
+        });
+        const csvContent = rows.join('\n');
+        const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+        const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = '給与テンプレート.csv';
+        link.click();
+        URL.revokeObjectURL(link.href);
+      }
+    } catch (error) {
+      console.error('テンプレートダウンロードエラー:', error);
+      setMessage('テンプレートのダウンロードに失敗しました: ' + error.message);
+    }
+  };
+
   // サンプルCSVダウンロード関数（列ベース）
   const downloadColumnSampleCSV = () => {
     const sampleData = `社員番号,1,2,3
@@ -878,6 +995,21 @@ const SimpleCSVUpload = () => {
             </button>
             <p className="mt-1 text-xs text-purple-600">
               列ベースマッピング用: 1列=1従業員、1行目に社員番号を記載
+            </p>
+          </div>
+          <div className="mt-2 pt-2 border-t border-green-200">
+            <button
+              type="button"
+              onClick={downloadMappingTemplateCSV}
+              className="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center"
+            >
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              現在のマッピング設定でテンプレートCSVをダウンロード
+            </button>
+            <p className="mt-1 text-xs text-indigo-600">
+              設定済みのマッピングに合わせたヘッダーのCSVテンプレートを生成します
             </p>
           </div>
         </div>
