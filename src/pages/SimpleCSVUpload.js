@@ -55,13 +55,13 @@ const SimpleCSVUpload = () => {
       const orientation = data.orientation || 'row';
 
       console.log('📋 テンプレート生成: Firestoreデータのキー:', Object.keys(data));
-      const allCategories = ['incomeItems', 'deductionItems', 'attendanceItems', 'totalItems', 'summaryItems', 'itemCodeItems', 'kyItems'];
-      allCategories.forEach(cat => {
-        const items = data[cat];
-        if (items && Array.isArray(items)) {
-          console.log(`📋 ${cat}: ${items.length}件`, items.map(i => i.headerName));
-        } else {
-          console.log(`📋 ${cat}: 存在しない or 配列でない`, typeof items);
+      // Firestoreのキー名を全て列挙（大文字小文字の差異に対応）
+      console.log('📋 テンプレート生成: Firestoreデータの全キー:', Object.keys(data));
+      const allCategories = [];
+      Object.keys(data).forEach(key => {
+        if (Array.isArray(data[key]) && key !== 'mainFields') {
+          allCategories.push(key);
+          console.log(`📋 ${key}: ${data[key].length}件`, data[key].map(i => i.headerName));
         }
       });
 
@@ -80,15 +80,13 @@ const SimpleCSVUpload = () => {
         });
       }
 
-      // 全カテゴリの項目からヘッダーを追加
+      // 全カテゴリの項目からヘッダーを追加（Firestoreの実際のキー名を使用）
       allCategories.forEach(category => {
-        if (data[category] && Array.isArray(data[category])) {
-          data[category].forEach(item => {
-            if (item.headerName && !headers.includes(item.headerName)) {
-              headers.push(item.headerName);
-            }
-          });
-        }
+        data[category].forEach(item => {
+          if (item.headerName && !headers.includes(item.headerName)) {
+            headers.push(item.headerName);
+          }
+        });
       });
 
       console.log('📋 テンプレート最終ヘッダー:', headers, `(${headers.length}件)`);
