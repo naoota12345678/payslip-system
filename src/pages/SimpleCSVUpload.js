@@ -54,6 +54,17 @@ const SimpleCSVUpload = () => {
       const data = mappingDoc.data();
       const orientation = data.orientation || 'row';
 
+      console.log('📋 テンプレート生成: Firestoreデータのキー:', Object.keys(data));
+      const allCategories = ['incomeItems', 'deductionItems', 'attendanceItems', 'totalItems', 'summaryItems', 'itemCodeItems', 'kyItems'];
+      allCategories.forEach(cat => {
+        const items = data[cat];
+        if (items && Array.isArray(items)) {
+          console.log(`📋 ${cat}: ${items.length}件`, items.map(i => i.headerName));
+        } else {
+          console.log(`📋 ${cat}: 存在しない or 配列でない`, typeof items);
+        }
+      });
+
       // マッピング設定からヘッダーを構築
       const headers = [];
       const employeeCodeHeader = data.mainFields?.employeeCode?.headerName || '';
@@ -70,7 +81,6 @@ const SimpleCSVUpload = () => {
       }
 
       // 全カテゴリの項目からヘッダーを追加
-      const allCategories = ['incomeItems', 'deductionItems', 'attendanceItems', 'totalItems', 'summaryItems', 'itemCodeItems', 'kyItems'];
       allCategories.forEach(category => {
         if (data[category] && Array.isArray(data[category])) {
           data[category].forEach(item => {
@@ -80,6 +90,8 @@ const SimpleCSVUpload = () => {
           });
         }
       });
+
+      console.log('📋 テンプレート最終ヘッダー:', headers, `(${headers.length}件)`);
 
       if (headers.length === 0) {
         setMessage('マッピング設定が見つかりません。先にCSVマッピング設定を行ってください。');
